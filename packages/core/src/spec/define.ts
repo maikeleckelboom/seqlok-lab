@@ -1,91 +1,169 @@
 import {
   asNonEmpty,
+  assertValidateScalarRange,
   createRangeInput,
   isPlainObject,
   parseArrayLen,
-  assertValidateScalarRange,
 } from './validate';
 
 import type { SpecInput } from './types';
 import type { ScalarRangeInput } from './validate';
 
+/**
+ * Scalar param builders.
+ *
+ * Overloads capture literal min/max so `typeof spec` can see them, while
+ * still being assignable to the wider ScalarParamDef (`min?: number`, etc.).
+ */
 interface F32Builder {
-  (range?: ScalarRangeInput): {
+  (): { readonly kind: 'f32' };
+
+  <TMin extends number>(range: {
+    readonly min: TMin;
+  }): {
     readonly kind: 'f32';
-    readonly min?: number;
-    readonly max?: number;
+    readonly min: TMin;
   };
 
-  array(length: number | { readonly length: number }): {
+  <TMax extends number>(range: {
+    readonly max: TMax;
+  }): {
+    readonly kind: 'f32';
+    readonly max: TMax;
+  };
+
+  <TMin extends number, TMax extends number>(range: {
+    readonly min: TMin;
+    readonly max: TMax;
+  }): {
+    readonly kind: 'f32';
+    readonly min: TMin;
+    readonly max: TMax;
+  };
+
+  array<TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ): {
     readonly kind: 'f32.array';
-    readonly length: number;
+    readonly length: TLen;
   };
 }
 
 interface I32Builder {
-  (range?: ScalarRangeInput): {
+  (): { readonly kind: 'i32' };
+
+  <TMin extends number>(range: {
+    readonly min: TMin;
+  }): {
     readonly kind: 'i32';
-    readonly min?: number;
-    readonly max?: number;
+    readonly min: TMin;
   };
 
-  array(length: number | { readonly length: number }): {
+  <TMax extends number>(range: {
+    readonly max: TMax;
+  }): {
+    readonly kind: 'i32';
+    readonly max: TMax;
+  };
+
+  <TMin extends number, TMax extends number>(range: {
+    readonly min: TMin;
+    readonly max: TMax;
+  }): {
+    readonly kind: 'i32';
+    readonly min: TMin;
+    readonly max: TMax;
+  };
+
+  array<TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ): {
     readonly kind: 'i32.array';
-    readonly length: number;
+    readonly length: TLen;
   };
 }
 
 interface BoolBuilder {
   (): { readonly kind: 'bool' };
 
-  array(length: number | { readonly length: number }): {
+  array<TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ): {
     readonly kind: 'bool.array';
-    readonly length: number;
+    readonly length: TLen;
   };
 }
 
+/**
+ * Enum builder — `<const V>` keeps tuples, array overload preserves length.
+ *
+ * We use *overloads* instead of a union parameter type so that
+ * `param.enum(['a','b','c'])` doesn't get its tuple widened to
+ * `readonly string[]` by contextual typing.
+ *
+ * NOTE: ESLint may suggest combining these overloads into one signature
+ * with a union type. DO NOT do this — the union causes TypeScript to
+ * widen literal tuples to `readonly string[]` during inference.
+ */
 interface EnumBuilder {
   <const V extends readonly string[]>(
-    valuesOrConfig: V | { readonly values: V },
+    values: V,
   ): {
     readonly kind: 'enum';
     readonly values: V;
   };
 
-  array<const V extends readonly string[], N extends number>(opts: {
+  // eslint-disable-next-line @typescript-eslint/unified-signatures
+  <const V extends readonly string[]>(config: {
     readonly values: V;
-    readonly length: N;
+  }): {
+    readonly kind: 'enum';
+    readonly values: V;
+  };
+
+  array<const V extends readonly string[], TLen extends number>(opts: {
+    readonly values: V;
+    readonly length: TLen;
   }): {
     readonly kind: 'enum.array';
     readonly values: V;
-    readonly length: N;
+    readonly length: TLen;
   };
 }
 
+/**
+ * Meter builders — arrays get literal-preserving length as well.
+ */
 interface MeterF32Builder {
   (): { readonly kind: 'f32' };
 
-  array(length: number | { readonly length: number }): {
+  array<TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ): {
     readonly kind: 'f32.array';
-    readonly length: number;
+    readonly length: TLen;
   };
 }
 
 interface MeterF64Builder {
   (): { readonly kind: 'f64' };
 
-  array(length: number | { readonly length: number }): {
+  array<TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ): {
     readonly kind: 'f64.array';
-    readonly length: number;
+    readonly length: TLen;
   };
 }
 
 interface MeterU32Builder {
   (): { readonly kind: 'u32' };
 
-  array(length: number | { readonly length: number }): {
+  array<TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ): {
     readonly kind: 'u32.array';
-    readonly length: number;
+    readonly length: TLen;
   };
 }
 
@@ -107,131 +185,132 @@ export interface MeterBuilders {
 
 /**
  * Create a spec either from a plain object or via builders.
+ *
+ * - Builder form (preferred):
+ *     const spec = defineSpec(({ param, meter }) => ({ ... }));
+ *   here we use `const S` so nested literals are preserved.
+ *
+ * - Plain object form (power users / tests):
+ *     const spec = defineSpec({ id: 'foo', params: { ... } });
+ *   here we enforce `S extends SpecInput`.
  */
-export function defineSpec<S extends SpecInput>(
+
+// Builder form: unconstrained, `const S` for maximal literal preservation.
+export function defineSpec<const S>(
+  build: (api: { readonly param: ParamBuilders; readonly meter: MeterBuilders }) => S,
+): S;
+
+// Plain-object form: must already be a SpecInput.
+export function defineSpec<S extends SpecInput>(spec: S): S;
+
+// Implementation shared by both overloads.
+export function defineSpec<S>(
   arg: S | ((api: { readonly param: ParamBuilders; readonly meter: MeterBuilders }) => S),
 ): S {
   if (typeof arg !== 'function') {
     return arg;
   }
 
-  const f32: F32Builder = (() => {
-    const fn = (r?: ScalarRangeInput) => {
-      const min = r?.min;
-      const max = r?.max;
+  const f32 = ((input?: ScalarRangeInput) => {
+    const min = input?.min;
+    const max = input?.max;
 
-      if (min !== undefined || max !== undefined) {
-        assertValidateScalarRange('param.f32', createRangeInput(min, max));
-      }
+    if (min !== undefined || max !== undefined) {
+      assertValidateScalarRange('param.f32', createRangeInput(min, max));
+    }
 
-      if (min !== undefined && max !== undefined) {
-        return { kind: 'f32' as const, min, max };
-      }
-      if (min !== undefined) {
-        return { kind: 'f32' as const, min };
-      }
-      if (max !== undefined) {
-        return { kind: 'f32' as const, max };
-      }
-      return { kind: 'f32' as const };
-    };
+    if (min !== undefined && max !== undefined) {
+      return { kind: 'f32' as const, min, max };
+    }
+    if (min !== undefined) {
+      return { kind: 'f32' as const, min };
+    }
+    if (max !== undefined) {
+      return { kind: 'f32' as const, max };
+    }
+    return { kind: 'f32' as const };
+  }) as F32Builder;
 
-    fn.array = (length: number | { readonly length: number }) => ({
-      kind: 'f32.array' as const,
-      length: parseArrayLen(length),
-    });
+  f32.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
+    kind: 'f32.array' as const,
+    length: parseArrayLen(length) as TLen,
+  });
 
-    return fn;
-  })();
+  const i32 = ((r?: ScalarRangeInput) => {
+    const min = r?.min;
+    const max = r?.max;
 
-  const i32: I32Builder = (() => {
-    const fn = (r?: ScalarRangeInput) => {
-      const min = r?.min;
-      const max = r?.max;
+    if (min !== undefined || max !== undefined) {
+      assertValidateScalarRange('param.i32', createRangeInput(min, max), {
+        integer: true,
+      });
+    }
 
-      if (min !== undefined || max !== undefined) {
-        assertValidateScalarRange('param.i32', createRangeInput(min, max), {
-          integer: true,
-        });
-      }
+    if (min !== undefined && max !== undefined) {
+      return { kind: 'i32' as const, min, max };
+    }
+    if (min !== undefined) {
+      return { kind: 'i32' as const, min };
+    }
+    if (max !== undefined) {
+      return { kind: 'i32' as const, max };
+    }
+    return { kind: 'i32' as const };
+  }) as I32Builder;
 
-      if (min !== undefined && max !== undefined) {
-        return { kind: 'i32' as const, min, max };
-      }
-      if (min !== undefined) {
-        return { kind: 'i32' as const, min };
-      }
-      if (max !== undefined) {
-        return { kind: 'i32' as const, max };
-      }
-      return { kind: 'i32' as const };
-    };
+  i32.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
+    kind: 'i32.array' as const,
+    length: parseArrayLen(length) as TLen,
+  });
 
-    fn.array = (length: number | { readonly length: number }) => ({
-      kind: 'i32.array' as const,
-      length: parseArrayLen(length),
-    });
+  const bool = (() => ({ kind: 'bool' as const })) as BoolBuilder;
 
-    return fn;
-  })();
+  bool.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
+    kind: 'bool.array' as const,
+    length: parseArrayLen(length) as TLen,
+  });
 
-  const bool: BoolBuilder = (() => {
-    const fn = () => ({ kind: 'bool' as const });
-    fn.array = (length: number | { readonly length: number }) => ({
-      kind: 'bool.array' as const,
-      length: parseArrayLen(length),
-    });
-    return fn;
-  })();
+  const scalarEnum = <const V extends readonly string[]>(
+    argEnum: V | { readonly values: V },
+  ) => {
+    const raw: V = isPlainObject(argEnum)
+      ? (argEnum as { readonly values: V }).values
+      : argEnum;
+    return { kind: 'enum' as const, values: asNonEmpty(raw) };
+  };
 
-  const enumBuilder: EnumBuilder = (() => {
-    const scalar = <const V extends readonly string[]>(
-      arg: V | { readonly values: V },
-    ) => {
-      const raw: V = isPlainObject(arg) ? (arg as { readonly values: V }).values : arg;
-      return { kind: 'enum' as const, values: asNonEmpty(raw) };
-    };
+  const arrayEnum = <const V extends readonly string[], TLen extends number>(opts: {
+    readonly values: V;
+    readonly length: TLen;
+  }) => ({
+    kind: 'enum.array' as const,
+    values: asNonEmpty(opts.values),
+    length: parseArrayLen(opts.length) as TLen,
+  });
 
-    const array = <const V extends readonly string[], N extends number>(opts: {
-      readonly values: V;
-      readonly length: N;
-    }) => ({
-      kind: 'enum.array' as const,
-      values: asNonEmpty(opts.values),
-      length: parseArrayLen(opts.length) as N,
-    });
+  const enumBuilder = scalarEnum as EnumBuilder;
+  enumBuilder.array = arrayEnum;
 
-    const fn = scalar as EnumBuilder;
-    fn.array = array;
-    return fn;
-  })();
+  const meterF32 = (() => ({ kind: 'f32' as const })) as MeterF32Builder;
 
-  const meterF32: MeterF32Builder = (() => {
-    const fn = () => ({ kind: 'f32' as const });
-    fn.array = (length: number | { readonly length: number }) => ({
-      kind: 'f32.array' as const,
-      length: parseArrayLen(length),
-    });
-    return fn;
-  })();
+  meterF32.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
+    kind: 'f32.array' as const,
+    length: parseArrayLen(length) as TLen,
+  });
 
-  const meterF64: MeterF64Builder = (() => {
-    const fn = () => ({ kind: 'f64' as const });
-    fn.array = (length: number | { readonly length: number }) => ({
-      kind: 'f64.array' as const,
-      length: parseArrayLen(length),
-    });
-    return fn;
-  })();
+  const meterF64 = (() => ({ kind: 'f64' as const })) as MeterF64Builder;
 
-  const meterU32: MeterU32Builder = (() => {
-    const fn = () => ({ kind: 'u32' as const });
-    fn.array = (length: number | { readonly length: number }) => ({
-      kind: 'u32.array' as const,
-      length: parseArrayLen(length),
-    });
-    return fn;
-  })();
+  meterF64.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
+    kind: 'f64.array' as const,
+    length: parseArrayLen(length) as TLen,
+  });
+
+  const meterU32 = (() => ({ kind: 'u32' as const })) as MeterU32Builder;
+
+  meterU32.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
+    kind: 'u32.array' as const,
+    length: parseArrayLen(length) as TLen,
+  });
 
   const meterBool: MeterBoolBuilder = () => ({ kind: 'bool' as const });
 

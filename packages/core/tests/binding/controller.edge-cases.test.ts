@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineSpec, planLayout, allocateShared, bindController } from '../../src';
+import { allocateShared, bindController, defineSpec, planLayout } from '../../src';
 
 describe('controller: edge cases & validation', () => {
   it('rejects enum write with invalid string label', () => {
@@ -16,13 +16,14 @@ describe('controller: edge cases & validation', () => {
     const ctl = bindController(spec, backing);
 
     expect(() => {
+      // @ts-expect-error non-existent key
       ctl.params.set('mode', 'triangle');
     }).toThrow(/enum|invalid|value/i);
   });
 
-  it('clamps out-of-range f32 with rangePolicy: clamp (default)', () => {
+  it('rangePolicy: clamp clamps out-of-range f32 and commits value', () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'clamp-test',
+      id: 'demo',
       params: {
         gain: param.f32({ min: 0, max: 1 }),
       },
@@ -30,12 +31,18 @@ describe('controller: edge cases & validation', () => {
 
     const plan = planLayout(spec);
     const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing, { rangePolicy: 'clamp' });
+    const ctl = bindController(spec, backing, { params: { rangePolicy: 'clamp' } });
 
-    ctl.params.set('gain', 1.5); // Above max
+    const start = ctl.params.version();
 
-    const snap = ctl.params.snapshot();
-    expect(snap.gain).toBe(1); // Clamped to max
+    // no throw; value should be clamped to max (1)
+    ctl.params.set('gain', 1.5);
+
+    const after = ctl.params.version();
+    expect(after).toBe(start + 1);
+
+    const { gain } = ctl.params.snapshot(['gain']);
+    expect(gain).toBe(1);
   });
 
   it('throws on out-of-range f32 with rangePolicy: reject', () => {
@@ -49,7 +56,7 @@ describe('controller: edge cases & validation', () => {
 
     const plan = planLayout(spec);
     const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing, { rangePolicy: 'reject' });
+    const ctl = bindController(spec, backing, { params: { rangePolicy: 'reject' } });
 
     expect(() => {
       ctl.params.set('rate', 5);
@@ -72,9 +79,9 @@ describe('controller: edge cases & validation', () => {
     const wrongBuffer = new Int32Array(64);
 
     expect(() => {
+      // @ts-expect-error wrong type (intentional)
       ctl.params.snapshot({
         keys: ['curve'],
-        // @ts-expect-error wrong type (intentional)
         into: { curve: wrongBuffer },
       });
     }).toThrow(/type|Float32Array|Int32Array/i);

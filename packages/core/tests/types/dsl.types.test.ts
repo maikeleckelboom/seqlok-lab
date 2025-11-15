@@ -1,4 +1,4 @@
-import { describe, it, expectTypeOf } from 'vitest';
+import { describe, expect, it, expectTypeOf } from 'vitest';
 
 import { defineSpec } from '../../src/spec/define';
 
@@ -13,7 +13,7 @@ describe('DSL: type inference & validation', () => {
     }));
 
     type Mode = (typeof _spec.params.mode.values)[number];
-    expectTypeOf<Mode>().toEqualTypeOf<string>();
+    expectTypeOf<Mode>().toEqualTypeOf<'sine' | 'square' | 'saw'>();
   });
 
   it('infers array lengths correctly', () => {
@@ -27,8 +27,11 @@ describe('DSL: type inference & validation', () => {
       },
     }));
 
-    expectTypeOf<typeof _spec.params.curve.length>().toEqualTypeOf<number>();
-    expectTypeOf<typeof _spec.meters.spectrum.length>().toEqualTypeOf<number>();
+    type CurveLen = typeof _spec.params.curve.length;
+    type SpectrumLen = typeof _spec.meters.spectrum.length;
+
+    expectTypeOf<CurveLen>().toEqualTypeOf<128>();
+    expectTypeOf<SpectrumLen>().toEqualTypeOf<1024>();
   });
 
   it('accepts both scalar and object forms for enum', () => {

@@ -16,6 +16,7 @@ type SnapshotParamSlot = Readonly<{
   length: number;
   elemBytes: number;
 }>;
+
 type SnapshotMeterSlot = Readonly<{
   plane: MeterPlane;
   index: number;
@@ -29,8 +30,9 @@ function isObject(x: unknown): x is Record<string, unknown> {
 
 type EnumDef = Extract<ParamDef, { kind: 'enum' }>;
 
-const isEnumDef = (d: unknown): d is EnumDef =>
-  isObject(d) && d.kind === 'enum' && Array.isArray(d.values);
+function isEnumDef(d: unknown): d is EnumDef {
+  return isObject(d) && d.kind === 'enum' && Array.isArray(d.values);
+}
 
 function enumLabelFromIndex(def: EnumDef, idx: number): string {
   const i = idx | 0;

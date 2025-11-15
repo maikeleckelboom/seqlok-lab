@@ -96,7 +96,7 @@ export function buildHandoff<S extends SpecInput>(
     version: SUPPORTED_HANDOFF_VERSION,
     packing: 'shared',
     sab: backing.sab,
-    plan, // ← Carries Plan<S> for inference + all metadata
+    plan,
   };
 }
 
@@ -112,7 +112,7 @@ export function buildHandoff<S extends SpecInput>(
  * - Plan structure (hash, bytesTotal, planes)
  * - SAB presence
  *
- * All metadata comes from the plan - no separate header validation.
+ * All metadata comes from the plan.
  *
  * @template S - Spec type (inferred from handoff.plan: Plan<S>)
  * @param handoff - Handoff envelope (from postMessage)
@@ -123,9 +123,9 @@ export function buildHandoff<S extends SpecInput>(
  * import type { Handoff } from '@seqlok/core';
  * import type { MySpec } from './spec';
  *
- * type InitMsg = { handoff: Handoff<MySpec> };
+ * type InitMessage = { handoff: Handoff<MySpec> };
  *
- * self.onmessage = (ev: MessageEvent<InitMsg>) => {
+ * self.onmessage = (ev: MessageEvent<InitMessage>) => {
  *   const received = receiveHandoff(ev.data.handoff);
  *   //    ^? ReceivedHandoff<MySpec> ✓
  *

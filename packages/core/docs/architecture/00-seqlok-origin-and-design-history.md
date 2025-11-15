@@ -1,4 +1,4 @@
-# 00 – Seqlok Origin & Design History
+# Seqlok Origin & Design History
 
 > A short backstory: what problems Seqlok set out to solve, and which design bets shaped the architecture you see in the
 > rest of these docs.

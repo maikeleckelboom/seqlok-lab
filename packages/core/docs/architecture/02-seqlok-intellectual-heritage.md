@@ -36,16 +36,16 @@ Tie the lifetime of a resource (file, lock, buffer) to a scope so it's automatic
 
 - 📚 [Wikipedia: RAII](https://en.wikipedia.org/wiki/Resource_acquisition_is_initialization)
 - 📚 [cppreference: RAII](https://en.cppreference.com/w/cpp/language/raii.html)
-- 📚 [GeeksforGeeks: Resource Acquisition Is Initialization](https://www.geeksforgeeks.org/cpp/resource-acquisition-is-initialization/)
+- 📚 [GeeksforGeeks: Resource Acquisition Is Initialization](https://www.geeksforgeeks.org/cpp-resource-acquisition-is-initialization/)
 
 **How Seqlok applies this idea**
 
 JavaScript doesn't have destructors, but Seqlok simulates RAII with **scope-bound callbacks**:
 
 ```ts
-// Processor side (real-time code)
+// processor side (real-time code)
 processor.params.within((params) => {
-  // Safe, coherent view of all params in this audio quantum
+  // safe, coherent view of all params in this audio quantum
   const gain = params.gain;
   const cutoff = params.cutoff;
 
@@ -72,8 +72,7 @@ You never get a "naked" view to store and use later. The scope _is_ the lifetime
 #### Seqlocks (Sequence Locks)
 
 **Concept in one sentence**
-Readers run without taking a lock, but they detect when a writer changed data mid-read (using a sequence number) and
-retry.
+Readers run without taking a lock, but they detect when a writer changed data mid-read (using a sequence number) and retry.
 
 **Reading**
 
@@ -87,7 +86,7 @@ retry.
 Naive manual seqlock usage:
 
 ```js
-// Manual seqlock pattern with Atomics
+// manual seqlock pattern with Atomics
 let seqBefore: number;
 let seqAfter: number;
 
@@ -102,19 +101,19 @@ do {
 The Seqlok way:
 
 ```ts
-// Processor-side, coherent param read
+// processor-side, coherent param read
 processor.params.within((params) => {
-  // All scalar and array params are coherent for this callback
+  // all scalar and array params are coherent for this callback
   const { gain, cutoff } = params;
   const result = this.dsp.process(input, gain, cutoff);
-  // No manual Atomics, no manual loops
+  // no manual Atomics, no manual loops
 });
 ```
 
 **How Seqlok uses seqlocks**
 
 - Param domain has a seqlock → `params.within(...)` uses it internally.
-- Meter domain has a seqlock → `meters.snapshot(...)` uses it internally.
+- Meter domain has a seqlock → `meters.publish(...)` (processor) and `meters.snapshot(...)` (controller) use it internally.
 - Writers bump `LOCK`/`SEQ` in the relevant control plane.
 - Readers retry until they see a stable `(LOCK, SEQ)` pair.
 
@@ -161,8 +160,7 @@ This removes an entire class of "who is allowed to change this?" bugs.
 #### CQRS (Command–Query Responsibility Segregation)
 
 **Concept in one sentence**
-Keep "things that change state" (commands) separate from "things that read state" (queries), often with different
-models.
+Keep "things that change state" (commands) separate from "things that read state" (queries), often with different models.
 
 **Reading**
 
@@ -174,7 +172,7 @@ models.
 Naive shared object:
 
 ```js
-// ❌ Naive shared state (racey, unstructured)
+// ❌ naive shared state (racey, unstructured)
 const state = {
   gain: 1.0,
   peak: 0.0,
@@ -184,22 +182,22 @@ const state = {
 state.gain = slider.value; // writes
 console.log(state.peak); // reads
 
-// Audio thread:
+// audio thread:
 const gain = state.gain; // reads
 state.peak = computePeak(buffer); // writes
 
-// No ownership, no separation, potential torn reads if shared
+// no ownership, no separation, potential torn reads if shared
 ```
 
 Seqlok's CQRS-style split:
 
 ```ts
-// ✅ Controller side (UI / host)
+// ✅ controller side (UI / host)
 controller.params.set('gain', slider.value);
 const meters = controller.meters.snapshot();
 console.log(meters.peak);
 
-// ✅ Processor side (RT engine)
+// ✅ processor side (RT engine)
 processor.params.within((params) => {
   const gain = params.gain;
   const output = this.dsp.process(input, gain);
@@ -224,62 +222,66 @@ Seqlok applies CQRS **at the shared-memory boundary**, not just at API or HTTP l
 #### SharedArrayBuffer & Atomics
 
 **Concept in one sentence**
-SharedArrayBuffer gives JavaScript agents a common block of memory; Atomics provides the operations needed to
-synchronize safely over that memory.
+SharedArrayBuffer gives JavaScript agents a common block of memory; Atomics provides the operations needed to synchronize safely over that memory.
 
 **Reading**
 
 - 📚 [MDN: SharedArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)
 - 📚 [MDN: Atomics](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics)
 - 📚 [How to achieve parallelism for SharedArrayBuffer and Atomics](https://stackoverflow.com/questions/45230334/how-to-achieve-parallelism-for-sharedarraybuffer-and-atomics)
-- 📚 [What JavaScript SharedArrayBuffer Actually Lets You Do](https://medium.com/%40AlexanderObregon/what-javascript-sharedarraybuffer-actually-lets-you-do-9589f449fd75)
-- 📚 [SharedArrayBuffer and Memory Management in JavaScript](https://medium.com/%40artemkhrenov/sharedarraybuffer-and-memory-management-in-javascript-06738cda8f51)
+- 📚 [What JavaScript SharedArrayBuffer Actually Lets You Do](https://medium.com/@AlexanderObregon/what-javascript-sharedarraybuffer-actually-lets-you-do-9589f449fd75)
+- 📚 [SharedArrayBuffer and Memory Management in JavaScript](https://medium.com/@artemkhrenov/sharedarraybuffer-and-memory-management-in-javascript-06738cda8f51)
 
 **Naive vs Seqlok**
 
 Naive SAB usage:
 
 ```js
-// ❌ Hand-rolled plan
+// ❌ hand-rolled plan
 const sab = new SharedArrayBuffer(1024);
 const f32 = new Float32Array(sab);
 const u32 = new Uint32Array(sab);
 
-// Somewhere you decide:
+// somewhere you decide:
 // gain at index 0
 // cutoff at index 1
 // peak at index 10
 // plus some magic indices for versioning
 
-// No schema, no safety, lots of magic numbers.
+// no schema, no safety, lots of magic numbers.
 ```
 
-Seqlok approach:
+Seqlok approach (golden flow):
 
 ```ts
-const spec = defineSpec({
+const spec = defineSpec(({ param, meter }) => ({
   params: {
     gain: param.f32({ min: 0, max: 2 }),
-    cutoff: param.f32({ min: 20, max: 20000 }),
+    cutoff: param.f32({ min: 20, max: 20_000 }),
   },
   meters: {
     peak: meter.f32(),
   },
-});
+}));
 
+// owner / controller side
 const plan = planLayout(spec);
 const backing = allocateShared(plan);
-
 const controller = bindController(spec, backing);
-const processor = bindProcessor(spec, backing);
+const handoff = buildHandoff(plan, backing);
+
+// send `handoff` to the processor agent (worker / AudioWorklet)
+const received = receiveHandoff(handoffFromMain);
+const processor = bindProcessor(received);
 ```
 
 Seqlok uses SAB/Wasm as the raw medium, but:
 
 - The **Spec** describes structure.
-- The **Plan** computes deterministic plan.
+- The **Plan** computes deterministic layout.
 - The **Backing** allocates the actual memory.
-- The **Bindings** expose it as a safe, typed API.
+- The **Handoff** carries "this plan + this backing" to other agents.
+- The **Bindings** expose it as safe, typed controller/processor APIs.
 
 ---
 
@@ -288,11 +290,11 @@ Seqlok uses SAB/Wasm as the raw medium, but:
 All of the above combine into Seqlok's core model:
 
 ```text
-RAII-style scoping   +   Seqlock synchronization   +   SWMR & CQRS discipline
+RAII-style scoping   +   seqlock synchronization   +   SWMR & CQRS discipline
         ↓                         ↓                             ↓
- within()/publish()        Coherent snapshots          Param/meter separation
+ within()/publish()        coherent snapshots          param/meter separation
         ↓                         ↓                             ↓
- Scoped access to          Fast, retryable reads       Clear ownership & roles
+ scoped access to          fast, retryable reads       clear ownership & roles
  shared views              and atomic commits          (controller vs processor)
 ```
 
@@ -307,7 +309,10 @@ Spec  →  Plan  →  Backing  →  Handoff  →  Bindings
 - **Plan**: deterministic memory plan (planes, offsets, seqlock slots).
 - **Backing**: actual SharedArrayBuffer / WebAssembly.Memory allocation.
 - **Handoff**: compact description that lets another agent reconstruct views safely.
-- **Bindings**: strongly-typed controller/processor APIs.
+- **Bindings**:
+
+  - Controller: `bindController(spec, backing)` on the owner side.
+  - Processor: `receiveHandoff(handoff)` → `bindProcessor(received)` on the engine side.
 
 ---
 
@@ -343,12 +348,12 @@ These analogies help new developers reason about the system.
 A concrete "aha" comparison:
 
 ```js
-// ❌ Naive shared mutable state (conceptual)
+// ❌ naive shared mutable state (conceptual)
 
 // UI thread:
 audioParams.gain = slider.value;
 
-// Audio thread:
+// audio thread:
 const gain = audioParams.gain; // could see a half-write if truly shared
 ```
 
@@ -357,10 +362,10 @@ You'd need custom locking, manual versioning, and disciplined usage to make this
 ```ts
 // ✅ Seqlok-style
 
-// Controller / UI:
+// controller / UI:
 controller.params.set('gain', slider.value);
 
-// Processor / audio:
+// processor / audio:
 processor.params.within((params) => {
   const gain = params.gain; // coherent with all other params
   const out = this.dsp.process(input, gain);
@@ -382,30 +387,24 @@ the API.
 ### Start Here (Beginner)
 
 1. **RAII & scoping**
-
-- Understand "resource lives for a scope" and map that to `within` / `publish`.
+   Understand "resource lives for a scope" and map that to `within` / `publish`.
 
 2. **SWMR**
-
-- Learn why "one writer, many readers" simplifies ownership.
+   Learn why "one writer, many readers" simplifies ownership.
 
 3. **SharedArrayBuffer basics**
-
-- Know what SAB is and why browsers restrict it.
+   Know what SAB is and why browsers restrict it.
 
 ### Then Dive Deeper (Intermediate)
 
 4. **Seqlocks**
-
-- See how sequence numbers enforce coherent reads in read-mostly structures.
+   See how sequence numbers enforce coherent reads in read-mostly structures.
 
 5. **CQRS**
-
-- Recognize the benefit of separate command and query models.
+   Recognize the benefit of separate command and query models.
 
 6. **Atomics**
-
-- Practice with `Atomics.load/store/add` and understand visibility guarantees.
+   Practice with `Atomics.load/store/add` and understand visibility guarantees.
 
 ### Advanced Topics (Expert)
 
@@ -450,8 +449,7 @@ If these invariants hold, the code is aligned with Seqlok's design principles an
 - **SWMR** — Single-Writer / Multiple-Reader; exactly one writer per dataset, many readers.
 - **CQRS** — Command–Query Responsibility Segregation; separate models for “doing” and “asking.”
 - **SharedArrayBuffer (SAB)** — Shared memory buffer usable across workers/agents in JS.
-- **Atomics** — JS operations (`Atomics.load`, `Atomics.store`, etc.) that provide ordering and atomicity on shared
-  memory.
+- **Atomics** — JS operations (`Atomics.load`, `Atomics.store`, etc.) that provide ordering and atomicity on shared memory.
 - **Params** — Seqlok’s domain for control inputs (what the controller asks the device to do).
 - **Meters** — Seqlok’s domain for telemetry outputs (what the device reports back).
 - **Controller** — Side that owns params and reads meters (typically UI/host).

@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  defineSpec,
-  planLayout,
-  allocateShared,
-  bindController,
-  bindProcessor,
-} from '../../src';
+import { defineSpec, planLayout } from '../../src';
+import { makeBindingsFromSpec } from '../__helpers__/binding';
 
 describe('processor: coherent reads & meter writes', () => {
   it('reads params coherently via within()', () => {
@@ -16,16 +11,17 @@ describe('processor: coherent reads & meter writes', () => {
         gain: param.f32({ min: 0, max: 4 }),
         curve: param.f32.array(8),
       },
-      meters: { peak: meter.f32() },
+      meters: {
+        peak: meter.f32(),
+      },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     ctl.params.set('gain', 2.5);
-    ctl.params.stage('curve', (v) => v.fill(1.0));
+    ctl.params.stage('curve', (v) => {
+      v.fill(1.0);
+    });
 
     proc.params.within((view) => {
       expect(view.gain).toBe(2.5);
@@ -43,10 +39,7 @@ describe('processor: coherent reads & meter writes', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     proc.meters.publish((w) => {
       w.rms(0.75);
@@ -67,10 +60,7 @@ describe('processor: coherent reads & meter writes', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     proc.meters.publish((w) => {
       w.stage('spectrum', (dst) => {
@@ -97,19 +87,16 @@ describe('processor: coherent reads & meter writes', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     // Controller writes using the label union
     ctl.params.set('mode', 'mid');
 
     // Processor must observe the numeric index (no label mapping on RT side)
-    const MID = spec.params.mode.values.indexOf('mid'); // -> 1
+    const midIndex = spec.params.mode.values.indexOf('mid'); // -> 1
 
     proc.params.within((view) => {
-      expect(view.mode).toBe(MID);
+      expect(view.mode).toBe(midIndex);
     });
   });
 
@@ -122,13 +109,11 @@ describe('processor: coherent reads & meter writes', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const proc = bindProcessor(spec, backing);
+    const { proc } = makeBindingsFromSpec(spec);
 
     expect(() => {
       proc.meters.publish((w) => {
-        // @ts-expect-error invald key
+        // @ts-expect-error invalid key
         w.stage('invalid', () => {
           /* empty */
         });
@@ -164,14 +149,12 @@ describe('processor: coherent reads & meter writes', () => {
       meters: {},
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const proc = bindProcessor(spec, backing);
+    const { proc } = makeBindingsFromSpec(spec);
 
     const v1 = proc.params.version();
     expect(v1).toBeGreaterThanOrEqual(0);
 
-    // TODO: Verify version increments
+    // We only assert monotonicity; detailed increments are covered elsewhere.
     const v2 = proc.params.version();
     expect(v2).toBeGreaterThanOrEqual(v1);
   });
@@ -185,9 +168,7 @@ describe('processor: coherent reads & meter writes', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const proc = bindProcessor(spec, backing);
+    const { proc } = makeBindingsFromSpec(spec);
 
     const v1 = proc.meters.version();
 
@@ -212,10 +193,7 @@ describe('processor: coherent reads & meter writes', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     ctl.params.set('enabled', true);
     ctl.params.stage('flags', (v) => {
@@ -240,10 +218,7 @@ describe('processor: coherent reads & meter writes', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     proc.meters.publish((writer) => {
       writer.set('precise', Math.PI);

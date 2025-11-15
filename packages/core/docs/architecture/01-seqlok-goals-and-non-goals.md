@@ -47,7 +47,9 @@ Seqlok is designed so the **Processor side** (AudioWorklet, RT worker, tight sim
 It uses a **seqlock-based protocol** under the hood:
 
 - Reads are **lock-free and retry-based**:
+
   - They may spin briefly if a write is in progress, but they don't block on a mutex.
+
 - Writes are short, bounded critical sections (update a few scalars/arrays, bump counters).
 
 **Why this matters:** An AudioWorklet callback typically has ~3ms per quantum at 44.1kHz. A single GC pause or blocking
@@ -61,7 +63,7 @@ When the Processor reads state, it gets a **coherent snapshot**: all values refl
 of old and new.
 
 ```ts
-// ✅ GOOD: Coherent read
+// ✅ GOOD: coherent read
 processor.params.within((p) => {
   const ratio = p.timeRatio; // 1.5
   const coeffs = p.coeffs; // coeffs correspond to ratio = 1.5
@@ -134,7 +136,7 @@ From this spec, Seqlok derives:
 - A **deterministic memory plan** (planes, offsets, element counts)
 - Clear TS types for controller and processor bindings
 - Slots for seqlock counters in control planes
-- A plan that can be reproduced identically in another agent from a compact "handoff"
+- A plan that can be reproduced identically in another agent from a compact handoff
 
 There is:
 
@@ -263,7 +265,7 @@ Once you:
 2. Plan it
 3. Allocate backing memory
 
-The structure is treated as **frozen**:
+the structure is treated as **frozen**:
 
 - No adding/removing params/meters in-place
 - No changing a param from `f32` to `i32`
@@ -511,16 +513,23 @@ const spec = defineSpec(({ param, meter }) => ({
   },
 }));
 
+// owner / JS side
 const plan = planLayout(spec);
-const memory = attachWasmShared(plan, { initialPages: 4 });
-const backing = { memory }; // or wrapper returned by your backing helpers
+const backing = allocateWasmShared(plan, { initialPages: 4 });
 
 const controller = bindController(spec, backing);
-// Pass `plan` + backing info into Wasm so the Processor can bind there.
+const handoff = buildHandoff(plan, backing);
+
+// pass `handoff` (or a serialized form) into your Wasm-using agent.
+// processor side (JS worker, engine wrapper, or native code) reconstructs:
+const received = receiveHandoff(handoffFromMain);
+const processor = bindProcessor(received);
+// or an equivalent binding in the target language using the same plan layout.
 ```
 
-- JS and Wasm share the same memory & plan.
-- Both sides can bind to the same spec and operate coherently.
+- JS and Wasm share the same memory & plan, described by the handoff.
+- The Controller binds via `bindController(spec, backing)`.
+- The Processor (JS worker around Wasm, or native side) binds via `receiveHandoff` → `bindProcessor(received)` or an equivalent mapping that respects the same layout.
 
 ---
 

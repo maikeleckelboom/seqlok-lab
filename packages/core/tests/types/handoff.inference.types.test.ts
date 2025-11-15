@@ -7,7 +7,7 @@ import { planLayout } from '../../src/plan/layout';
 import { defineSpec } from '../../src/spec/define';
 
 import type { ProcessorBinding } from '../../src/binding/types';
-import type { HandoffOf, ReceivedHandoff } from '../../src/handoff/types';
+import type { Handoff, ReceivedHandoff } from '../../src/handoff/types';
 
 describe('typed handoff → receiveHandoff → bindProcessor (inference)', () => {
   it('preserves DemoSpec through the pipeline', () => {
@@ -29,7 +29,7 @@ describe('typed handoff → receiveHandoff → bindProcessor (inference)', () =>
     const handoff = buildHandoff(plan, backing);
 
     // compile-time: the produced envelope is HandoffOf<DemoSpec>
-    expectTypeOf<typeof handoff>().toExtend<HandoffOf<DemoSpec>>();
+    expectTypeOf<typeof handoff>().toExtend<Handoff<DemoSpec>>();
 
     const received = receiveHandoff(handoff);
     // compile-time: receiveHandoff infers <DemoSpec> from HandoffOf<DemoSpec>

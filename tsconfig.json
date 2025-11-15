@@ -2,7 +2,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {},
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "target": "ES2022",
     "module": "ESNext",
     "moduleDetection": "force",

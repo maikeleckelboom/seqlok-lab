@@ -1,52 +1,77 @@
 /**
- * Minimal atomic helpers shared by Seqlok primitives.
+ * Thin wrappers around Atomics for U32 planes.
+ *
+ * These helpers centralize error handling so that failures can be surfaced
+ * as structured `SeqlokError<'primitives.atomicsFailed'>` instead of raw
+ * Atomics exceptions.
  */
 
-/** SC load of a 32-bit word. */
-export function loadU32(a: Uint32Array, i: number): number {
-  return Atomics.load(a, i);
-}
+import { createError } from '../errors';
 
-/** SC fetch-add; returns the old value. */
-export function addU32(a: Uint32Array, i: number, delta: number): number {
-  return Atomics.add(a, i, delta);
-}
-
-/** True iff the low bit is zero. */
-export function isEvenU32(n: number): boolean {
-  return (n & 1) === 0;
-}
-
-export interface SpinResult {
-  readonly spins: number;
-  /** true ⇢ observed even; false ⇢ budget exhausted without observing even */
-  readonly success: boolean;
+function atomicsFailed(detail: string, where: string): never {
+  const details = {
+    where,
+    detail,
+  } as const;
+  // Note: details structurally extends ErrorDetails; extra fields are fine.
+  throw createError('primitives.atomicsFailed', 'Atomics operation failed', details);
 }
 
 /**
- * Spin for up to `maxSpins` lock loads until the word is even.
- * Returns the number of loads performed (spins) and success status.
+ * Load a u32 from the given plane/index.
  *
- * Off-by-one safe: allows exactly `maxSpins` loads, then does a final
- * opportunistic check once more to avoid pathological misses.
+ * @remarks
+ * This is a simple wrapper so that any thrown error is normalized into our
+ * error domain rather than leaking raw JS exceptions.
+ */
+export function loadU32(plane: Uint32Array, index: number): number {
+  try {
+    return Atomics.load(plane, index);
+  } catch (e) {
+    atomicsFailed(`loadU32 index=${String(index)}`, 'primitives.atomics.loadU32');
+  }
+}
+
+/**
+ * Add a delta to a u32 at the given index (fetch_add style).
+ */
+export function addU32(plane: Uint32Array, index: number, delta: number): number {
+  try {
+    return Atomics.add(plane, index, delta);
+  } catch (e) {
+    atomicsFailed(
+      `addU32 index=${String(index)} delta=${String(delta)}`,
+      'primitives.atomics.addU32',
+    );
+  }
+}
+
+/**
+ * Spin until the given LOCK word becomes even, with a bounded spin budget.
+ *
+ * @returns
+ * The observed even value, or `undefined` if the budget is exhausted before
+ * seeing an even value.
  */
 export function spinUntilEven(
-  a: Uint32Array,
-  lockIndex: number,
-  maxSpins: number,
-): SpinResult {
+  plane: Uint32Array,
+  index: number,
+  spinBudget: number,
+): { value: number; spins: number } | undefined {
   let spins = 0;
+  // Cheap fast-path: if already even, we’re done.
+  let value = loadU32(plane, index);
+  if ((value & 1) === 0) {
+    return { value, spins };
+  }
 
-  for (; spins < maxSpins; spins++) {
-    if (isEvenU32(Atomics.load(a, lockIndex))) {
-      return { spins, success: true };
+  while (spins < spinBudget) {
+    spins += 1;
+    value = loadU32(plane, index);
+    if ((value & 1) === 0) {
+      return { value, spins };
     }
   }
 
-  // final opportunistic check
-  if (isEvenU32(Atomics.load(a, lockIndex))) {
-    return { spins: maxSpins, success: true };
-  }
-
-  return { spins: maxSpins, success: false };
+  return undefined;
 }

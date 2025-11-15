@@ -13,33 +13,9 @@
  */
 
 import { addU32, loadU32, spinUntilEven } from './atomics';
+import { createError, invariant } from '../errors';
 
-/** Error codes local to primitives (keep dependency-free). */
-type PrimitiveErrorCode =
-  | 'internal.assertionFailed'
-  | 'primitives.invalidBudget'
-  | 'primitives.seqlockTimeout';
-
-interface PrimitiveError extends Error {
-  code: PrimitiveErrorCode;
-  where?: string;
-  detail?: string;
-}
-
-function fail(
-  code: PrimitiveErrorCode,
-  message: string,
-  where: string,
-  detail?: string,
-): never {
-  const e = new Error(message) as PrimitiveError;
-  e.code = code;
-  e.where = where;
-  if (detail !== undefined) {
-    e.detail = detail;
-  }
-  throw e;
-}
+import type { PrimitivesSeqlockTimeoutDetails } from '../errors';
 
 /** Pair of indices into a shared U32 plane that stores `[LOCK, SEQ]`. */
 export interface SeqPair {
@@ -61,29 +37,35 @@ export function createSeqPair(
 ): SeqPair {
   const len = u32.length >>> 0;
 
-  if (lockIndex < 0 || lockIndex >= len) {
-    fail(
-      'internal.assertionFailed',
-      'lockIndex out of bounds',
-      'primitives.seqlock.createSeqPair',
-      `lockIndex=${String(lockIndex)}, len=${String(len)}`,
-    );
-  }
-  if (seqIndex < 0 || seqIndex >= len) {
-    fail(
-      'internal.assertionFailed',
-      'seqIndex out of bounds',
-      'primitives.seqlock.createSeqPair',
-      `seqIndex=${String(seqIndex)}, len=${String(len)}`,
-    );
-  }
-  if (lockIndex === seqIndex) {
-    fail(
-      'internal.assertionFailed',
-      'lockIndex and seqIndex must differ',
-      'primitives.seqlock.createSeqPair',
-    );
-  }
+  invariant(
+    lockIndex >= 0 && lockIndex < len,
+    'internal.assertionFailed',
+    'lockIndex out of bounds',
+    {
+      where: 'primitives.seqlock.createSeqPair',
+      detail: `lockIndex=${String(lockIndex)}, len=${String(len)}`,
+    },
+  );
+
+  invariant(
+    seqIndex >= 0 && seqIndex < len,
+    'internal.assertionFailed',
+    'seqIndex out of bounds',
+    {
+      where: 'primitives.seqlock.createSeqPair',
+      detail: `seqIndex=${String(seqIndex)}, len=${String(len)}`,
+    },
+  );
+
+  invariant(
+    lockIndex !== seqIndex,
+    'internal.assertionFailed',
+    'lockIndex and seqIndex must differ',
+    {
+      where: 'primitives.seqlock.createSeqPair',
+    },
+  );
+
   return { u32, lockIndex, seqIndex };
 }
 
@@ -128,148 +110,212 @@ export function endWrite(p: SeqPair): void {
 
 /**
  * Exception-safe publish wrapper.
- * @example
- * publish(pair, () => { /* write into shared views *\/ });
+ *
+ * @remarks
+ * This ensures that a writer cannot get stuck in the "odd" (locked) state
+ * even if an exception is thrown in the critical section; SEQ is only bumped
+ * if `fn` completes without throwing.
  */
-export function publish<T>(p: SeqPair, write: () => T): T {
+export function publish<T>(p: SeqPair, fn: () => T): T {
   beginWrite(p);
+  let result: T;
   try {
-    return write();
-  } finally {
-    endWrite(p);
+    result = fn();
+  } catch (e) {
+    // Best effort: make sure we leave the lock in a consistent state.
+    // SEQ is not incremented because the write did not complete.
+    addU32(p.u32, p.lockIndex, 1);
+    throw e;
   }
+  endWrite(p);
+  return result;
+}
+
+/** Spin result status for introspection/diagnostics. */
+export interface SpinStatus {
+  /** Total spins consumed across all attempts. */
+  readonly spins: number;
+  /** Retries consumed because writers raced us. */
+  readonly retries: number;
+  /**
+   * Outcome category:
+   *  - 'ok'             → coherent snapshot
+   *  - 'writerActive'   → writer never quiesced on this attempt
+   *  - 'budgetExhausted'→ exceeded spin/retry budgets
+   */
+  readonly kind: 'ok' | 'writerActive' | 'budgetExhausted';
 }
 
 /**
- * Best-effort coherent read.
+ * Internal helper: best-effort coherent read with bounded spinning.
  *
- * Strategy per attempt:
- *  1) Spin on LOCK until even (bounded by spinBudget).
- *  2) Sample value and verify LOCK still even and SEQ unchanged.
- *  3) On verification failure, consume a retry and loop.
- *
- * On the final attempt, if the spin did not observe an even LOCK, we still
- * take a single sample to return a degraded value (ok:false) for diagnostics.
- *
- * @param p Lock/seq pair
- * @param reader Closure that samples the shared views
- * @param options Budgets for spin/verify
+ * This is the primitive used by `acquire()`. It never throws; instead it
+ * reports whether coherence was achieved within the configured budgets.
  */
 export function tryRead<T>(
   p: SeqPair,
   reader: () => T,
   options?: TryReadOptions,
-): TryReadResult<T> {
-  const spinBudget = options?.spinBudget ?? 1024;
-  const retryBudget = options?.retryBudget ?? 8;
+): { ok: boolean; value: T; status: SpinStatus } {
+  const spinBudgetOption = options?.spinBudget ?? 1024;
+  const retryBudgetOption = options?.retryBudget ?? 8;
 
-  if (retryBudget < 0 || spinBudget < 0) {
-    fail(
-      'primitives.invalidBudget',
-      'spinBudget/retryBudget must be ≥ 0',
-      'primitives.seqlock.tryRead',
-      `spinBudget=${String(spinBudget)} retryBudget=${String(retryBudget)}`,
-    );
-  }
+  const budgetsAreValid =
+    Number.isFinite(spinBudgetOption) &&
+    Number.isFinite(retryBudgetOption) &&
+    spinBudgetOption >= 0 &&
+    retryBudgetOption >= 0 &&
+    Number.isInteger(spinBudgetOption) &&
+    Number.isInteger(retryBudgetOption);
+
+  invariant(
+    budgetsAreValid,
+    'primitives.invalidSpinBudget',
+    'Spin budget must be non-negative integer',
+    {
+      where: 'primitives.seqlock.tryRead',
+      detail: `spinBudget=${String(spinBudgetOption)}, retryBudget=${String(
+        retryBudgetOption,
+      )}`,
+    },
+  );
+
+  const spinBudget = spinBudgetOption;
+  const retryBudget = retryBudgetOption;
 
   let totalSpins = 0;
   let retriesUsed = 0;
-  let lastValue!: T;
-  let sampled = false;
 
-  // Allow (retryBudget + 1) total attempts; retriesUsed counts failures before success.
+  // Attempt 0 + up to `retryBudget` additional retries.
   while (retriesUsed <= retryBudget) {
-    const lastAttempt = retriesUsed === retryBudget;
+    const spinResult = spinUntilEven(p.u32, p.lockIndex, spinBudget);
 
-    // 1) Wait for an even lock
-    const { spins, success } = spinUntilEven(p.u32, p.lockIndex, spinBudget);
-    totalSpins += spins;
-
-    if (!success && !lastAttempt) {
-      // No sample, just consume a retry and try again.
-      retriesUsed++;
-      continue;
-    }
-
-    // Either spin succeeded, or we are forced to sample on the last attempt.
-    const seq0 = loadU32(p.u32, p.seqIndex) >>> 0;
-    const value = reader();
-    sampled = true;
-    lastValue = value;
-    const lock1 = loadU32(p.u32, p.lockIndex) >>> 0;
-    const seq1 = loadU32(p.u32, p.seqIndex) >>> 0;
-
-    const lockOk = (lock1 & 1) === 0;
-    const seqOk = seq0 === seq1;
-
-    if (lockOk && seqOk) {
-      return {
-        ok: true,
-        value,
-        status: { spins: totalSpins, retries: retriesUsed },
+    if (!spinResult) {
+      // Never observed an even LOCK within spin budget.
+      const status: SpinStatus = {
+        spins: totalSpins,
+        retries: retriesUsed,
+        kind: 'writerActive',
       };
+      // Return a degraded result instead of throwing; acquire() decides.
+      return { ok: false, value: reader(), status };
     }
 
-    // Verification failed — consume a retry and loop.
-    retriesUsed++;
+    totalSpins += spinResult.spins;
+
+    const seq0 = loadU32(p.u32, p.seqIndex);
+    const value = reader();
+    const seq1 = loadU32(p.u32, p.seqIndex);
+
+    if (seq0 === seq1 && (loadU32(p.u32, p.lockIndex) & 1) === 0) {
+      const status: SpinStatus = {
+        spins: totalSpins,
+        retries: retriesUsed,
+        kind: 'ok',
+      };
+      return { ok: true, value, status };
+    }
+
+    retriesUsed += 1;
   }
 
-  // If we get here, we either sampled on last attempt or never saw an even lock.
-  if (!sampled) {
-    // Practically unreachable due to forced last-attempt sample,
-    // but keep a defensible error for diagnostic visibility.
-    fail(
-      'primitives.seqlockTimeout',
-      'Failed to observe even LOCK within budgets',
-      'primitives.seqlock.tryRead',
-      `spins=${String(totalSpins)} retries=${String(retriesUsed)}`,
-    );
-  }
+  // Budgets exhausted (spins or retries). This is considered a timeout in
+  // the sense of the primitives domain; we surface it as a structured error.
+  const details = {
+    where: 'primitives.seqlock.tryRead',
+    detail: `spinBudget=${String(spinBudget)}, retries=${String(retryBudget)}, spins=${String(
+      totalSpins,
+    )}, retriesUsed=${String(retriesUsed)}`,
+    spinBudget,
+    actualSpins: totalSpins,
+  } as const satisfies PrimitivesSeqlockTimeoutDetails;
 
-  // Exhausted retries: return degraded value with last sampled value.
-  return {
-    ok: false,
-    value: lastValue,
-    status: { spins: totalSpins, retries: retryBudget },
-  };
+  throw createError('primitives.seqlockTimeout', 'Seqlock acquisition timeout', details);
 }
 
-/** Current monotonic SEQ (u32). */
-export function getSeq(p: SeqPair): number {
-  return loadU32(p.u32, p.seqIndex) >>> 0;
-}
-
-/** True if a writer is active (LOCK odd) at this instant. */
-export function isWriterActive(p: SeqPair): boolean {
-  return (loadU32(p.u32, p.lockIndex) & 1) === 1;
-}
-
-/** Options for bounded, never-degraded acquisition. */
+/**
+ * Acquire a coherent snapshot, optionally degrading to "latest" under
+ * pathological contention.
+ */
 export interface AcquireOptions extends TryReadOptions {
-  /** Stop after this many tryRead() calls. Default: 1000. */
+  /**
+   * Degrade policy when budgets are exhausted:
+   *  - 'never'       → keep retrying until maxAttempts then throw
+   *  - 'returnLatest'→ return the last sampled value even if coherence
+   *                    could not be proven
+   *
+   * Default: 'never'
+   */
+  readonly degrade?: 'never' | 'returnLatest';
+
+  /**
+   * Hard cap on number of tryRead attempts before giving up.
+   * Default: 1000
+   */
   readonly maxAttempts?: number;
 }
 
 /**
- * Bounded acquire: never returns degraded; succeeds or throws on exhaustion.
- * Uses tryRead() internally to preserve verification semantics.
+ * High-level acquire primitive:
+ *
+ * - Uses `tryRead` internally for bounded coherent attempts.
+ * - Will retry up to `maxAttempts` times.
+ * - Respects `degrade` to optionally return the latest sampled value instead
+ *   of throwing when the seqlock cannot be proven coherent.
  */
 export function acquire<T>(p: SeqPair, reader: () => T, options?: AcquireOptions): T {
-  const spinBudget = options?.spinBudget ?? 1024;
-  const retryBudget = options?.retryBudget ?? 8;
+  const degrade = options?.degrade ?? 'never';
   const maxAttempts = options?.maxAttempts ?? 1000;
 
-  for (let i = 0; i < maxAttempts; i++) {
-    const r = tryRead(p, reader, { spinBudget, retryBudget });
-    if (r.ok) {
-      return r.value;
+  let attempts = 0;
+  let lastValue: T | undefined;
+  let totalSpins = 0;
+
+  while (attempts < maxAttempts) {
+    const result = tryRead(p, reader, options);
+    totalSpins += result.status.spins;
+    attempts += 1;
+
+    if (result.ok) {
+      return result.value;
+    }
+
+    lastValue = result.value;
+
+    // Writer stayed active; just retry.
+    if (result.status.kind === 'writerActive') {
+      // Loop continues, budgets are reset per tryRead call.
+      continue;
+    }
+
+    // Budget exhausted inside tryRead; either degrade or continue.
+    if (result.status.kind === 'budgetExhausted') {
+      if (degrade === 'returnLatest' && lastValue !== undefined) {
+        return lastValue;
+      }
+      // Otherwise, fall through and let the outer attempts budget decide.
     }
   }
 
-  fail(
-    'primitives.seqlockTimeout',
-    'Exceeded maxAttempts acquiring coherent snapshot',
-    'primitives.seqlock.acquire',
-    `maxAttempts=${String(maxAttempts)}`,
-  );
+  // Exceeded maxAttempts: surface a structured timeout.
+  const details = {
+    where: 'primitives.seqlock.acquire',
+    detail: `maxAttempts=${String(maxAttempts)}, degrade=${degrade}, spins=${String(
+      totalSpins,
+    )}`,
+    spinBudget: options?.spinBudget ?? 1024,
+    actualSpins: totalSpins,
+  } as const satisfies PrimitivesSeqlockTimeoutDetails;
+
+  throw createError('primitives.seqlockTimeout', 'Seqlock acquisition timeout', details);
+}
+
+/** Current monotonic SEQ (u32). */
+export function getSeq(p: SeqPair): number {
+  return loadU32(p.u32, p.seqIndex);
+}
+
+/** Whether a writer is currently active (LOCK odd). */
+export function isWriterActive(p: SeqPair): boolean {
+  return (loadU32(p.u32, p.lockIndex) & 1) === 1;
 }

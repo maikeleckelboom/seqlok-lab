@@ -18,7 +18,7 @@ Seqlok organizes shared state into two **domains**:
 
 Each domain is:
 
-- Stored in **shared memory** (SharedArrayBuffer or shared `WebAssembly.Memory`)
+- Stored in **shared memory** (`SharedArrayBuffer` or shared `WebAssembly.Memory`)
 - Guarded by its own **seqlock** (sequence lock)
 - Accessed under strict **SWMR** (Single-Writer / Multiple-Reader) rules
 
@@ -26,15 +26,15 @@ On top of that, Seqlok defines three **roles**:
 
 ```text
 Controller:
-  - Writes params
-  - Reads meters
+  - writes params
+  - reads meters
 
 Processor:
-  - Reads params
-  - Writes meters
+  - reads params
+  - writes meters
 
 Consumers:
-  - Read meters (via Controller or aggregators)
+  - read meters (via Controller or aggregators)
 ```
 
 If you remember only one thing:
@@ -52,17 +52,18 @@ The **Controller** typically lives on the main thread (browser) or a host thread
 - Writes to **params**
 - Reads from **meters**
 - Never writes meters
-- Never reads params with a seqlock (it _can_, technically, but that’s not the hot path)
+- Never uses `within` / `publish` (those are Processor-only)
 
-Example:
+Example (golden flow up to the Controller binding):
 
 ```ts
 const spec = defineSpec(/* ... */);
 const plan = planLayout(spec);
 const backing = allocateShared(plan);
+
 const controller = bindController(spec, backing);
 
-// Controller responsibilities:
+// controller responsibilities:
 controller.params.set('gain', 0.8);
 controller.params.update({ cutoff: 1200, resonance: 0.7 });
 
@@ -76,30 +77,30 @@ Conceptually, the Controller is **“the human’s hand on the device”**: UI, 
 
 ### Processor
 
-The **Processor** lives in a Worker, AudioWorklet, Wasm module, or some other engine-like context:
+The **Processor** lives in a Worker, AudioWorklet, Wasm-backed engine, or some other engine-like context:
 
 - Reads **params** using `within`
-- Writes **meters** using `publish` / `stage`
+- Writes **meters** using `publish` (and `stage` for array meters)
 - Never writes params
-- Never reads meters without going through the meter seqlock
+- Never reads meters by poking the backing directly
 
-Example (AudioWorklet-style):
+Example (engine-side binding already constructed via `receiveHandoff` → `bindProcessor`):
 
 ```ts
 class MyProcessor {
-  constructor(private readonly processor: ProcessorBinding<typeof spec>) {}
+  constructor(private readonly proc: ProcessorBinding<typeof spec>) {}
 
   process(input: Float32Array[], output: Float32Array[]): boolean {
-    this.processor.params.within((params) => {
+    this.proc.params.within((params) => {
       const { gain, cutoff } = params;
 
       const result = this.dsp.process(input, output, gain, cutoff);
 
-      this.processor.meters.publish((m) => {
+      this.proc.meters.publish((m) => {
         m.peak(result.peak);
         m.rms(result.rms);
 
-        m.spectrum.stage((buf) => {
+        m.stage('spectrum', (buf) => {
           buf.set(result.spectrum); // array meter updated atomically
         });
       });
@@ -131,19 +132,17 @@ They should:
 Example:
 
 ```ts
-const meters = controller.meters.snapshot((m) => ({
-  peak: m.peak,
-  rms: m.rms,
-}));
+// projection by keys
+const { peak, rms } = controller.meters.snapshot(['peak', 'rms']);
 
-drawMeterUI(meters);
+drawMeterUI({ peak, rms });
 ```
 
 ---
 
 ## Domains and Planes
 
-Seqlok has two logical domains, each backed by several **planes** in memory:
+Seqlok has two logical domains, each backed by several **planes** in memory.
 
 ### Param Domain
 
@@ -155,7 +154,7 @@ Seqlok has two logical domains, each backed by several **planes** in memory:
 
 ### Meter Domain
 
-- **Scalar planes**: `MF32`, `MU32`, `MF64`, etc.
+- **Scalar planes**: `MF32`, `MF64`, `MU32`, etc.
 - **Control plane**: `MU` (meter control)
 
   - Contains seqlock counters for meters: `LOCK_M`, `SEQ_M`
@@ -179,18 +178,20 @@ discipline.
 The Controller updates param values through a high-level API that hides Atomics:
 
 ```ts
-// Single-field write
+// single-field write
 controller.params.set('gain', 0.7);
 
-// Multi-field write (batch)
+// multi-field write (batch)
 controller.params.update({
   gain: 0.9,
   cutoff: 1500,
 });
 
-// Optional: staged array updates if/when supported
-controller.params.stage('bands', (arr) => {
-  // write all bands here
+// staged array update (atomic commit for array param)
+controller.params.stage('bands', (view) => {
+  for (let i = 0; i < view.length; i++) {
+    view[i] = computeBandValue(i);
+  }
 });
 ```
 
@@ -198,16 +199,16 @@ Under the hood, the param writer:
 
 1. Begins a param write epoch:
 
-- Marks the param `LOCK_P` as "writing" (odd value).
+- marks the param `LOCK_P` as "writing" (odd value).
 
 2. Writes the relevant scalar and array values into their planes.
 3. Ends the epoch:
 
-- Sets `LOCK_P` back to "quiescent" (even value).
-- Bumps `SEQ_P` to indicate a new logical version.
+- sets `LOCK_P` back to "quiescent" (even value), and
+- bumps `SEQ_P` to indicate a new logical version.
 
-The Controller is free to call `set` / `update` at any time; the seqlock ensures readers either see the **old** state or
-the **new** state, but never an in-between mix.
+The Controller is free to call `set` / `update` / `stage` at any time; the seqlock ensures readers either see the **old**
+state or the **new** state, but never an in-between mix.
 
 ---
 
@@ -216,7 +217,7 @@ the **new** state, but never an in-between mix.
 On the Processor side, **all coherent param reads** go through:
 
 ```ts
-processor.params.within((params) => {
+proc.params.within((params) => {
   // params is a snapshot for the duration of this callback
 });
 ```
@@ -229,14 +230,13 @@ Semantics:
   - Retries internally if the Controller is mid-write.
   - Passes `cb` a `params` view where:
 
-    - **Scalars** are captured values (`number`, `boolean`, enum variants as strings)
-    - **Arrays** are ephermal view types (e.g. `Readonly<Float32Array>`-like) that are only intended for use _inside_
-      the callback
+    - **Scalars** are captured values (`number`, `boolean`, string enums).
+    - **Arrays** are scratch views scoped to this callback (e.g. `Readonly<Float32Array>`-like).
 
 The callback is **synchronous**:
 
 - You must not `await` inside `within`.
-- You must not retain references to the `params` object or its views for later use.
+- You must not retain references to the `params` object or its array views for later use.
 
 **Contract:** Treat the `params` view as living exactly for the duration of that callback.
 
@@ -246,10 +246,10 @@ The callback is **synchronous**:
 
 With correct usage:
 
-- Each call to `within` sees a param snapshot that corresponds to a single Controller state (as of some `SEQ_P`).
+- Each call to `within` sees a param snapshot that corresponds to a single Controller state (for some `SEQ_P`).
 - Snapshots are **monotonic** in version:
 
-  - Later calls to `within` see equal or greater `SEQ_P`, never older.
+  - later calls to `within` see equal or greater `SEQ_P`, never older.
 
 - No `within` callback sees a mix of two different writes; at worst it spins and retries until one is stable.
 
@@ -267,11 +267,11 @@ Seqlok does **not**:
 On the Processor side, all meter writes go through:
 
 ```ts
-this.processor.meters.publish((m) => {
+proc.meters.publish((m) => {
   m.peak(result.peak);
   m.rms(result.rms);
 
-  m.spectrum.stage((buf) => {
+  m.stage('spectrum', (buf) => {
     buf.set(result.spectrum);
   });
 });
@@ -282,18 +282,18 @@ Semantics:
 - `publish(cb)`:
 
   - Begins a meter write epoch (using `LOCK_M`).
-  - Provides a **mutable view** `m` where:
+  - Provides a **mutable writer** `m` where:
 
-    - Scalar setters (`m.peak(value)`, `m.rms(value)`, etc.) record values in the meter planes.
-    - Array setters use `stage`:
+    - Scalar meters are functions: `m.peak(value)`, `m.rms(value)`, etc.
+    - Array meters are written via `m.stage('key', cb(view))`:
 
-      - `m.spectrum.stage(buf => { /* write entire array */ })`
-      - The body of `stage` is typically a single `buf.set(...)` or equivalent.
+      - the `view` is a scratch array view for that meter;
+      - you usually do a single `view.set(...)` or a tight loop.
 
   - Ends the epoch by:
 
-    - Marking `LOCK_M` as quiescent.
-    - Bumping `SEQ_M` to a new version number.
+    - marking `LOCK_M` as quiescent, and
+    - bumping `SEQ_M` to a new version number.
 
 Multiple `publish` calls per audio quantum are **allowed**. Each one represents an atomic “meter commit” from the
 Controller's point of view.
@@ -301,18 +301,18 @@ Controller's point of view.
 For example:
 
 ```ts
-processor.params.within((params) => {
+proc.params.within((params) => {
   const filtered = this.filter.process(input, params.cutoff);
 
-  // First commit
-  processor.meters.publish((m) => {
+  // first commit
+  proc.meters.publish((m) => {
     m.filterOutRms(this.analyze(filtered));
   });
 
   const driven = this.drive.process(filtered, params.drive);
 
-  // Second commit
-  processor.meters.publish((m) => {
+  // second commit
+  proc.meters.publish((m) => {
     m.finalOutRms(this.analyze(driven));
   });
 
@@ -327,28 +327,50 @@ Each `publish` creates a distinct meter snapshot; both are **derived from the sa
 
 ### Controller: Reads via `snapshot`
 
-On the Controller side, all coherent meter reads go through:
+On the Controller side, all coherent meter reads go through `snapshot`:
 
 ```ts
-const meters = controller.meters.snapshot();
-// or with projection
-const meters = controller.meters.snapshot((m) => ({
-  peak: m.peak,
-  rms: m.rms,
-}));
+// full snapshot
+const allMeters = controller.meters.snapshot();
+drawFullHud(allMeters);
+
+// projection by keys
+const { peak, rms } = controller.meters.snapshot(['peak', 'rms']);
+drawCompactHud(peak, rms);
+
+// reuse existing arrays for array meters (no allocations)
+const buffers = {
+  spectrum: new Float32Array(2048),
+};
+
+function frame() {
+  const { spectrum } = controller.meters.snapshot(['spectrum'], {
+    into: buffers,
+  });
+
+  drawSpectrum(spectrum);
+  requestAnimationFrame(frame);
+}
+
+frame();
 ```
 
 Semantics:
 
-- `snapshot(cb?)`:
+- `snapshot()`:
 
   - Uses the meter seqlock (`LOCK_M`, `SEQ_M`) to read a coherent view.
   - Retries internally if the Processor is mid-write.
-  - If called with no arguments, returns a full meter object.
-  - If given a projection callback, returns whatever you derive from the meter view (`cb` is read-only wrt Seqlok).
+  - Returns an object with all meter scalars and arrays (arrays are copies unless you use `into`).
 
-Again, the callback (if provided) is **synchronous**, and you must not hold onto internal view references outside the
-callback.
+- `snapshot(keys, options?)`:
+
+  - `keys`: array of meter names (e.g. `['peak', 'rms']`).
+  - `options.into`: map of meter names → pre-allocated arrays for array meters.
+  - Returns an object with just the requested meters; for array meters listed in `into`, Seqlok writes into the caller’s buffers instead of allocating.
+
+The controller-side snapshot result is **not ephemeral**: once `snapshot` returns, the data is yours to keep. The
+ephemeral-view rules apply to processor-side `within`/`publish`, not to controller-side snapshots.
 
 ---
 
@@ -359,8 +381,8 @@ With correct usage:
 - Each `snapshot` returns meter values corresponding to a single `SEQ_M`.
 - Repeated snapshots see monotonically increasing or equal `SEQ_M`.
 - No snapshot sees a half-written array (e.g. half old spectrum, half new).
-- Multiple `publish` calls between snapshots are allowed; the Controller just sees the "latest committed" view at the
-  time of snapshot.
+- Multiple `publish` calls between snapshots are allowed; the Controller just sees the latest committed state at the
+  time of `snapshot`.
 
 ---
 
@@ -369,23 +391,22 @@ With correct usage:
 A very common pattern (especially in audio) is:
 
 ```ts
-process(inputs, outputs);
-{
-  this.processor.params.within((params) => {
-    // 1. Read coherent params
+process(inputs, outputs): boolean {
+  this.proc.params.within((params) => {
+    // 1. read coherent params
     const result = this.dsp.process(inputs, outputs, params);
 
-    // 2. First meter commit: basic level info
-    this.processor.meters.publish((m) => {
+    // 2. first meter commit: basic level info
+    this.proc.meters.publish((m) => {
       m.peak(result.peak);
       m.rms(result.rms);
     });
 
-    // 3. Extra analysis
+    // 3. extra analysis
     const more = this.analyze(result);
 
-    // 4. Second meter commit: more detailed info
-    this.processor.meters.publish((m) => {
+    // 4. second meter commit: more detailed info
+    this.proc.meters.publish((m) => {
       m.spectralCentroid(more.centroid);
     });
   });
@@ -439,10 +460,10 @@ Within the documented roles and APIs, Seqlok guarantees:
 - All meter changes within one `publish` are committed as a unit.
 - Controllers never see half-updated meters from a single `publish`.
 
-5. **No allocations on hot read paths (inside Seqlok)**
+5. **No allocations on hot read paths inside the kernel**
 
-- `within` / `snapshot` / `publish` do not allocate user-visible objects in the hot path, beyond the callback
-  scaffolding you write yourself.
+- `within` / `publish` do not allocate user-visible objects in the hot path.
+- `snapshot` can be allocation-free when used with `into` buffers.
 
 ### Non-Guarantees
 
@@ -455,35 +476,45 @@ Seqlok does **not** guarantee:
 
 2. **Cross-domain transactions**
 
-- There is no atomic "params + meters must move together" transaction.
+- There is no atomic "params + meters move together" transaction across domains.
 - Params and meters are separate; your code establishes the causal relationships.
 
 3. **Async safety inside callbacks**
 
 - If you `await` inside `within` or `publish`, you violate the design; behavior is undefined and can break invariants.
 
-4. **No misuse of views**
+4. **Protection against misuse of views**
 
 - JS cannot prevent you from storing a reference to an internal view and using it later.
 - The **contract** is that you won't; library behavior assumes usage follows the scope rules.
 
 ---
 
-## Execution Examples
+## Execution Example: AudioWorklet Pattern
 
-### AudioWorklet Pattern
+Golden-flow wiring for a typical browser + AudioWorklet setup.
+
+**Controller (main thread):**
 
 ```ts
-// Controller (main thread)
+import {
+  defineSpec,
+  planLayout,
+  allocateShared,
+  buildHandoff,
+  bindController,
+} from '@seqlok/core';
+
 const spec = defineSpec(/* ... */);
 const plan = planLayout(spec);
 const backing = allocateShared(plan);
-const controller = bindController(spec, backing);
 
-// Pass backing/handoff to the AudioWorklet
+const controller = bindController(spec, backing);
+const handoff = buildHandoff(plan, backing);
+
 audioContext.audioWorklet.addModule('processor.js').then(() => {
   const node = new AudioWorkletNode(audioContext, 'my-processor', {
-    processorOptions: { seqlok: buildHandoff(spec, backing) },
+    processorOptions: { seqlok: handoff },
   });
 
   // UI → params
@@ -493,9 +524,9 @@ audioContext.audioWorklet.addModule('processor.js').then(() => {
 
   // meters → UI
   function updateMeters() {
-    const m = controller.meters.snapshot();
-    ui.setPeak(m.peak);
-    ui.setRms(m.rms);
+    const { peak, rms } = controller.meters.snapshot(['peak', 'rms']);
+    ui.setPeak(peak);
+    ui.setRms(rms);
     requestAnimationFrame(updateMeters);
   }
 
@@ -503,14 +534,20 @@ audioContext.audioWorklet.addModule('processor.js').then(() => {
 });
 ```
 
+**Processor (AudioWorkletGlobalScope / worker):**
+
 ```ts
-// Processor (AudioWorkletGlobalScope / worker)
+import { receiveHandoff, bindProcessor, type ProcessorBinding } from '@seqlok/core';
+import type { DemoSpec } from './spec';
+
 class MyProcessor extends AudioWorkletProcessor {
-  private readonly binding: ProcessorBinding<typeof spec>;
+  private readonly binding: ProcessorBinding<DemoSpec>;
 
   constructor(opts: any) {
     super();
-    this.binding = bindProcessor(spec, receiveHandoff(opts.processorOptions.seqlok));
+
+    const received = receiveHandoff<DemoSpec>(opts.processorOptions.seqlok);
+    this.binding = bindProcessor(received);
   }
 
   process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
@@ -526,9 +563,14 @@ class MyProcessor extends AudioWorkletProcessor {
     return true;
   }
 }
+
+registerProcessor('my-processor', MyProcessor);
 ```
 
-This is the canonical "Controller ↔ Processor" Seqlok pipeline in action.
+This is the canonical "Controller ↔ Processor" Seqlok pipeline:
+
+- Main side: `defineSpec → planLayout → allocateShared → buildHandoff → bindController`
+- Worklet side: `receiveHandoff → bindProcessor`
 
 ---
 
@@ -547,9 +589,9 @@ Internally, the concurrency model relies on several invariants that **must not b
 
 3. **Callbacks are synchronous**
 
-   - `within`, `publish`, `snapshot` must not be `async` (no promises returned, no `await` intended inside).
+- `within`, `publish` must not be `async` (no promises returned, no `await` intended inside).
 
-4. **Seqlock state is always in single control plane per domain**
+4. **Seqlock state is always in a single control plane per domain**
 
 - No per-field seqlocks.
 - One param seqlock, one meter seqlock per backing.
@@ -568,63 +610,10 @@ If you extend Seqlok's capabilities, check any new feature against these invaria
 The concurrency model of Seqlok can be summarized in one line:
 
 > **One writer per domain, shared memory guarded by seqlocks, exposed through scoped
-> callbacks (`within` / `publish` / `snapshot`) that make coherent use the default.**
+> callbacks (`within` / `publish`) and seqlock-guarded snapshots on the Controller side, so coherent use is the default.**
 
-Everything else — planes, specs, backing, bindings — exists to make that model:
+Everything else — planes, specs, plan, backing, handoff, bindings — exists to make that model:
 
 - **Fast enough** for real-time code
 - **Safe enough** for shared memory
 - **Clear enough** that you can reason about it at 2AM without hating future-you
-
-Here's a Markdown-ready chunk you can drop straight into your docs (e.g. `concurrency-model-and-roles.md` under a "FAQ" / "Common questions" section).
-
-### FAQ: Does polling meters with `requestAnimationFrame` hold locks or add audio latency?
-
-**Short answer:** No.
-
-`controller.meters.snapshot()` is a **lock-free reader** over a seqlock-guarded meter domain. It never takes a mutex and never blocks the writer.
-
-On the processor side:
-
-- `processor.meters.publish(cb)` performs the seqlock write sequence:
-  - bump the version to an **odd** value (write in progress),
-  - write the meter values,
-  - bump the version to an **even** value (write complete).
-
-On the controller side:
-
-- `controller.meters.snapshot()` only uses **atomic loads** of that version plus plain typed-array reads.
-- If it observes an odd version or a version change during the read, it simply **retries** on the UI thread.
-
-Readers do not "hold" a lock. They just retry until they observe a stable, even version. The writer never waits for them.
-
-A typical UI polling loop looks like this:
-
-```ts
-function renderMeters(): void {
-  const { rms, peak } = controller.meters.snapshot();
-  updateMeters(rms, peak);
-  requestAnimationFrame(renderMeters);
-}
-
-requestAnimationFrame(renderMeters);
-```
-
-This pattern is what Seqlok is designed for:
-
-- The **audio side** publishes meters at audio cadence.
-- The **UI** samples meters at frame rate (or whatever cadence you choose).
-- The seqlock ensures each snapshot is either:
-
-  - a coherent view of one publish, or
-  - retried until it becomes coherent.
-
-Polling "very fast" (e.g. high-refresh displays) has two effects:
-
-- Slightly more **main-thread** work (more snapshots, more cache traffic).
-- No additional **audio-thread** latency: the audio callback never waits on UI readers.
-
-The only way this hurts audio is the boring one: if the main thread is doing so much work that the entire CPU is saturated and the OS can’t schedule the audio thread in time. That is a general CPU budget problem, not a lock-contention problem.
-
-**Key takeaway:**
-UI-side `meters.snapshot()` calls are lock-free readers. Using `requestAnimationFrame` to poll meters does _not_ “hold locks” and does _not_ introduce extra audio latency by itself.

@@ -4,8 +4,10 @@ import {
   allocateShared,
   bindController,
   bindProcessor,
+  buildHandoff,
   defineSpec,
   planLayout,
+  receiveHandoff,
 } from '../../src';
 
 function createHarness() {
@@ -20,8 +22,14 @@ function createHarness() {
 
   const plan = planLayout(spec);
   const backing = allocateShared(plan);
+
+  // Golden flow: build → receive → bind
+  const handoff = buildHandoff(plan, backing);
+  const received = receiveHandoff(handoff);
+
   const ctl = bindController(spec, backing);
-  const proc = bindProcessor(spec, backing);
+  const proc = bindProcessor(received);
+
   return { ctl, proc };
 }
 
@@ -75,25 +83,4 @@ describe('meters.snapshot into identity', () => {
     expect(sub.flags).toBeInstanceOf(Uint32Array);
     expect(sub.flags).not.toBe(f32);
   });
-
-  // it('snapshotWithStatus preserves into identity and reports status', () => {
-  //   const { ctl, proc } = createHarness();
-  //
-  //   proc.meters.publish((w) => {
-  //     w.rms(1.0);
-  //     w.stage('spectrum', (dst) => dst.fill(0.5));
-  //   });
-  //
-  //   const buf = new Float32Array(512);
-  //   const [sub, status] = ctl.meters.snapshotWithStatus({
-  //     keys: ['spectrum'],
-  //     into: {
-  //       spectrum: buf,
-  //     },
-  //   });
-  //
-  //   expect(sub.spectrum).toBe(buf);
-  //   expect(status).toBeTypeOf('object');
-  //   expect(status.fallback).toBe(false);
-  // });
 });

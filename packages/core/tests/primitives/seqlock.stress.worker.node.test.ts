@@ -4,6 +4,20 @@ import { describe, it, expect } from 'vitest';
 
 import { tryRead, type SeqPair } from '../../src/primitives/seqlock';
 
+interface SeqlokErrorLike {
+  readonly code: string;
+}
+
+function isSeqlockTimeout(error: unknown): error is SeqlokErrorLike & {
+  readonly code: 'primitives.seqlockTimeout';
+} {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  const maybe = error as { code?: unknown };
+  return maybe.code === 'primitives.seqlockTimeout';
+}
+
 describe('seqlock cross-thread stress', () => {
   it('reads monotone values under concurrent publishes', async () => {
     const WRITES = 50_000;
@@ -73,7 +87,18 @@ describe('seqlock cross-thread stress', () => {
     let okReads = 0;
 
     while (okReads < MAX_OK_READS) {
-      const res = tryRead(pair, () => u32[VALUE_INDEX]);
+      let res;
+      try {
+        res = tryRead(pair, () => u32[VALUE_INDEX]);
+      } catch (error) {
+        // Under the new API, heavy contention can trigger a recoverable timeout.
+        // For stress, we treat this as "no coherent read this attempt" and keep spinning.
+        if (isSeqlockTimeout(error)) {
+          continue;
+        }
+        throw error;
+      }
+
       if (!res.ok) {
         continue;
       }

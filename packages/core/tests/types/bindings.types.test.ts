@@ -13,6 +13,7 @@ import {
 import type {
   ControllerMeters,
   ControllerParams,
+  Ephemeral,
   MeterWriter,
   ParamValueFor,
   ProcessorParams,
@@ -138,11 +139,18 @@ describe('binding (compile-time contracts)', () => {
     type MW = MeterWriter<S>;
 
     type StageParams = Parameters<MW['stage']>;
-    type ExpectedStage = ['spectrum', (dst: Float32Array) => void];
-    expectTypeOf<StageParams>().toEqualTypeOf<ExpectedStage>();
+    type StageKey = StageParams[0];
+    type StageCb = StageParams[1];
+    type StageArg0 = Parameters<StageCb>[0];
 
-    expectTypeOf<StageParams>().toExtend<ExpectedStage>();
-    expectTypeOf<ExpectedStage>().toExtend<StageParams>();
+    // literal key
+    expectTypeOf<StageKey>().toEqualTypeOf<'spectrum'>();
+
+    // callback uses Ephemeral<Float32Array>
+    expectTypeOf<StageCb>().toExtend<(dst: Ephemeral<Float32Array>) => void>();
+
+    // ephemeral view is still usable as a Float32Array in the body
+    expectTypeOf<StageArg0>().toExtend<Float32Array>();
   });
 
   it('ControllerMeters.snapshot returns a readonly view with correct shapes', () => {

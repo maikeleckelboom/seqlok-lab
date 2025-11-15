@@ -8,27 +8,36 @@
 export type SpecHash = string;
 
 /**
- * Canonical spec (DSL-facing) types.
+ * Scalar param definition with literal type preservation.
  *
- * These describe the authored shape of params/meters. Layout-facing
- * types live under `plan/`.
- */
-
-/**
- * Scalar param definition.
- *
- * - `f32` / `i32` may optionally constrain [min, max]
+ * - `f32` / `i32` may optionally constrain [min, max] with literal numbers
  * - `bool` is a simple boolean flag
- * - `enum` exposes string labels at the public API
+ * - `enum` exposes string labels at the public API with literal tuple types
  */
 export type ScalarParamDef =
-  | { readonly kind: 'f32'; readonly min?: number; readonly max?: number }
-  | { readonly kind: 'i32'; readonly min?: number; readonly max?: number }
+  // f32 with no bounds
+  | { readonly kind: 'f32' }
+  // f32 with min only (preserves literal type)
+  | { readonly kind: 'f32'; readonly min: number }
+  // f32 with max only (preserves literal type)
+  | { readonly kind: 'f32'; readonly max: number }
+  // f32 with both min and max (preserves literal types)
+  | { readonly kind: 'f32'; readonly min: number; readonly max: number }
+  // i32 with no bounds
+  | { readonly kind: 'i32' }
+  // i32 with min only (preserves literal type)
+  | { readonly kind: 'i32'; readonly min: number }
+  // i32 with max only (preserves literal type)
+  | { readonly kind: 'i32'; readonly max: number }
+  // i32 with both min and max (preserves literal types)
+  | { readonly kind: 'i32'; readonly min: number; readonly max: number }
+  // bool flag
   | { readonly kind: 'bool' }
+  // enum with tuple type preservation
   | { readonly kind: 'enum'; readonly values: readonly string[] };
 
 /**
- * Array param definition.
+ * Array param definition with literal length preservation.
  *
  * Arrays are fixed-length at the DSL level. Enums still expose
  * string labels, but are stored as integer indices internally.
@@ -58,7 +67,7 @@ export type ScalarMeterDef =
   | { readonly kind: 'bool' };
 
 /**
- * Array meter definition (fixed-length at DSL level).
+ * Array meter definition with literal length preservation.
  */
 export type ArrayMeterDef =
   | { readonly kind: 'f32.array'; readonly length: number }
@@ -76,6 +85,13 @@ export type MeterDef = ScalarMeterDef | ArrayMeterDef;
  *
  * This is the shape users write in code. `planLayout` and bindings
  * preserve literal key types from here.
+ *
+ * IMPORTANT: TypeScript will infer literal types for:
+ * - Numeric literals in min/max/length fields
+ * - Tuple types for enum values arrays
+ * - String literal types for keys
+ *
+ * This preservation flows through the entire type system.
  */
 export interface SpecInput {
   readonly id?: string;
@@ -167,3 +183,47 @@ export type ArrayMeterKeys<S extends SpecInput> = Extract<
   }[MeterKeys<S>],
   string
 >;
+
+/**
+ * Helper: Extract the literal min value from a scalar param def, if present.
+ *
+ * This preserves the literal type of the min value.
+ */
+export type MinOf<T extends ScalarParamDef> = T extends {
+  readonly min: infer M extends number;
+}
+  ? M
+  : never;
+
+/**
+ * Helper: Extract the literal max value from a scalar param def, if present.
+ *
+ * This preserves the literal type of the max value.
+ */
+export type MaxOf<T extends ScalarParamDef> = T extends {
+  readonly max: infer M extends number;
+}
+  ? M
+  : never;
+
+/**
+ * Helper: Extract the literal length from an array param/meter def.
+ *
+ * This preserves the literal type of the length value.
+ */
+export type LengthOf<T extends ArrayParamDef | ArrayMeterDef> = T extends {
+  readonly length: infer L extends number;
+}
+  ? L
+  : never;
+
+/**
+ * Helper: Extract the literal enum values from an enum param def.
+ *
+ * This preserves the tuple type with literal string values.
+ */
+export type ValuesOf<T extends ParamDef> = T extends { readonly values: infer V }
+  ? V extends readonly string[]
+    ? V
+    : never
+  : never;

@@ -12,7 +12,10 @@ export default defineConfig(({ mode }) => ({
       formats: ['es'],
     },
     rollupOptions: {
-      output: { inlineDynamicImports: true },
+      output: {
+        hoistTransitiveImports: false,
+        inlineDynamicImports: true,
+      },
     },
     sourcemap: false,
     emptyOutDir: true,
@@ -21,9 +24,17 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     dts({
       entryRoot: 'src',
-      tsconfigPath: 'tsconfig.build.json',
+      tsconfigPath: './tsconfig.build.json',
       outDir: 'dist',
       insertTypesEntry: true,
+      // Bundle all types into single declaration file
+      rollupTypes: true,
+      // Ensure proper compilation
+      compilerOptions: {
+        declaration: true,
+        emitDeclarationOnly: true,
+        noEmit: false,
+      },
       exclude: [
         'tests/**/*',
         'examples/**/*',

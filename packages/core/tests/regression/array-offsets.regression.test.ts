@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { allocateShared } from '../../src/backing/allocate';
-import { bindController } from '../../src/binding/controller';
-import { bindProcessor } from '../../src/binding/processor';
-import { planLayout } from '../../src/plan/layout';
-import { defineSpec } from '../../src/spec/define';
+import { defineSpec } from '../../src';
+import { makeBindingsFromSpec } from '../__helpers__/binding';
 
 describe('array offsets: regression tests', () => {
   it('correctly reads multiple array params with non-zero offsets', () => {
@@ -18,10 +15,7 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     // Write distinct values
     ctl.params.set('a', 0.1);
@@ -73,10 +67,7 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     ctl.params.set('gain', 0.5);
     ctl.params.set('mode', 7);
@@ -119,10 +110,7 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     proc.meters.publish((writer) => {
       writer.rms(0.5);
@@ -160,12 +148,14 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
+    const { ctl } = makeBindingsFromSpec(spec);
 
-    ctl.params.stage('arr1', (v) => v.fill(1.0));
-    ctl.params.stage('arr2', (v) => v.fill(2.0));
+    ctl.params.stage('arr1', (v) => {
+      v.fill(1.0);
+    });
+    ctl.params.stage('arr2', (v) => {
+      v.fill(2.0);
+    });
 
     const into = {
       arr1: new Float32Array(4),
@@ -191,7 +181,7 @@ describe('array offsets: regression tests', () => {
     const spec = defineSpec(({ param }) => ({
       id: 'large-offset',
       params: {
-        // Create many params to push 'late' to a high offset
+        // Create many params to push "late" to a high offset
         early1: param.f32.array(100),
         early2: param.f32.array(100),
         early3: param.f32.array(100),
@@ -199,10 +189,7 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     ctl.params.stage('late', (v) => {
       for (let i = 0; i < v.length; i++) {
@@ -234,28 +221,27 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
-    // Stage enum array via controller (uses indices)
+    // Stage enum array via controller (indices)
     ctl.params.stage('waveforms', (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i % 4; // cycle through enum indices
       }
     });
 
-    // Read in processor (gets labels)
+    // Processor sees numeric indices in its view
     proc.params.within((view) => {
       expect(view.waveforms.length).toBe(8);
-      expect(view.waveforms[0]).toBe(0); // indices at processor level
+      expect(view.waveforms[0]).toBe(0);
       expect(view.waveforms[3]).toBe(3);
     });
 
-    // Controller snapshot returns indices (readonly view)
+    // Controller snapshot returns index array view
     const snap = ctl.params.snapshot();
     expect(snap.waveforms.length).toBe(8);
+    expect(snap.waveforms[0]).toBe(0);
+    expect(snap.waveforms[3]).toBe(3);
   });
 
   it('correctly handles f64 meter arrays with non-zero offsets', () => {
@@ -270,25 +256,22 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     proc.meters.publish((writer) => {
-      writer.counter(42); // <- Scalar
-      writer.rms(0.5); // <- Scalar
-      writer.peak(0.9); // <- Scalar
+      writer.counter(42);
+      writer.rms(0.5);
+      writer.peak(0.9);
       writer.stage('precise', (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = i / 10;
         }
-      }); // <- Array
+      });
       writer.stage('spectrum', (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = Math.sin(i);
         }
-      }); // <- Array
+      });
     });
 
     const snap = ctl.meters.snapshot();
@@ -314,14 +297,16 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
-    const proc = bindProcessor(spec, backing);
+    const { ctl, proc } = makeBindingsFromSpec(spec);
 
     // Cycle 1
-    ctl.params.stage('b', (v) => v.fill(1.0));
-    ctl.params.stage('d', (v) => v.fill(2.0));
+    ctl.params.stage('b', (v) => {
+      v.fill(1.0);
+    });
+    ctl.params.stage('d', (v) => {
+      v.fill(2.0);
+    });
+
     proc.params.within((view) => {
       expect(view.b.length).toBe(6);
       expect(view.d.length).toBe(4);
@@ -340,6 +325,7 @@ describe('array offsets: regression tests', () => {
         v[i] = (i + 1) * 0.2;
       }
     });
+
     proc.params.within((view) => {
       expect(view.b.length).toBe(6);
       expect(view.d.length).toBe(4);
@@ -361,9 +347,7 @@ describe('array offsets: regression tests', () => {
       },
     }));
 
-    const plan = planLayout(spec);
-    const backing = allocateShared(plan);
-    const ctl = bindController(spec, backing);
+    const { ctl } = makeBindingsFromSpec(spec);
 
     ctl.params.stage('arr1', (v) => {
       for (let i = 0; i < v.length; i++) {
@@ -387,6 +371,7 @@ describe('array offsets: regression tests', () => {
     // Verify identity
     expect(snap.arr1).toBe(buffer1);
     expect(snap.arr2).toBe(buffer2);
+
     // Verify values
     for (let i = 0; i < 8; i++) {
       expect(snap.arr1[i]).toBe(i);

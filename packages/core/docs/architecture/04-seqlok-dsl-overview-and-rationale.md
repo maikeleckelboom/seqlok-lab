@@ -7,7 +7,7 @@ This document explains:
 - What a **Spec** is in Seqlok
 - How the **DSL** is structured
 - What the design **does and does not** allow
-- How the spec feeds into the **Spec → Plan → Backing → Bindings** pipeline
+- How the spec feeds into the **Spec → Plan → Backing → Handoff → Bindings** pipeline
 
 If you're defining devices, binding controllers/processors, or extending Seqlok, this is your reference.
 
@@ -25,7 +25,7 @@ A spec is:
 
 - **Pure data definition** — no references to `SharedArrayBuffer`, `Atomics`, or workers
 - **Schema-only** — structure and constraints, no behavior
-- **Deterministic** — same spec → same plan (plan) → same bindings
+- **Deterministic** — same spec → same plan → same bindings
 
 Example:
 
@@ -49,13 +49,19 @@ const spec = defineSpec(({ param, meter }) => ({
 From here, the rest of the pipeline is:
 
 ```ts
+// owner / controller side
 const plan = planLayout(spec);
 const backing = allocateShared(plan);
+
 const controller = bindController(spec, backing);
-const processor = bindProcessor(spec, backing);
+const handoff = buildHandoff(plan, backing);
+
+// processor / engine side (worker, AudioWorklet, etc.)
+const received = receiveHandoff(handoffFromMain);
+const processor = bindProcessor(received);
 ```
 
-The **Spec** is the only place you describe the shared state. Everything else (plan, shared memory, bindings) is
+The **Spec** is the only place you describe the shared state. Everything else (plan, shared memory, handoff, bindings) is
 derived.
 
 ---
@@ -94,7 +100,7 @@ Behavior and UI concerns live in _other_ layers.
 Given the same `defineSpec` call, Seqlok must always:
 
 - Produce the same **plan** (same plane sizes, same offsets)
-- Allocate the same **plan** for backing memory
+- Allocate the same **backing** for shared memory
 - Compute the same **spec hash** for compatibility checks
 
 This is why:
@@ -107,7 +113,7 @@ No dynamic field addition, no polymorphic shapes.
 
 ---
 
-### 2.3 Type-Safe, Zero `any`
+### 2.3 Type-Safe
 
 The DSL is designed so TypeScript can:
 
@@ -128,6 +134,8 @@ const spec = defineSpec(({ param, meter }) => ({
   },
 }));
 
+const plan = planLayout(spec);
+const backing = allocateShared(plan);
 const controller = bindController(spec, backing);
 
 // TS knows filterType is 'lowpass' | 'highpass' | 'bandpass'
@@ -135,7 +143,7 @@ controller.params.set('filterType', 'lowpass'); // ✅
 controller.params.set('filterType', 'notch'); // ❌ compile-time error
 ```
 
-The DSL itself is structured to preserve good literal types and avoid `any` leakage.
+The DSL itself is structured to preserve good literal types and avoid leakage.
 
 ---
 
@@ -148,7 +156,6 @@ const spec = defineSpec(({ param, meter }) => ({
   params: {
     // param definitions here
   },
-  // ...
   meters: {
     // meter definitions here
   },
@@ -197,7 +204,6 @@ The `meter` builder parallels the param shapes (but meters are always processor-
 - `meter.i32()` / `meter.u32()` / etc. (integers where appropriate)
 - `meter.f32.array({ length })`
 - `meter.f64.array({ length })` (for high-precision times or analysis)
-- Possibly other families for timestamps, counters, etc.
 
 Example:
 
@@ -225,7 +231,7 @@ const spec = defineSpec(({ param, meter }) => ({
 Represents a **single precision float** control value.
 
 - Stored in a float param plane (e.g. `PF32`).
-- Constrained logically to `[min, max]` (enforced at the Controller layer).
+- Logically constrained to `[min, max]` (enforced at the Controller layer).
 - Exposed as `number` in both controller and processor bindings.
 
 Example:
@@ -237,10 +243,10 @@ frequency: param.f32({ min: 20, max: 20_000 });
 Usage:
 
 ```ts
-// Controller
+// controller
 controller.params.set('frequency', 440);
 
-// Processor
+// processor
 processor.params.within((p) => {
   const f = p.frequency; // number
 });
@@ -262,7 +268,7 @@ Usage:
 
 ```ts
 controller.params.set('voices', 8); // ✅
-controller.params.set('voices', 2.5); // ❌ compile-time (number but we expect integer domain)
+controller.params.set('voices', 2.5); // ❌ logically invalid (integer domain)
 
 processor.params.within((p) => {
   const voices = p.voices; // number (int domain), but logically integral
@@ -308,25 +314,30 @@ filterType: param.enum(['lowpass', 'highpass', 'bandpass']);
 Usage:
 
 ```ts
-// Controller
+// controller
 controller.params.set('filterType', 'lowpass'); // ✅
 controller.params.set('filterType', 'notch'); // ❌ compile error
 
-// Processor
+// processor
 processor.params.within((p) => {
   switch (p.filterType) {
-    case 'lowpass' /* ... */:
+    case 'lowpass':
+      // ...
       break;
-    case 'highpass' /* ... */:
+    case 'highpass':
+      // ...
       break;
-    case 'bandpass' /* ... */:
+    case 'bandpass':
+      // ...
       break;
   }
 });
 ```
 
-Internally, Seqlok stores **indices** (e.g. `0,1,2`) in an integer plane, not raw strings. This keeps the memory plan
+Internally, Seqlok stores **indices** (e.g. `0, 1, 2`) in an integer plane, not raw strings. This keeps the memory plan
 compact and friendly to Wasm/FFI.
+
+> **Note:** See `14-enum-arrays-runtime-behavior.md` for details on how enum arrays map strings to indices at runtime.
 
 ---
 
@@ -358,16 +369,16 @@ const spec = defineSpec(({ param, meter }) => ({
 Usage:
 
 ```ts
-// Controller: update one element via helper
+// controller: full-array write via update
 controller.params.update({
   bandGains: [
-    /* full array update if that's your pattern */
+    /* full array content */
   ],
 });
 
-// Processor: read as read-only view
+// processor: read as read-only view
 processor.params.within((p) => {
-  const bands = p.bandGains; // Readonly-ish Float32Array-like view
+  const bands = p.bandGains; // readonly-ish Float32Array-like view
   const first = bands[0];
 });
 ```
@@ -387,6 +398,9 @@ Examples:
 
 ```ts
 const spec = defineSpec(({ meter, param }) => ({
+  params: {
+    /* ... */
+  },
   meters: {
     peak: meter.f32(),
     rms: meter.f32(),
@@ -399,14 +413,14 @@ const spec = defineSpec(({ meter, param }) => ({
 Usage:
 
 ```ts
-// Processor
+// processor
 processor.meters.publish((m) => {
   m.peak(peak);
   m.rms(rms);
   m.latencyMs(latency);
 });
 
-// Controller
+// controller
 const meters = controller.meters.snapshot();
 console.log(meters.peak, meters.rms, meters.latencyMs);
 ```
@@ -419,6 +433,9 @@ Examples:
 
 ```ts
 const spec = defineSpec(({ meter, param }) => ({
+  params: {
+    /* ... */
+  },
   meters: {
     spectrum: meter.f32.array({ length: 2048 }),
     histogram: meter.u32.array({ length: 256 }),
@@ -429,14 +446,14 @@ const spec = defineSpec(({ meter, param }) => ({
 Usage:
 
 ```ts
-// Processor
+// processor
 processor.meters.publish((m) => {
-  m.spectrum.stage((buf) => {
+  m.stage('spectrum', (buf) => {
     buf.set(computedSpectrum); // entire array commit
   });
 });
 
-// Controller
+// controller
 const { spectrum } = controller.meters.snapshot();
 drawSpectrum(spectrum);
 ```
@@ -444,7 +461,7 @@ drawSpectrum(spectrum);
 The `stage` pattern ensures:
 
 - Arrays are updated **as a whole** under the meter seqlock.
-- Controller never sees half-updated arrays.
+- The Controller never sees half-updated arrays.
 
 ---
 
@@ -461,7 +478,7 @@ Reasons:
 
 - Specs must be **platform-neutral**:
 
-  - A DAW, a web UI, a CL tool might all interpret the same spec differently.
+  - A DAW, a web UI, and a CLI tool might all interpret the same spec differently.
 
 - UI/UX is higher-level:
 
@@ -469,7 +486,7 @@ Reasons:
 
 - Keep plan & concurrency simple:
 
-  - Behavior hints don't belong in a memory plan engine.
+  - Behavior hints don't belong in a memory-planning/concurrency kernel.
 
 If you need defaults or UI metadata, define them in a separate layer (e.g. a `deviceManifest` that references fields of
 the spec).
@@ -494,7 +511,7 @@ param.enum.array({ values, length: N });
 
 If you _must_ support variable sizes:
 
-- Treat a param like `numBands` as **active count**.
+- Treat a param like `numBands` as an **active count**.
 - Keep the underlying array length fixed and only use the first `numBands` entries.
 - Or create multiple specs for different sizes.
 
@@ -548,7 +565,7 @@ Some patterns are _possible_ in TypeScript, but break Seqlok's design assumption
 ❌ Bad:
 
 ```ts
-let cachedParamsView: any;
+let cachedParamsView: unknown;
 
 processor.params.within((params) => {
   cachedParamsView = params; // storing for later
@@ -558,7 +575,7 @@ processor.params.within((params) => {
 const f = cachedParamsView.frequency; // undefined behavior
 ```
 
-This breaks the **scoped access** rule. All views from `within`/`publish`/`snapshot` must be treated as **ephemeral**.
+This breaks the **scoped access** rule. All views from `within`/`publish` must be treated as **ephemeral**.
 
 ✅ Correct:
 
@@ -582,12 +599,13 @@ const spec = defineSpec(({ param }) => ({
   params: {
     gain: param.f32({
       min: 0,
-      max: 2 /* and I'll treat this as my slider range + step */,
+      max: 2, // and I'll treat this as my slider range + step
     }),
   },
+  meters: {},
 }));
 
-// Directly using spec shape to generate UI and assuming 0–2 is the *only* allowed UI range.
+// directly using spec shape as a full UI contract
 ```
 
 While you _can_ derive UI from the spec, it's not meant to be a complete design system.
@@ -604,8 +622,8 @@ While you _can_ derive UI from the spec, it's not meant to be a complete design 
 ❌ Not supported:
 
 ```ts
-// no: building specs dynamically at runtime by looping over data
-const dynamicParams: any = {};
+// constructing specs dynamically at runtime
+const dynamicParams: Record<string, unknown> = {};
 for (const name of someRuntimeArray) {
   dynamicParams[name] = param.f32({ min: 0, max: 1 });
 }
@@ -644,23 +662,26 @@ Spec → Plan → Backing → Handoff → Bindings
   - Computes plane sizes, offsets, seqlock locations.
   - Is pure and deterministic.
 
-- **Backing** (`allocateShared(plan)` / `attachWasmShared(plan, ...)`)
+- **Backing** (`allocateShared(plan)` / `allocateWasmShared(plan, ...)`)
 
-  - Allocates SharedArrayBuffer or WebAssembly.Memory.
-  - Creates typed views for planes.
+  - Allocates `SharedArrayBuffer` or shared `WebAssembly.Memory`.
+  - Creates the underlying typed views for the planes.
 
-- **Handoff**
+- **Handoff** (`buildHandoff(plan, backing)` / `receiveHandoff(handoff)`)
 
-  - Compact structure describing how to reconstruct bindings in another agent (worker/worklet/Wasm).
+  - Compact, serializable description of "this plan + this memory".
+  - Lets other agents reconstruct compatible bindings without re-planning.
 
 - **Bindings** (`bindController` / `bindProcessor`)
 
-  - Use the spec + backing to provide safe APIs:
+  - `bindController(spec, backing)` — controller-side view over the backing (owner side).
+  - `bindProcessor(received)` — processor-side view constructed from a `ReceivedHandoff`.
+  - Expose the concurrency APIs:
 
-    - `controller.params.set/update`
+    - `controller.params.set` / `controller.params.update` / `controller.params.stage`
     - `controller.meters.snapshot`
     - `processor.params.within`
-    - `processor.meters.publish`
+    - `processor.meters.publish` / `processor.meters.stage`
 
 Changes to the DSL must preserve this pipeline: **spec remains structural**, everything else derives from it.
 
@@ -694,5 +715,5 @@ The Seqlok DSL:
   - Type-safe
   - Easy to map to raw memory
 
-Everything else — plan, backing, bindings, concurrency — builds on top of this single, simple, _schema-first_
+Everything else — plan, backing, handoff, bindings, concurrency — builds on top of this single, simple, _schema-first_
 definition.

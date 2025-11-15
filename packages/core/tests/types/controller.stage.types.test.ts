@@ -1,7 +1,6 @@
 import { describe, it, expectTypeOf } from 'vitest';
 
-import type { ControllerParams } from '../../src';
-import type { ArrayParamView } from '../../src/binding/types';
+import type { ArrayParamView, ControllerParams } from '../../src/binding/types';
 import type { SpecInput } from '../../src/spec/types';
 
 interface S extends SpecInput {
@@ -23,7 +22,6 @@ type ParamKeysS = Extract<keyof S['params'], string>;
 describe('ControllerParams.stage (array params)', () => {
   type Stage = ControllerParams<S>['stage'];
 
-  // Callability helper without overload equality or redundant constituents.
   type Accepts<F, K extends ParamKeysS, V> = F extends (
     key: K,
     cb: (view: V) => void,

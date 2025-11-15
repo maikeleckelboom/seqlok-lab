@@ -1,14 +1,16 @@
+import { describe, expect, it } from 'vitest';
+
 import {
   allocateShared,
   bindController,
   bindProcessor,
+  buildHandoff,
+  type ControllerOptions,
   defineSpec,
   planLayout,
+  receiveHandoff,
 } from '../../src';
 
-/**
- * Same spec as params tests; kept locally for test independence.
- */
 function makeSpec() {
   return defineSpec(({ param, meter }) => ({
     id: 'controller-binding-tests',
@@ -16,7 +18,7 @@ function makeSpec() {
       rate: param.f32({ min: 0.5, max: 2.0 }),
       mode: param.enum(['a', 'b', 'c']),
       enabled: param.bool(),
-      coeffs: param.f32.array(8),
+      coeffs: param.f32.array({ length: 8 }),
     },
     meters: {
       rms: meter.f32(),
@@ -26,18 +28,25 @@ function makeSpec() {
   }));
 }
 
-function setup() {
+function setupController(
+  options: ControllerOptions = { params: { rangePolicy: 'reject' } },
+) {
   const spec = makeSpec();
   const plan = planLayout(spec);
   const backing = allocateShared(plan);
-  const ctl = bindController(spec, backing);
-  const proc = bindProcessor(spec, backing);
-  return { spec, plan, backing, ctl, proc };
+
+  const handoff = buildHandoff(plan, backing);
+  const received = receiveHandoff(handoff);
+
+  const ctl = bindController(spec, backing, options);
+  const proc = bindProcessor(received);
+
+  return { spec, plan, backing, handoff, received, ctl, proc };
 }
 
 describe('Controller meters: version reflects processor MU publishes', () => {
   it('proc.meters.publish() → controller.meters.version() increments by 1', () => {
-    const { ctl, proc } = setup();
+    const { ctl, proc } = setupController();
     const start = ctl.meters.version();
 
     proc.meters.publish((w) => {
@@ -52,7 +61,7 @@ describe('Controller meters: version reflects processor MU publishes', () => {
   });
 
   it('single publish with multiple writes is one bump', () => {
-    const { ctl, proc } = setup();
+    const { ctl, proc } = setupController();
     const start = ctl.meters.version();
 
     proc.meters.publish((w) => {
@@ -67,7 +76,7 @@ describe('Controller meters: version reflects processor MU publishes', () => {
     const v1 = ctl.meters.version();
     expect(v1).toBe(start + 1);
 
-    const snap = ctl.meters.snapshot({ keys: ['rms', 'spectrum'] as const });
+    const snap = ctl.meters.snapshot({ keys: ['rms', 'spectrum'] });
     expect(snap.rms).toBeCloseTo(0.1, 6);
     expect(snap.spectrum).toBeInstanceOf(Float32Array);
     expect(snap.spectrum[0]).toBeCloseTo(0, 6);
@@ -77,7 +86,7 @@ describe('Controller meters: version reflects processor MU publishes', () => {
 
 describe('Controller meters: snapshot into() identity and key validation', () => {
   it('meters.snapshot({keys, into}) reuses provided buffer (identity)', () => {
-    const { ctl, proc } = setup();
+    const { ctl, proc } = setupController();
 
     // write some data
     proc.meters.publish((w) => {
@@ -89,7 +98,7 @@ describe('Controller meters: snapshot into() identity and key validation', () =>
     });
 
     const into = { spectrum: new Float32Array(16) };
-    const snap = ctl.meters.snapshot({ keys: ['spectrum'] as const, into });
+    const snap = ctl.meters.snapshot({ keys: ['spectrum'], into });
 
     // identity + content checks
     expect(snap.spectrum).toBe(into.spectrum);
@@ -98,7 +107,7 @@ describe('Controller meters: snapshot into() identity and key validation', () =>
   });
 
   it('unknown key in meters.snapshot() throws', () => {
-    const { ctl } = setup();
+    const { ctl, proc } = setupController();
     expect(() => {
       // @ts-expect-error intentional invalid key to test guard
       ctl.meters.snapshot({ keys: ['nope'] });

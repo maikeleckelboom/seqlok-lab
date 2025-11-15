@@ -2,12 +2,11 @@ import { getSharedBuffer } from './buffer';
 import { createError } from '../errors/error';
 import { BYTES_PER_ELEM } from '../primitives/planes';
 
-import type { Backing } from './types';
+import type { Backing, SharedBacking, WasmSharedBacking } from './types';
 import type { Plan, PlaneByteLengths } from '../plan/types';
 import type { PlaneKey } from '../primitives/planes';
 import type { SpecInput } from '../spec/types';
 
-/** Deterministic packing order (v1.0.0)*/
 export const PACK_ORDER_V1: readonly PlaneKey[] = [
   'MF64',
   'PF32',
@@ -66,13 +65,7 @@ export function computePlaneBases(planes: PlaneByteLengths): PlaneBases {
 
 function mapContiguousOrWasm<S extends SpecInput>(
   plan: Plan<S>,
-  backing: Backing &
-    (
-      | { kind: 'shared' }
-      | {
-          kind: 'wasm-shared';
-        }
-    ),
+  backing: SharedBacking | WasmSharedBacking,
 ): MappedViews {
   const buf = getSharedBuffer(backing);
   const actual = buf.byteLength;
@@ -137,7 +130,7 @@ function mapContiguousOrWasm<S extends SpecInput>(
 
 function mapPartitioned<S extends SpecInput>(
   plan: Plan<S>,
-  b: Extract<
+  partitionedBacking: Extract<
     Backing,
     {
       kind: 'shared-partitioned';
@@ -156,7 +149,7 @@ function mapPartitioned<S extends SpecInput>(
   };
 
   const ensure = (plane: PlaneKey): SharedArrayBuffer => {
-    const sab = b.planes[plane];
+    const sab = partitionedBacking.planes[plane];
     const requiredByteLength = plan.planes[plane];
     if (sab.byteLength < requiredByteLength) {
       throw createError('backing.allocUndersized', `Plane ${plane} SAB too small`, {

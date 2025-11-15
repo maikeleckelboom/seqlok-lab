@@ -1,26 +1,78 @@
 /**
  * @fileoverview @seqlok/core public API (v2.0 - zero duplication)
- *
- * BREAKING CHANGES from v1.x:
- * - `HandoffOf<S>` removed - use `Handoff<S>` directly
- * - `InferSpecFromHandoff` removed - inference is automatic
- * - `bindProcessor(spec, received)` overload removed
- * - Handoff envelope contains no duplicated metadata
  */
+
+// SPEC & LAYOUT
 
 export { defineSpec } from './spec/define';
 export { planLayout } from './plan/layout';
-export { allocateShared } from './backing/allocate';
-export { attachWasmShared } from './backing/attach-wasm';
-export { bindController } from './binding/controller';
-export { bindProcessor } from './binding/processor';
-export { buildHandoff, receiveHandoff, verifyHandoff } from './handoff';
 
 export type { SpecInput } from './spec/types';
+
+// BACKING & MEMORY
+
+export { allocateShared } from './backing/allocate';
+export { attachWasmShared } from './backing/attach-wasm';
+
+// BINDINGS (Functions)
+
+export { bindController } from './binding/controller';
+export { bindProcessor } from './binding/processor';
+
+// BINDINGS (Types)
+export type {
+  // Core binding interfaces
+  ControllerBinding,
+  ProcessorBinding,
+  ControllerParams,
+  ProcessorParams,
+  ControllerMeters,
+  ProcessorMeters,
+
+  // Param value types
+  ParamValueFor,
+  ArrayParamView,
+  ParamsView,
+  CoherentParamShape,
+  CoherentValue,
+  ScalarParamPatch,
+
+  // Meter value types
+  MeterValueFor,
+  MeterWriter,
+
+  // Snapshot types
+  FullParamsSnapshot,
+  FullMetersSnapshot,
+  SnapshotParamsObject,
+  SnapshotMetersObject,
+  SnapshotParamsOptions,
+  SnapshotMetersOptions,
+  IntoForParams,
+  IntoForMeters,
+
+  // Options
+  ControllerOptions,
+  ProcessorOptions,
+  RangePolicy,
+
+  // Utility types
+  Ephemeral,
+  PUSeq,
+  MUSeq,
+} from './binding/types';
+
+// HANDOFF
+
+export { buildHandoff, receiveHandoff, verifyHandoff } from './handoff';
+
 export type { Handoff, HandoffPacking, ReceivedHandoff } from './handoff';
+
+// ERRORS
 
 export { SeqlokError, isSeqlokError, createError } from './errors/error';
 export { invariant } from './errors/invariant';
+
 export type {
   ErrorCode,
   ErrorPayload,
@@ -28,3 +80,14 @@ export type {
   ErrorMeta,
   TypedArrayName,
 } from './errors';
+
+export {
+  enumArrayToLabels,
+  enumIndexFromLabel,
+  enumLabelFromIndex,
+  enumValues,
+  enumLabelsToArray,
+  enumPaletteFor,
+  type EnumLabel,
+  type EnumKeyOf,
+} from './util/enum-helpers';

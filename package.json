@@ -5,39 +5,37 @@
   "devDependencies": {
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
+    "@commitlint/types": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "eslint-import-resolver-typescript": "catalog:",
     "eslint-plugin-import": "catalog:",
-    "lint-staged": "catalog:",
+    "fast-check": "catalog:",
     "prettier": "catalog:",
     "rimraf": "catalog:",
     "simple-git-hooks": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "vite": "catalog:",
-    "rollup": "catalog:",
-    "vitest": "catalog:",
-    "@commitlint/types": "catalog:",
-    "fast-check": "catalog:",
-
+    "vitest": "catalog:"
   },
   "scripts": {
-    "format": "prettier --write packages/**/*",
+    "format": "prettier --write packages/**/* examples/**/*",
     "prepare": "simple-git-hooks",
     "clean": "pnpm -w -r -F \"@seqlok/*\" run clean && rimraf .eslintcache node_modules/.vite node_modules/.cache pnpm-debug.log",
+    "purge": "pnpm run clean && rimraf node_modules packages/**/node_modules",
     "build": "pnpm -w run clean && pnpm -w -r -F \"@seqlok/*\" run build",
     "lint": "pnpm -w -r -F \"@seqlok/*\" run lint",
     "lint:fix": "pnpm -w -r -F \"@seqlok/*\" run lint --fix",
     "test": "pnpm -w -F \"@seqlok/core\" run test",
     "test:types": "pnpm -w -F \"@seqlok/core\" run test:types",
     "test:watch": "pnpm run test --watch",
-    "commitlint": "commitlint --color"
+    "commitlint": "commitlint --color",
+    "example:01": "pnpm --filter @seqlok/core build && pnpm --filter ./examples/01-atomics-clock-offscreen-particles dev",
+    "example:02": "pnpm --filter @seqlok/core build && pnpm --filter ./examples/02-organic-swarm-particle-animation dev"
   },
   "simple-git-hooks": {
     "commit-msg": "pnpm commitlint --edit $1"
   },
-  "dependencies": {
-  },
-  "packageManager": "pnpm@9.15.4+sha512.b2dc20e2fc72b3e18848459b37359a32064663e5627a51e4c74b2c29dd8e8e0491483c3abb40789cfd578bf362fb6ba8261b05f0387d76792ed6e23ea3b1b6a0"
+  "packageManager": "pnpm@10.22.0"
 }

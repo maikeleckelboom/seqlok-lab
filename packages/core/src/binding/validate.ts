@@ -16,7 +16,6 @@ type MeterDst = Float32Array | Float64Array | Uint32Array;
 /** Constructor shape for typed arrays (length → instance). */
 interface TA<T extends ArrayBufferView & { length: number }> {
   readonly name: string;
-
   new (len: number): T;
 }
 

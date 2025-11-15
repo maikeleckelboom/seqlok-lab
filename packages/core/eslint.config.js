@@ -19,6 +19,7 @@ const IGNORES = [
   '**/generated/**',
   '**/node_modules/**',
   '**/*.d.ts',
+  '**/test-types/**',
 ];
 
 const SRC = ['src/**/*.{ts,tsx}'];
@@ -28,15 +29,14 @@ const ALL_TS = [...SRC, ...TESTS, ...EXAMPLES];
 
 /** Layers (co-location + import direction) */
 const LAYERS = {
-  primitives: 'src/primitives', // atomics, seqlock, ephemeral utils
-  errors: 'src/errors', // error codes, createError(), helpers; LEAF
-  types: 'src/types', // cross-domain public shapes only (no domain-owned types)
-  spec: 'src/spec', // DSL + spec types
-  plan: 'src/plan', // planner + plan types
+  primitives: 'src/primitives',
+  errors: 'src/errors',
+  types: 'src/types',
+  spec: 'src/spec',
+  plan: 'src/plan',
   backing: 'src/backing',
   handoff: 'src/handoff',
-  binding: 'src/binding', // controller/processor bindings
-  public: 'src/public', // top-level facade(s) for consumers (may mix spec+types)
+  binding: 'src/binding',
 };
 
 export default defineConfig(
@@ -181,11 +181,6 @@ export default defineConfig(
               from: LAYERS.binding,
               message: 'errors must not import binding',
             },
-            {
-              target: LAYERS.errors,
-              from: LAYERS.public,
-              message: 'errors must not import public',
-            },
 
             // primitives: bottom
             {
@@ -218,18 +213,7 @@ export default defineConfig(
               from: LAYERS.binding,
               message: 'primitives must not import binding',
             },
-            {
-              target: LAYERS.primitives,
-              from: LAYERS.errors,
-              message: 'primitives must not import errors',
-            },
-            {
-              target: LAYERS.primitives,
-              from: LAYERS.public,
-              message: 'primitives must not import public',
-            },
 
-            // types: cross-domain public shapes — must not pull domain-owned types
             {
               target: LAYERS.types,
               from: LAYERS.spec,
@@ -265,11 +249,6 @@ export default defineConfig(
               from: LAYERS.primitives,
               message: 'types must not import primitives',
             },
-            {
-              target: LAYERS.types,
-              from: LAYERS.public,
-              message: 'types must not import public',
-            },
 
             // spec: must not depend upward
             {
@@ -292,12 +271,6 @@ export default defineConfig(
               from: LAYERS.binding,
               message: 'spec must not import binding',
             },
-            {
-              target: LAYERS.spec,
-              from: LAYERS.public,
-              message: 'spec must not import public',
-            },
-
             // plan: above spec, below backing
             {
               target: LAYERS.plan,
@@ -314,11 +287,6 @@ export default defineConfig(
               from: LAYERS.binding,
               message: 'plan must not import binding',
             },
-            {
-              target: LAYERS.plan,
-              from: LAYERS.public,
-              message: 'plan must not import public',
-            },
 
             // backing: below handoff/binding
             {
@@ -331,22 +299,11 @@ export default defineConfig(
               from: LAYERS.binding,
               message: 'backing must not import binding',
             },
-            {
-              target: LAYERS.backing,
-              from: LAYERS.public,
-              message: 'backing must not import public',
-            },
 
-            // handoff: must not import binding/public
             {
               target: LAYERS.handoff,
               from: LAYERS.binding,
               message: 'handoff must not import binding',
-            },
-            {
-              target: LAYERS.handoff,
-              from: LAYERS.public,
-              message: 'handoff must not import public',
             },
 
             // binding: top — allowed to import downwards (no zones here)
