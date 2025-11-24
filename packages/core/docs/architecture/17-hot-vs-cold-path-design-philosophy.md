@@ -57,17 +57,17 @@ processor.params.within((params) => {
 // Hot: Per-frame meter reads
 const seq = observer.meters.version();
 if (seq !== lastSeq) {
-  const { rms, peak } = observer.meters.snapshot(['rms', 'peak']);
+  const { rms, peak } = observer.meters.snapshot(["rms", "peak"]);
   updateVU(rms, peak);
   lastSeq = seq;
 }
 
 // Hot: Scalar param updates
-controller.params.set('gain', slider.value);
+controller.params.set("gain", slider.value);
 controller.params.update({ gain, pitch, rate });
 
 // Hot: Array mutations via explicit views
-controller.params.stage('eqBands', (dst) => {
+controller.params.stage("eqBands", (dst) => {
   computeEQCurve(dst.view);
 });
 ```
@@ -97,7 +97,7 @@ controller.params.stage('eqBands', (dst) => {
 
 ```ts
 // Cold: Preset loading (scalars + arrays in one call)
-const preset = await loadPreset('my-track.json');
+const preset = await loadPreset("my-track.json");
 controller.params.hydrate(preset);
 
 // Cold: Snapshot round-trip
@@ -108,7 +108,7 @@ const loaded = await loadProject();
 controller.params.hydrate(loaded);
 
 // Cold: Controller-side meter snapshots for persistence
-const meterState = controller.meters.snapshot(['spectrum', 'history'], {
+const meterState = controller.meters.snapshot(["spectrum", "history"], {
   into: { spectrum: scratchBuffer }, // Optional optimization
 });
 await logTelemetry(meterState);
@@ -216,7 +216,7 @@ controller.params.update({
 controller.params.update({ gain: 0.8, pitch: 1.05 });
 
 // ✅ Hot: Array-only, explicit view semantics
-controller.params.stage('eqBands', (dst) => {
+controller.params.stage("eqBands", (dst) => {
   dst.view.set(curve);
 });
 
@@ -239,7 +239,7 @@ ADR-00Z distinguishes controller and observer snapshots based on temperature:
 **Controller snapshots (cold):**
 
 ```ts
-const snapshot = controller.meters.snapshot(['spectrum']);
+const snapshot = controller.meters.snapshot(["spectrum"]);
 await persistToDatabase(snapshot); // Safe: logical copy
 ```
 
@@ -250,7 +250,7 @@ await persistToDatabase(snapshot); // Safe: logical copy
 **Observer snapshots (hot):**
 
 ```ts
-const { spectrum } = observer.meters.snapshot(['spectrum']);
+const { spectrum } = observer.meters.snapshot(["spectrum"]);
 device.queue.writeBuffer(gpuBuffer, 0, spectrum); // Ephemeral SAB view
 ```
 
@@ -355,14 +355,18 @@ interface ProcessorMeters<S> {
 interface ObserverParams<S> {
   // Hot path only (ephemeral SAB views)
   snapshot(): ParamsSnapshot<S>;
-  snapshot<K extends readonly ParamKeys<S>[]>(keys: K): SnapshotParamsObject<S, K>;
+  snapshot<K extends readonly ParamKeys<S>[]>(
+    keys: K,
+  ): SnapshotParamsObject<S, K>;
   version(): PUSeq;
 }
 
 interface ObserverMeters<S> {
   // Hot path only (ephemeral SAB views)
   snapshot(): MetersSnapshot<S>;
-  snapshot<K extends readonly MeterKeys<S>[]>(keys: K): SnapshotMetersObject<S, K>;
+  snapshot<K extends readonly MeterKeys<S>[]>(
+    keys: K,
+  ): SnapshotMetersObject<S, K>;
   version(): MUSeq;
 }
 ```
@@ -380,7 +384,7 @@ let lastSeq: MUSeq = 0;
 function onFrame() {
   const seq = observer.meters.version();
   if (seq !== lastSeq) {
-    const { rms, peak } = observer.meters.snapshot(['rms', 'peak']);
+    const { rms, peak } = observer.meters.snapshot(["rms", "peak"]);
     updateVU(rms, peak);
     lastSeq = seq;
   }
@@ -415,8 +419,8 @@ async function loadPreset(name: string) {
     // ... 50 more scalars
   });
 
-  controller.params.stage('eqBands', (dst) => dst.view.set(preset.eqBands));
-  controller.params.stage('envelope', (dst) => dst.view.set(preset.envelope));
+  controller.params.stage("eqBands", (dst) => dst.view.set(preset.eqBands));
+  controller.params.stage("envelope", (dst) => dst.view.set(preset.envelope));
   // ... 10 more arrays
 
   // Should have just used hydrate()

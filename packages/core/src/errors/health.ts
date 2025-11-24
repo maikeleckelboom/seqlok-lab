@@ -15,7 +15,7 @@
  * use without knowing every error code in detail.
  */
 
-import type { ErrorMeta } from './registry';
+import type { ErrorMeta } from "./registry";
 
 /**
  * High-level health status derived from the error severity.
@@ -24,7 +24,7 @@ import type { ErrorMeta } from './registry';
  * This is intentionally kept as an alias of `ErrorMeta['severity']`
  * so adding a new severity in the registry forces an update here.
  */
-export type HealthStatus = ErrorMeta['severity'];
+export type HealthStatus = ErrorMeta["severity"];
 
 /**
  * Interpreted health view for a single error.
@@ -52,9 +52,9 @@ export interface HealthInterpretation {
  * summaries. Domain-specific wrappers may override them.
  */
 const HEALTH_LABELS: Record<HealthStatus, string> = {
-  fatal: 'Critical',
-  error: 'Error',
-  warning: 'Warning',
+  fatal: "Critical",
+  error: "Error",
+  warning: "Warning",
 };
 
 // Default hint per health status + recoverability.
@@ -66,21 +66,24 @@ const HEALTH_LABELS: Record<HealthStatus, string> = {
 // The aim is to answer “what should the operator do next?” in one line.
 
 const FATAL_HINT_RECOVERABLE =
-  'Severe internal failure; restart the affected subsystem or reload the current task before continuing.';
+  "Severe internal failure; restart the affected subsystem or reload the current task before continuing.";
 
 const FATAL_HINT_NON_RECOVERABLE =
-  'Unrecoverable internal failure; stop processing in this process and restart the application or host environment.';
+  "Unrecoverable internal failure; stop processing in this process and restart the application or host environment.";
 
 const ERROR_HINT_RECOVERABLE =
-  'Operation failed; retry or adjust configuration and inputs, then run it again.';
+  "Operation failed; retry or adjust configuration and inputs, then run it again.";
 
 const ERROR_HINT_NON_RECOVERABLE =
-  'Operation failed due to invalid configuration or environment; correct the setup before retrying.';
+  "Operation failed due to invalid configuration or environment; correct the setup before retrying.";
 
 const WARNING_HINT =
-  'Non-critical issue; processing continues but behaviour, performance, or results may be partially degraded.';
+  "Non-critical issue; processing continues but behaviour, performance, or results may be partially degraded.";
 
-const HEALTH_HINTS: Record<HealthStatus, (meta: ErrorMeta) => string | undefined> = {
+const HEALTH_HINTS: Record<
+  HealthStatus,
+  (meta: ErrorMeta) => string | undefined
+> = {
   fatal: (meta) =>
     meta.recoverable ? FATAL_HINT_RECOVERABLE : FATAL_HINT_NON_RECOVERABLE,
 

@@ -1,7 +1,7 @@
-import { bench, describe } from 'vitest';
+import { bench, describe } from "vitest";
 
-import { createSeqPair, publish, tryRead } from '../src/primitives/seqlock';
-import { MICRO_BENCH_OPTS } from '../vitest.config';
+import { createSeqPair, publish, tryRead } from "../src/primitives/seqlock";
+import { MICRO_BENCH_OPTS } from "../vitest.config";
 
 /**
  * @fileoverview
@@ -23,9 +23,9 @@ const payloadIndex = 2;
 // Keep the JIT from optimizing everything away.
 let _blackhole = 0;
 
-describe('Seqlock (micro): tryRead vs publish (uncontended)', () => {
+describe("Seqlock (micro): tryRead vs publish (uncontended)", () => {
   bench(
-    'tryRead uncontended (spin=0, retry=0)',
+    "tryRead uncontended (spin=0, retry=0)",
     () => {
       const result = tryRead(
         pair,
@@ -49,7 +49,7 @@ describe('Seqlock (micro): tryRead vs publish (uncontended)', () => {
   );
 
   bench(
-    'publish uncontended',
+    "publish uncontended",
     () => {
       publish(pair, () => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

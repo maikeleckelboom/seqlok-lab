@@ -8,7 +8,7 @@
  * - Used for versioning, cache keys, and change detection.
  */
 
-import type { MeterDef, ParamDef, SpecHash, SpecInput } from './types';
+import type { MeterDef, ParamDef, SpecHash, SpecInput } from "./types";
 
 /**
  * FNV-1a 64-bit, encoded as lowercase base36.
@@ -30,10 +30,10 @@ function fnv1aHash(input: string): string {
 
 function canonicalizeParam(def: ParamDef) {
   switch (def.kind) {
-    case 'f32':
-    case 'i32': {
-      const hasMin = 'min' in def;
-      const hasMax = 'max' in def;
+    case "f32":
+    case "i32": {
+      const hasMin = "min" in def;
+      const hasMax = "max" in def;
 
       if (hasMin && hasMax) {
         return { kind: def.kind, min: def.min, max: def.max };
@@ -50,19 +50,19 @@ function canonicalizeParam(def: ParamDef) {
       return { kind: def.kind };
     }
 
-    case 'bool':
+    case "bool":
       return { kind: def.kind };
 
-    case 'enum':
+    case "enum":
       // Values-order matters, so we preserve order
       return { kind: def.kind, values: [...def.values] };
 
-    case 'f32.array':
-    case 'i32.array':
-    case 'bool.array':
+    case "f32.array":
+    case "i32.array":
+    case "bool.array":
       return { kind: def.kind, length: def.length };
 
-    case 'enum.array':
+    case "enum.array":
       return {
         kind: def.kind,
         length: def.length,
@@ -73,16 +73,16 @@ function canonicalizeParam(def: ParamDef) {
 
 function canonicalizeMeter(def: MeterDef) {
   switch (def.kind) {
-    case 'f32':
-    case 'f64':
-    case 'u32':
-    case 'bool':
+    case "f32":
+    case "f64":
+    case "u32":
+    case "bool":
       return { kind: def.kind };
 
-    case 'f32.array':
-    case 'f64.array':
-    case 'bool.array':
-    case 'u32.array':
+    case "f32.array":
+    case "f64.array":
+    case "bool.array":
+    case "u32.array":
       return { kind: def.kind, length: def.length };
   }
 }
@@ -117,25 +117,25 @@ function sortedEntries(
  */
 function stableStringify(value: unknown): string {
   if (value === null) {
-    return 'null';
+    return "null";
   }
 
   const t = typeof value;
 
-  if (t === 'number' || t === 'boolean') {
+  if (t === "number" || t === "boolean") {
     return JSON.stringify(value);
   }
 
-  if (t === 'string') {
+  if (t === "string") {
     return JSON.stringify(value);
   }
 
   if (Array.isArray(value)) {
     const inner = value.map((item) => stableStringify(item));
-    return `[${inner.join(',')}]`;
+    return `[${inner.join(",")}]`;
   }
 
-  if (t === 'object') {
+  if (t === "object") {
     const record = value as Record<string, unknown>;
     const keys = Object.keys(record).sort();
     const parts: string[] = [];
@@ -145,11 +145,11 @@ function stableStringify(value: unknown): string {
       parts.push(`${JSON.stringify(key)}:${stableStringify(v)}`);
     }
 
-    return `{${parts.join(',')}}`;
+    return `{${parts.join(",")}}`;
   }
 
   // Fallback – should not be reached for well-formed SpecInput trees.
-  return 'null';
+  return "null";
 }
 
 /**

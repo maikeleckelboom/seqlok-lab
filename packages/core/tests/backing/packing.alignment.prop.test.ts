@@ -1,27 +1,27 @@
-import fc from 'fast-check';
-import { describe, expect, it } from 'vitest';
+import fc from "fast-check";
+import { describe, expect, it } from "vitest";
 
 import {
   BACKING_PLANE_PACK_ORDER_V1,
   computeBackingPlaneBases,
-} from '../../src/backing/map-views';
+} from "../../src/backing/map-views";
 
-import type { PlaneByteLengths } from '../../src/plan/types';
-import type { PlaneKey } from '../../src/primitives/planes';
+import type { PlaneByteLengths } from "../../src/plan/types";
+import type { PlaneKey } from "../../src/primitives/planes";
 
 const align4 = [
-  'PF32',
-  'PI32',
-  'MF32',
-  'MU32',
-  'PU',
+  "PF32",
+  "PI32",
+  "MF32",
+  "MU32",
+  "PU",
 ] as const satisfies readonly PlaneKey[];
 
-const align8 = ['MF64'] as const satisfies readonly PlaneKey[];
-const align1 = ['PB'] as const satisfies readonly PlaneKey[];
+const align8 = ["MF64"] as const satisfies readonly PlaneKey[];
+const align1 = ["PB"] as const satisfies readonly PlaneKey[];
 
-describe('Backing Plane Layout: Alignment & Contiguity Invariants', () => {
-  it('maintains natural alignment and strictly contiguous packing order across random layouts', () => {
+describe("Backing Plane Layout: Alignment & Contiguity Invariants", () => {
+  it("maintains natural alignment and strictly contiguous packing order across random layouts", () => {
     // Generate valid PlaneByteLengths where each plane size is a multiple of its element width.
     // This simulates the guarantees provided by the planner before layout calculation.
     const arb = fc.record<PlaneByteLengths>({
@@ -64,8 +64,9 @@ describe('Backing Plane Layout: Alignment & Contiguity Invariants', () => {
 
         // Invariant 3: Total Coverage
         // The end of the last plane must match the sum of all plane lengths.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const last = BACKING_PLANE_PACK_ORDER_V1[BACKING_PLANE_PACK_ORDER_V1.length - 1]!;
+        const last =
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          BACKING_PLANE_PACK_ORDER_V1[BACKING_PLANE_PACK_ORDER_V1.length - 1]!;
         const endLast = bases[last] + lens[last];
         const sum = (Object.keys(lens) as PlaneKey[]).reduce(
           (acc, k) => acc + lens[k],

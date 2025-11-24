@@ -1,75 +1,88 @@
 /**
  * @fileoverview
- * Binding registry for tracking controller/processor lifetimes per backing.
+ * Internal binding registry for tracking controller/processor/observer
+ * lifetimes per backing.
  *
  * @remarks
- * - Records active bindings per backing and role (controller vs processor).
- * - Enforces exclusive controller bindings when requested.
+ * - Records which roles are currently attached to a given `Backing`.
+ * - Provides a simple exclusivity guard for roles that should be unique.
  * - Used by bindings to prevent inconsistent or conflicting attachment patterns.
+ * - Not part of the public API surface.
  *
  * @internal
  */
 
-import { invariant } from '../../errors/invariant';
+import { invariant } from "../../errors/invariant";
 
-import type { Backing } from '../../backing/types';
+import type { Backing } from "../../backing/types";
 
-export type BindRole = 'controller' | 'processor';
+/**
+ * Supported binding roles.
+ *
+ * - `controller`: param writer + meter reader (owner).
+ * - `processor`: param reader + meter writer (primary consumer).
+ * - `observer`: param reader + meter reader (secondary consumer).
+ */
+export type BindRole = "controller" | "processor" | "observer";
 
 interface BindSlots {
-  controller?: true;
-  processor?: true;
+  controller?: true | undefined;
+  processor?: true | undefined;
+  observer?: true | undefined;
 }
 
 interface BindingStateView {
   readonly roles: {
     readonly controller: boolean;
     readonly processor: boolean;
+    readonly observer: boolean;
   };
 }
 
 /**
- * Tracks which roles are bound to a given backing.
- *
- * - Keyed by Backing so reconstructed views do not bypass this.
- * - Used by controller/processor bindings to enforce optional exclusivity.
+ * Tracks which roles are currently bound to a given backing.
  *
  * Registry is per-module; tests can reset it via clearBindingRegistry().
  */
 let BOUND = new WeakMap<Backing, BindSlots>();
 
-/**
- * Test/diagnostics helper: reset the binding registry to an empty state.
- *
- * Safe because all functions read BOUND via the module-local variable.
- */
 export function clearBindingRegistry(): void {
   BOUND = new WeakMap();
 }
 
+/**
+ * Register a non-exclusive binding for a role.
+ *
+ * @remarks
+ * Intended for roles that may legitimately have multiple bindings in a
+ * process (e.g. multiple processors or observers). Call sites that require
+ * exclusivity should use claimBinding() instead.
+ */
 export function noteBinding(backing: Backing, role: BindRole): void {
   const current = BOUND.get(backing);
   if (!current) {
     BOUND.set(backing, { [role]: true });
     return;
   }
+
   BOUND.set(backing, { ...current, [role]: true });
 }
 
 /**
- * Claim an exclusive binding slot for `role`.
+ * Claim an exclusive binding slot for a role on the given backing.
  *
- * If the role is already present for this backing, we treat it as an internal
- * invariant violation: something is double-binding the same backing.
+ * @remarks
+ * This is typically used for the controller role, where having more than
+ * one binding would violate ownership expectations.
  */
 export function claimBinding(backing: Backing, role: BindRole): void {
   const current = BOUND.get(backing);
 
   invariant(
     !current?.[role],
-    'internal.assertionFailed',
-    'Exclusive binding already exists for this backing and role',
-    { where: `binding.${role}`, detail: 'double-bind on Backing instance' },
+    "internal.assertionFailed",
+    "Exclusive binding already exists for this backing and role",
+    { where: `binding.${role}`, detail: "double-bind on Backing instance" },
   );
 
   if (!current) {
@@ -80,8 +93,10 @@ export function claimBinding(backing: Backing, role: BindRole): void {
 }
 
 /**
- * Release a binding slot. Once both roles are cleared, the backing
- * entry is removed entirely.
+ * Release a binding slot. Once *all* roles are cleared for a backing,
+ * the registry entry is removed.
+ *
+ * Releasing a role that is not currently registered is a no-op.
  */
 export function releaseBinding(backing: Backing, role: BindRole): void {
   const current = BOUND.get(backing);
@@ -89,12 +104,13 @@ export function releaseBinding(backing: Backing, role: BindRole): void {
     return;
   }
 
-  const next: BindSlots = { ...current };
-  // Explicit `delete` to avoid leaving dead flags lying around.
-  // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-  delete (next as Partial<Record<BindRole, true>>)[role];
+  const next: BindSlots = {
+    controller: role === "controller" ? undefined : current.controller,
+    processor: role === "processor" ? undefined : current.processor,
+    observer: role === "observer" ? undefined : current.observer,
+  };
 
-  if (!next.controller && !next.processor) {
+  if (!next.controller && !next.processor && !next.observer) {
     BOUND.delete(backing);
   } else {
     BOUND.set(backing, next);
@@ -102,21 +118,24 @@ export function releaseBinding(backing: Backing, role: BindRole): void {
 }
 
 /**
- * Introspection hook for diagnostics/tests.
+ * Introspection hook for diagnostics and tests.
  *
- * Normalizes the internal `BindSlots` into a stable view:
- * - Missing roles become `false`.
- * - Callers never see internal optional flags directly.
+ * @returns A snapshot of role presence for the given backing, or `undefined`
+ * if the backing has no registered roles.
  */
-export function getBindingState(backing: Backing): BindingStateView | undefined {
+export function getBindingState(
+  backing: Backing,
+): BindingStateView | undefined {
   const slots = BOUND.get(backing);
   if (!slots) {
     return undefined;
   }
+
   return {
     roles: {
-      controller: !!slots.controller,
-      processor: !!slots.processor,
+      controller: slots.controller === true,
+      processor: slots.processor === true,
+      observer: slots.observer === true,
     },
   };
 }

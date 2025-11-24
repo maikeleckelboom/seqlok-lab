@@ -1,10 +1,10 @@
-import { Worker } from 'node:worker_threads';
+import { Worker } from "node:worker_threads";
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { createSeqPair, tryRead } from '../../src/primitives/seqlock';
+import { createSeqPair, tryRead } from "../../src/primitives/seqlock";
 
-describe('Seqlock Cross-Thread Coherence', () => {
+describe("Seqlock Cross-Thread Coherence", () => {
   /**
    * Verifies that the seqlock mechanism maintains data consistency (safety)
    * and allows progress (liveness) across thread boundaries using SharedArrayBuffer.
@@ -15,7 +15,7 @@ describe('Seqlock Cross-Thread Coherence', () => {
    * stale values or torn writes mixed with new sequences.
    * 2. Progress: We eventually observe values greater than 0.
    */
-  it('observes monotone progression and exits cleanly under concurrent load', async () => {
+  it("observes monotone progression and exits cleanly under concurrent load", async () => {
     // Memory Layout: [LOCK_WORD, SEQUENCE_WORD, DATA_WORD]
     // All 32-bit unsigned integers.
     const sab = new SharedArrayBuffer(3 * 4);
@@ -80,12 +80,12 @@ describe('Seqlock Cross-Thread Coherence', () => {
     let hasProgressed = false;
     let workerFinished = false;
 
-    worker.on('message', (msg: unknown) => {
+    worker.on("message", (msg: unknown) => {
       if (
-        typeof msg === 'object' &&
+        typeof msg === "object" &&
         msg !== null &&
-        'type' in msg &&
-        (msg as { type: string }).type === 'done'
+        "type" in msg &&
+        (msg as { type: string }).type === "done"
       ) {
         workerFinished = true;
       }
@@ -95,10 +95,14 @@ describe('Seqlock Cross-Thread Coherence', () => {
     const start = Date.now();
 
     while (Date.now() - start < 500) {
-      const readResult = tryRead(pair, () => Atomics.load(u32, INDICES.VALUE) >>> 0, {
-        spinBudget: 512,
-        retryBudget: 4,
-      });
+      const readResult = tryRead(
+        pair,
+        () => Atomics.load(u32, INDICES.VALUE) >>> 0,
+        {
+          spinBudget: 512,
+          retryBudget: 4,
+        },
+      );
 
       if (!readResult.ok) {
         continue;
@@ -118,7 +122,7 @@ describe('Seqlock Cross-Thread Coherence', () => {
 
     // Ensure worker shuts down cleanly
     const exitCode = await new Promise<number>((resolve) => {
-      worker.on('exit', resolve);
+      worker.on("exit", resolve);
     });
 
     expect(exitCode).toBe(0);

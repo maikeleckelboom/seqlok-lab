@@ -66,7 +66,9 @@ export interface ObserverBinding<S extends SpecInput> {
 export interface ObserverParams<S extends SpecInput> {
   snapshot(): ParamsSnapshot<S>;
 
-  snapshot<const K extends readonly ParamKeys<S>[]>(keys: K): SnapshotParamsObject<S, K>;
+  snapshot<const K extends readonly ParamKeys<S>[]>(
+    keys: K,
+  ): SnapshotParamsObject<S, K>;
 
   version(): PUSeq;
 }
@@ -74,7 +76,9 @@ export interface ObserverParams<S extends SpecInput> {
 export interface ObserverMeters<S extends SpecInput> {
   snapshot(): MetersSnapshot<S>;
 
-  snapshot<const K extends readonly MeterKeys<S>[]>(keys: K): SnapshotMetersObject<S, K>;
+  snapshot<const K extends readonly MeterKeys<S>[]>(
+    keys: K,
+  ): SnapshotMetersObject<S, K>;
 
   version(): MUSeq;
 }

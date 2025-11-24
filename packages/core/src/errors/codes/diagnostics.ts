@@ -8,7 +8,8 @@
  * - Registered into the global error registry as the `diagnostics.*` domain.
  */
 
-import type { ErrorDetails, ErrorMeta } from '../registry';
+import type { AssertTrue, IsExact } from "../../internal/type-assert";
+import type { ErrorDetails, ErrorMeta } from "../registry";
 
 /**
  * Diagnostics error codes.
@@ -33,13 +34,13 @@ import type { ErrorDetails, ErrorMeta } from '../registry';
  * generally not safe to expose across trust boundaries.
  */
 export type DiagnosticsErrorCode =
-  | 'diagnostics.counterInvalid'
-  | 'diagnostics.featureInvalid';
+  | "diagnostics.counterInvalid"
+  | "diagnostics.featureInvalid";
 
 /**
  * Symbolic keys for diagnostics error descriptors.
  */
-export type DiagnosticsErrorKey = 'counterInvalid' | 'featureInvalid';
+export type DiagnosticsErrorKey = "counterInvalid" | "featureInvalid";
 
 /**
  * Details for diagnostics counters that contain invalid values.
@@ -109,8 +110,8 @@ interface DiagnosticsErrorDescriptor<C extends DiagnosticsErrorCode> {
  *   to reflect that they degrade observability, not core engine safety.
  */
 interface DiagnosticsErrorsMap {
-  readonly counterInvalid: DiagnosticsErrorDescriptor<'diagnostics.counterInvalid'>;
-  readonly featureInvalid: DiagnosticsErrorDescriptor<'diagnostics.featureInvalid'>;
+  readonly counterInvalid: DiagnosticsErrorDescriptor<"diagnostics.counterInvalid">;
+  readonly featureInvalid: DiagnosticsErrorDescriptor<"diagnostics.featureInvalid">;
 }
 
 /**
@@ -119,19 +120,19 @@ interface DiagnosticsErrorsMap {
  */
 const DIAGNOSTICS_ERRORS_DEF = {
   counterInvalid: {
-    code: 'diagnostics.counterInvalid',
-    message: 'Diagnostics counter invalid',
+    code: "diagnostics.counterInvalid",
+    message: "Diagnostics counter invalid",
     meta: {
-      severity: 'warning',
+      severity: "warning",
       recoverable: true,
       boundarySafe: false,
     },
   },
   featureInvalid: {
-    code: 'diagnostics.featureInvalid',
-    message: 'Diagnostics feature invalid',
+    code: "diagnostics.featureInvalid",
+    message: "Diagnostics feature invalid",
     meta: {
-      severity: 'warning',
+      severity: "warning",
       recoverable: true,
       boundarySafe: false,
     },
@@ -143,13 +144,13 @@ const DIAGNOSTICS_ERRORS_DEF = {
  */
 export const DIAGNOSTICS_ERRORS: DiagnosticsErrorsMap = DIAGNOSTICS_ERRORS_DEF;
 
-/* Sanity check: ensure DiagnosticsErrorCode union matches DIAGNOSTICS_ERRORS.*.code */
-type _CodesFromDescriptors = DiagnosticsErrorsMap[DiagnosticsErrorKey]['code'];
-type _DiagnosticsCodesMatch = DiagnosticsErrorCode extends _CodesFromDescriptors
-  ? _CodesFromDescriptors extends DiagnosticsErrorCode
-    ? true
-    : never
-  : never;
+type DiagnosticsCodesFromDescriptors =
+  DiagnosticsErrorsMap[DiagnosticsErrorKey]["code"];
 
-const _diagnosticsCodesMatch: _DiagnosticsCodesMatch = true;
-void _diagnosticsCodesMatch;
+type DiagnosticsCodesEqual = IsExact<
+  DiagnosticsErrorCode,
+  DiagnosticsCodesFromDescriptors
+>;
+
+/** @internal */
+export type _DiagnosticsCodesMatch = AssertTrue<DiagnosticsCodesEqual>;

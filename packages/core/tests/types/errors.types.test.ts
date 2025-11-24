@@ -1,12 +1,12 @@
-import { describe, expectTypeOf, it } from 'vitest';
+import { describe, expectTypeOf, it } from "vitest";
 
-import type { HandoffSpecHashMismatchDetails } from '../../src/errors/codes/handoff';
-import type { TypedArrayName } from '../../src/errors/registry';
-import type { ErrorPayload } from 'packages/core/src';
+import type { HandoffSpecHashMismatchDetails } from "../../src/errors/codes/handoff";
+import type { TypedArrayName } from "../../src/errors/registry";
+import type { ErrorPayload } from "packages/core/src";
 
-describe('Error Payload Shapes (Typed Contracts)', () => {
-  it('binding.snapshotIntoTypeMismatch payload', () => {
-    type P = ErrorPayload<'binding.snapshotIntoTypeMismatch'>;
+describe("Error Payload Shapes (Typed Contracts)", () => {
+  it("binding.snapshotIntoTypeMismatch payload", () => {
+    type P = ErrorPayload<"binding.snapshotIntoTypeMismatch">;
     interface Required {
       readonly key: string;
       readonly expectedType: TypedArrayName;
@@ -17,8 +17,8 @@ describe('Error Payload Shapes (Typed Contracts)', () => {
     expectTypeOf<P>().toExtend<Required>();
   });
 
-  it('binding.snapshotIntoLengthMismatch payload', () => {
-    type P = ErrorPayload<'binding.snapshotIntoLengthMismatch'>;
+  it("binding.snapshotIntoLengthMismatch payload", () => {
+    type P = ErrorPayload<"binding.snapshotIntoLengthMismatch">;
     interface Required {
       readonly key: string;
       readonly expectedType: TypedArrayName;
@@ -29,8 +29,8 @@ describe('Error Payload Shapes (Typed Contracts)', () => {
     expectTypeOf<P>().toExtend<Required>();
   });
 
-  it('handoff.specHashMismatch payload', () => {
-    type P = ErrorPayload<'handoff.specHashMismatch'>;
+  it("handoff.specHashMismatch payload", () => {
+    type P = ErrorPayload<"handoff.specHashMismatch">;
     expectTypeOf<P>().toExtend<HandoffSpecHashMismatchDetails>();
   });
 });

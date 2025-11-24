@@ -1,14 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { defineSpec } from '../../src';
-import { bindingsFromSpec } from '../helpers/binding';
+import { defineSpec } from "../../src";
+import { bindingsFromSpec } from "../helpers/binding";
 
 // This test ensures consistent memory layout for array parameters
 // DO NOT DELETE - this is a critical regression test for memory layout stability
-describe('Regression: Array offsets layout (do not delete)', () => {
-  it('correctly reads multiple Float32 arrays when interleaved with scalars', () => {
+describe("Regression: Array offsets layout (do not delete)", () => {
+  it("correctly reads multiple Float32 arrays when interleaved with scalars", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'multi-array-offset',
+      id: "multi-array-offset",
       params: {
         // Layout strategy:
         // a: scalar (offset 0)
@@ -25,14 +25,14 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     const { ctl, proc } = bindingsFromSpec(spec);
 
     // Write distinct values to all fields
-    ctl.params.set('a', 0.1);
-    ctl.params.stage('b', (v) => {
+    ctl.params.set("a", 0.1);
+    ctl.params.stage("b", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = 0.2 + i * 0.01;
       }
     });
-    ctl.params.set('c', 0.3);
-    ctl.params.stage('d', (v) => {
+    ctl.params.set("c", 0.3);
+    ctl.params.stage("d", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = 0.4 + i * 0.01;
       }
@@ -63,9 +63,9 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     expect(snap.d[7]).toBeCloseTo(0.47);
   });
 
-  it('resolves offsets correctly for mixed Int32 and Boolean arrays', () => {
+  it("resolves offsets correctly for mixed Int32 and Boolean arrays", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'mixed-array-offset',
+      id: "mixed-array-offset",
       params: {
         // PF32 Plane
         gain: param.f32({ min: 0, max: 1 }),
@@ -79,14 +79,14 @@ describe('Regression: Array offsets layout (do not delete)', () => {
 
     const { ctl, proc } = bindingsFromSpec(spec);
 
-    ctl.params.set('gain', 0.5);
-    ctl.params.set('mode', 7);
-    ctl.params.stage('indices', (v) => {
+    ctl.params.set("gain", 0.5);
+    ctl.params.set("mode", 7);
+    ctl.params.stage("indices", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i * 10;
       }
     });
-    ctl.params.stage('flags', (v) => {
+    ctl.params.stage("flags", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i % 2;
       }
@@ -110,9 +110,9 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     });
   });
 
-  it('publishes and snapshots meter arrays correctly with mixed scalar/array layout', () => {
+  it("publishes and snapshots meter arrays correctly with mixed scalar/array layout", () => {
     const spec = defineSpec(({ param, meter }) => ({
-      id: 'meter-array-offset',
+      id: "meter-array-offset",
       params: {
         gain: param.f32({ min: 0, max: 1 }),
       },
@@ -128,13 +128,13 @@ describe('Regression: Array offsets layout (do not delete)', () => {
 
     proc.meters.publish((writer) => {
       writer.rms(0.5);
-      writer.stage('spectrum', (v) => {
+      writer.stage("spectrum", (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = i / 16;
         }
       });
       writer.peak(0.9);
-      writer.stage('histogram', (v) => {
+      writer.stage("histogram", (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = (i + 1) * 0.1;
         }
@@ -152,9 +152,9 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     expect(snap.histogram[7]).toBeCloseTo(0.8);
   });
 
-  it('writes into user-provided buffers correctly during snapshot (identity & offset check)', () => {
+  it("writes into user-provided buffers correctly during snapshot (identity & offset check)", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'into-buffer-offset',
+      id: "into-buffer-offset",
       params: {
         scalar: param.f32({ min: 0, max: 1 }),
         arr1: param.f32.array(4),
@@ -164,10 +164,10 @@ describe('Regression: Array offsets layout (do not delete)', () => {
 
     const { ctl } = bindingsFromSpec(spec);
 
-    ctl.params.stage('arr1', (v) => {
+    ctl.params.stage("arr1", (v) => {
       v.fill(1.0);
     });
-    ctl.params.stage('arr2', (v) => {
+    ctl.params.stage("arr2", (v) => {
       v.fill(2.0);
     });
 
@@ -176,7 +176,7 @@ describe('Regression: Array offsets layout (do not delete)', () => {
       arr2: new Float32Array(8),
     };
 
-    const snap = ctl.params.snapshot({ keys: ['arr1', 'arr2'], into });
+    const snap = ctl.params.snapshot({ keys: ["arr1", "arr2"], into });
 
     // Verify identity (the function must use the provided buffers)
     expect(snap.arr1).toBe(into.arr1);
@@ -191,9 +191,9 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     expect(snap.arr2.every((v) => v === 2.0)).toBe(true);
   });
 
-  it('handles arrays positioned at large byte offsets correctly', () => {
+  it("handles arrays positioned at large byte offsets correctly", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'large-offset',
+      id: "large-offset",
       params: {
         // Create padding to push "late" array to a high offset
         early1: param.f32.array(100),
@@ -205,7 +205,7 @@ describe('Regression: Array offsets layout (do not delete)', () => {
 
     const { ctl, proc } = bindingsFromSpec(spec);
 
-    ctl.params.stage('late', (v) => {
+    ctl.params.stage("late", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i;
       }
@@ -217,21 +217,21 @@ describe('Regression: Array offsets layout (do not delete)', () => {
       expect(view.late[49]).toBe(49);
     });
 
-    const snap = ctl.params.snapshot({ keys: ['late'] });
+    const snap = ctl.params.snapshot({ keys: ["late"] });
     expect(snap.late.length).toBe(50);
     expect(snap.late[0]).toBe(0);
     expect(snap.late[49]).toBe(49);
   });
 
-  it('maps enum arrays to numeric indices correctly at non-zero offsets', () => {
+  it("maps enum arrays to numeric indices correctly at non-zero offsets", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'enum-array-offset',
+      id: "enum-array-offset",
       params: {
         // Offset padding
         mode: param.f32({ min: 0, max: 1 }),
         // Enum array at non-zero offset
         waveforms: param.enum.array({
-          values: ['sine', 'square', 'saw', 'triangle'],
+          values: ["sine", "square", "saw", "triangle"],
           length: 8,
         }),
       },
@@ -240,7 +240,7 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     const { ctl, proc } = bindingsFromSpec(spec);
 
     // Stage indices via controller
-    ctl.params.stage('waveforms', (v) => {
+    ctl.params.stage("waveforms", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i % 4;
       }
@@ -260,9 +260,9 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     expect(snap.waveforms[3]).toBe(3);
   });
 
-  it('manages 64-bit alignment and offsets for Float64 meter arrays', () => {
+  it("manages 64-bit alignment and offsets for Float64 meter arrays", () => {
     const spec = defineSpec(({ meter }) => ({
-      id: 'f64-array-offset',
+      id: "f64-array-offset",
       meters: {
         counter: meter.u32(), // Pushes MF64 plane start
         rms: meter.f32(), // MF32 @ 0
@@ -278,12 +278,12 @@ describe('Regression: Array offsets layout (do not delete)', () => {
       writer.counter(42);
       writer.rms(0.5);
       writer.peak(0.9);
-      writer.stage('precise', (v) => {
+      writer.stage("precise", (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = i / 10;
         }
       });
-      writer.stage('spectrum', (v) => {
+      writer.stage("spectrum", (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = Math.sin(i);
         }
@@ -305,9 +305,9 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     expect(snap.spectrum[15]).toBeCloseTo(Math.sin(15));
   });
 
-  it('maintains data integrity for arrays across multiple write/read cycles', () => {
+  it("maintains data integrity for arrays across multiple write/read cycles", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'multi-cycle',
+      id: "multi-cycle",
       params: {
         a: param.f32({ min: 0, max: 1 }),
         b: param.f32.array(6),
@@ -319,10 +319,10 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     const { ctl, proc } = bindingsFromSpec(spec);
 
     // Cycle 1: Uniform fill
-    ctl.params.stage('b', (v) => {
+    ctl.params.stage("b", (v) => {
       v.fill(1.0);
     });
-    ctl.params.stage('d', (v) => {
+    ctl.params.stage("d", (v) => {
       v.fill(2.0);
     });
 
@@ -334,12 +334,12 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     });
 
     // Cycle 2: Gradient fill (different values)
-    ctl.params.stage('b', (v) => {
+    ctl.params.stage("b", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i * 0.1;
       }
     });
-    ctl.params.stage('d', (v) => {
+    ctl.params.stage("d", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = (i + 1) * 0.2;
       }
@@ -357,7 +357,7 @@ describe('Regression: Array offsets layout (do not delete)', () => {
 
   it('supports partial snapshots with "into" buffers for offset arrays', () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'partial-into',
+      id: "partial-into",
       params: {
         x: param.f32({ min: 0, max: 1 }),
         arr1: param.f32.array(8),
@@ -368,12 +368,12 @@ describe('Regression: Array offsets layout (do not delete)', () => {
 
     const { ctl } = bindingsFromSpec(spec);
 
-    ctl.params.stage('arr1', (v) => {
+    ctl.params.stage("arr1", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i;
       }
     });
-    ctl.params.stage('arr2', (v) => {
+    ctl.params.stage("arr2", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i * 2;
       }
@@ -383,7 +383,7 @@ describe('Regression: Array offsets layout (do not delete)', () => {
     const buffer2 = new Float32Array(12);
 
     const snap = ctl.params.snapshot({
-      keys: ['arr1', 'arr2'],
+      keys: ["arr1", "arr2"],
       into: { arr1: buffer1, arr2: buffer2 },
     });
 

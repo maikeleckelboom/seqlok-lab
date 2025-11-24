@@ -8,9 +8,9 @@
  * - Separate from user-facing features to avoid accidental exposure.
  */
 
-import { createError } from '../errors/error';
+import { createError } from "../errors/error";
 
-import type { DiagnosticsFeatureDetails } from '../errors/codes/diagnostics';
+import type { DiagnosticsFeatureDetails } from "../errors/codes/diagnostics";
 
 /**
  * Known diagnostics / debug feature flags.
@@ -23,7 +23,10 @@ import type { DiagnosticsFeatureDetails } from '../errors/codes/diagnostics';
  *
  * They are intentionally separate from any user-facing feature flags.
  */
-export type DiagnosticsFeatureName = 'seqlockTrace' | 'swapTimeline' | 'memoryWatermarks';
+export type DiagnosticsFeatureName =
+  | "seqlockTrace"
+  | "swapTimeline"
+  | "memoryWatermarks";
 
 /**
  * Canonical list of features that the current build knows how to handle.
@@ -34,9 +37,9 @@ export type DiagnosticsFeatureName = 'seqlockTrace' | 'swapTimeline' | 'memoryWa
  * depends on a specific feature name.
  */
 const KNOWN_FEATURES: readonly DiagnosticsFeatureName[] = [
-  'seqlockTrace',
-  'swapTimeline',
-  'memoryWatermarks',
+  "seqlockTrace",
+  "swapTimeline",
+  "memoryWatermarks",
 ];
 
 /**
@@ -48,7 +51,9 @@ const KNOWN_FEATURES: readonly DiagnosticsFeatureName[] = [
  */
 const enabledFeatures = new Set<DiagnosticsFeatureName>();
 
-function isKnownDiagnosticsFeature(feature: string): feature is DiagnosticsFeatureName {
+function isKnownDiagnosticsFeature(
+  feature: string,
+): feature is DiagnosticsFeatureName {
   return (KNOWN_FEATURES as readonly string[]).includes(feature);
 }
 
@@ -64,12 +69,12 @@ export function enableDiagnosticsFeatureByName(feature: string): void {
   if (!isKnownDiagnosticsFeature(feature)) {
     const details: DiagnosticsFeatureDetails = {
       feature,
-      detail: 'Unknown diagnostics feature flag',
+      detail: "Unknown diagnostics feature flag",
     };
 
     throw createError(
-      'diagnostics.featureInvalid',
-      'Diagnostics feature invalid',
+      "diagnostics.featureInvalid",
+      "Diagnostics feature invalid",
       details,
     );
   }
@@ -84,14 +89,18 @@ export function enableDiagnosticsFeatureByName(feature: string): void {
  * @remarks
  * This never throws; the type guarantees that the feature is known.
  */
-export function enableDiagnosticsFeature(feature: DiagnosticsFeatureName): void {
+export function enableDiagnosticsFeature(
+  feature: DiagnosticsFeatureName,
+): void {
   enabledFeatures.add(feature);
 }
 
 /**
  * Check whether a diagnostics feature is currently enabled.
  */
-export function isDiagnosticsFeatureEnabled(feature: DiagnosticsFeatureName): boolean {
+export function isDiagnosticsFeatureEnabled(
+  feature: DiagnosticsFeatureName,
+): boolean {
   return enabledFeatures.has(feature);
 }
 

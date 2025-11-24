@@ -25,14 +25,18 @@ type SeqlockReadResult<T> =
 
 ```ts
 // ✅ CORRECT
-throw createError('binding.snapshotRetryExhausted', {
-  where: 'controller.meters.snapshot',
+throw createError("binding.snapshotRetryExhausted", {
+  where: "controller.meters.snapshot",
 });
 
 // ❌ WRONG - no inline message string
-throw createError('binding.snapshotRetryExhausted', 'Controller meter snapshot', {
-  where: 'controller.meters.snapshot',
-});
+throw createError(
+  "binding.snapshotRetryExhausted",
+  "Controller meter snapshot",
+  {
+    where: "controller.meters.snapshot",
+  },
+);
 ```
 
 **Rationale:** Messages come from the error registry, not call sites.
@@ -47,19 +51,19 @@ if (!result.ok) {
 
   // These increment on ANY failure
   if (spins >= spinBudget) {
-    incrementCounter('spinBudgetExhausted');
+    incrementCounter("spinBudgetExhausted");
   }
   if (retries >= retryBudget) {
-    incrementCounter('retryBudgetExhausted');
+    incrementCounter("retryBudgetExhausted");
   }
 
-  if (degrade === 'never') {
+  if (degrade === "never") {
     // NO degradedSnapshots increment here!
-    throw createError('binding.snapshotRetryExhausted', { where });
+    throw createError("binding.snapshotRetryExhausted", { where });
   }
 
   // ONLY increment when we actually degrade
-  incrementCounter('degradedSnapshots');
+  incrementCounter("degradedSnapshots");
   return getDegradedSnapshot();
 }
 ```
@@ -79,7 +83,7 @@ if (!result.ok) {
 }
 
 // ❌ WRONG - no failureReason on primitive result
-if (result.status.failureReason === 'spinBudget') {
+if (result.status.failureReason === "spinBudget") {
   /* ... */
 }
 ```
@@ -107,12 +111,12 @@ export interface ControllerMeterPolicyOptions {
 // In binding layer failure paths (already cold):
 // NO feature gate needed - this is already rare
 if (spins >= spinBudget) {
-  incrementCounter('spinBudgetExhausted');
+  incrementCounter("spinBudgetExhausted");
 }
 
 // In hot paths or high-frequency observation:
 // YES, use feature gates
-if (isDiagnosticsFeatureEnabled('seqlockTrace')) {
+if (isDiagnosticsFeatureEnabled("seqlockTrace")) {
   observeSeqlockRead(result.status);
 }
 ```
@@ -124,7 +128,7 @@ if (isDiagnosticsFeatureEnabled('seqlockTrace')) {
 
 ## 7. API Surface Reality Check
 
-### What exists today:
+### What exists today
 
 ```ts
 const plan = planLayout(spec);
@@ -136,7 +140,7 @@ const controller = bindController(spec, backing);
 const processor = bindProcessor(received);
 ```
 
-### What's conceptual/future:
+### What's conceptual/future
 
 ```ts
 // This shape does NOT exist yet - mark as conceptual in docs

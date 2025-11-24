@@ -7,17 +7,17 @@
  * - Provides type-safe access to underlying SharedArrayBuffer(s)
  * - Used by allocators, mappers, and tests
  *
- * @see {@link getSharedBuffer} - For single-buffer backings
- * @see {@link getBufferForPlane} - For plane-specific access
+ * @see {@link getBackingBuffer} - For single-buffer backings
+ * @see {@link getPlaneBuffer} - For plane-specific access
  * @see {@link ../../docs/architecture/11-backing-and-plane-layout.md} for design
  *
  * @internal
  */
 
-import { createError } from '../errors/error';
+import { createError } from "../errors/error";
 
-import type { Backing } from './types';
-import type { PlaneKey } from '../primitives/planes';
+import type { Backing } from "./types";
+import type { PlaneKey } from "../primitives/planes";
 
 /**
  * Gets the single SharedArrayBuffer for a non-partitioned backing.
@@ -25,7 +25,7 @@ import type { PlaneKey } from '../primitives/planes';
  * @remarks
  * - `shared`: Returns the contiguous SAB
  * - `wasm-shared`: Returns the WebAssembly.Memory buffer
- * - `shared-partitioned`: Throws (use {@link getBufferForPlane} instead)
+ * - `shared-partitioned`: Throws (use {@link getPlaneBuffer} instead)
  *
  * @throws {SeqlokError<'internal.assertionFailed'>}
  * If called with a partitioned backing
@@ -33,23 +33,23 @@ import type { PlaneKey } from '../primitives/planes';
  * @example
  * ```typescript
  * // For non-partitioned backings
- * const buf = getSharedBuffer(backing);
+ * const buf = getBackingBuffer(backing);
  * const view = new Float32Array(buf);
  * ```
  *
  * @internal
  */
-export function getSharedBuffer(backing: Backing): SharedArrayBuffer {
+export function getBackingBuffer(backing: Backing): SharedArrayBuffer {
   switch (backing.kind) {
-    case 'shared':
+    case "shared":
       return backing.sab;
 
-    case 'wasm-shared':
+    case "wasm-shared":
       // `allocateWasmShared` ensures this is a SharedArrayBuffer.
       // We rely on that invariant here to keep this helper hot-path friendly.
       return backing.memory.buffer as unknown as SharedArrayBuffer;
 
-    case 'shared-partitioned':
+    case "shared-partitioned":
       break;
 
     default: {
@@ -61,11 +61,11 @@ export function getSharedBuffer(backing: Backing): SharedArrayBuffer {
   }
 
   throw createError(
-    'internal.assertionFailed',
-    'getSharedBuffer(backing): partitioned backing has no single SharedArrayBuffer; use getBufferForPlane instead.',
+    "internal.assertionFailed",
+    "getBackingBuffer(backing): partitioned backing has no single SharedArrayBuffer; use getPlaneBuffer instead.",
     {
-      where: 'backing.getSharedBuffer',
-      detail: 'shared-partitioned',
+      where: "backing.getBackingBuffer",
+      detail: "shared-partitioned",
     },
   );
 }
@@ -80,15 +80,18 @@ export function getSharedBuffer(backing: Backing): SharedArrayBuffer {
  * @example
  * ```typescript
  * // Works with any backing type
- * const buf = getBufferForPlane(backing, 'PF32');
+ * const buf = getPlaneBuffer(backing, 'PF32');
  * const view = new Float32Array(buf);
  * ```
  *
  * @see {@link mapViews} For creating typed array views
  */
-export function getBufferForPlane(backing: Backing, plane: PlaneKey): SharedArrayBuffer {
-  if (backing.kind === 'shared-partitioned') {
+export function getPlaneBuffer(
+  backing: Backing,
+  plane: PlaneKey,
+): SharedArrayBuffer {
+  if (backing.kind === "shared-partitioned") {
     return backing.planes[plane];
   }
-  return getSharedBuffer(backing);
+  return getBackingBuffer(backing);
 }

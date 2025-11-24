@@ -42,7 +42,7 @@ We do not create "view classes" or wrapper objects. Instead, you define the memo
 Instead of writing a class with getters and setters, you describe the layout data types:
 
 ```ts
-import { defineSpec } from '@seqlok/core';
+import { defineSpec } from "@seqlok/core";
 
 // 1. Define the structure (the "schema")
 export const boidSpec = defineSpec(({ param, meter }) => ({
@@ -69,10 +69,10 @@ You don't instantiate a `Boid` object. You use the binding functions to access t
 
 ```ts
 // Write directly using the key from the spec
-controller.params.set('separation', 5.5);
+controller.params.set("separation", 5.5);
 
 // Zero-allocation array write
-controller.params.stage('target', (view) => {
+controller.params.stage("target", (view) => {
   view[0] = 10; // x
   view[1] = 20; // y
   view[2] = 0; // z
@@ -173,13 +173,13 @@ Seqlok provides built-in utilities to verify the environment before you even att
 Don't wait for a crash. Fail fast during initialization using `assertSabSupport`.
 
 ```ts
-import { assertSabSupport } from '@seqlok/core';
+import { assertSabSupport } from "@seqlok/core";
 
 function initDevice() {
   try {
     // This throws a specific 'env.unsupported' or 'env.coopCoepRequired'
     // error if headers are missing.
-    assertSabSupport('MyDeviceInit');
+    assertSabSupport("MyDeviceInit");
 
     // ... proceed to planLayout and allocateShared ...
   } catch (error) {
@@ -194,12 +194,14 @@ function initDevice() {
 If you want to feature-detect without crashing, use `probeEnv`.
 
 ```ts
-import { probeEnv } from '@seqlok/core';
+import { probeEnv } from "@seqlok/core";
 
 const env = probeEnv();
 
-if (env.kind === 'browser' && !env.crossOriginIsolated) {
-  console.warn('Running in degraded mode: Seqlok disabled due to missing COOP/COEP.');
+if (env.kind === "browser" && !env.crossOriginIsolated) {
+  console.warn(
+    "Running in degraded mode: Seqlok disabled due to missing COOP/COEP.",
+  );
   // Fallback logic here
 }
 ```
@@ -213,7 +215,7 @@ Seqlok errors are structured. Instead of parsing error strings, use the `interpr
 This is particularly useful for UI feedback ("Do I tell the user to reload, or just retry?").
 
 ```ts
-import { isSeqlokError, getErrorMeta, interpretHealth } from '@seqlok/core';
+import { isSeqlokError, getErrorMeta, interpretHealth } from "@seqlok/core";
 
 try {
   // ... seqlok operations ...

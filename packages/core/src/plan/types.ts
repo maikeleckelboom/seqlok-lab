@@ -4,8 +4,8 @@
  * Planning output types live here; DSL-facing spec types remain under `spec/`.
  */
 
-import type { PlaneKey } from '../primitives/planes';
-import type { SpecHash, SpecInput } from '../spec/types';
+import type { PlaneKey } from "../primitives/planes";
+import type { SpecHash, SpecInput } from "../spec/types";
 
 /**
  * Logical stride (in bytes) reserved around seqlock planes (PU/MU).
@@ -101,10 +101,10 @@ export interface Plan<S extends SpecInput> {
   readonly planes: PlaneByteLengths;
 
   /** Per-entry param slots, keyed by authored param keys. */
-  readonly params: Readonly<{ [K in keyof S['params']]: EntrySlot }>;
+  readonly params: Readonly<{ [K in keyof S["params"]]: EntrySlot }>;
 
   /** Per-entry meter slots, keyed by authored meter keys. */
-  readonly meters: Readonly<{ [K in keyof S['meters']]: EntrySlot }>;
+  readonly meters: Readonly<{ [K in keyof S["meters"]]: EntrySlot }>;
 
   /**
    * Seqlock pair indices (pair per domain).

@@ -16,15 +16,18 @@ import {
   type BindingSnapshotIntoLengthMismatchDetails,
   type BindingSnapshotIntoTypeMismatchDetails,
   type BindingUnknownKeyDetails,
-} from '../../errors/codes/binding';
-import { createError } from '../../errors/error';
+} from "../../errors/codes/binding";
+import { createError } from "../../errors/error";
+import { invariant } from "../../errors/invariant";
+
+import type { MeterPlaneViews, ParamPlaneViews } from "../../backing/map-views";
 
 export function throwUnknownKey(
-  scope: 'params' | 'meters',
+  scope: "params" | "meters",
   key: string,
   known: readonly string[],
 ): never {
-  throw createError('binding.unknownKey', `Unknown ${scope} key "${key}"`, {
+  throw createError("binding.unknownKey", `Unknown ${scope} key "${key}"`, {
     scope,
     key,
     known,
@@ -37,7 +40,7 @@ export function throwParamRange(
   max: number,
   received: number,
 ): never {
-  throw createError('binding.paramRange', `Param "${key}" out of range`, {
+  throw createError("binding.paramRange", `Param "${key}" out of range`, {
     key,
     min,
     max,
@@ -50,11 +53,15 @@ export function throwInvalidParamValue(
   expected?: unknown,
   received?: unknown,
 ): never {
-  throw createError('binding.paramInvalidValue', `Param "${key}" has invalid value`, {
-    key,
-    expected,
-    received,
-  } satisfies BindingInvalidValueDetails);
+  throw createError(
+    "binding.paramInvalidValue",
+    `Param "${key}" has invalid value`,
+    {
+      key,
+      expected,
+      received,
+    } satisfies BindingInvalidValueDetails,
+  );
 }
 
 export function throwIntoType(
@@ -65,12 +72,12 @@ export function throwIntoType(
   receivedLength: number,
 ): never {
   throw createError(
-    'binding.snapshotIntoTypeMismatch',
+    "binding.snapshotIntoTypeMismatch",
     `Into buffer type mismatch for "${key}"`,
     {
       key,
       expectedType:
-        expectedType as BindingSnapshotIntoTypeMismatchDetails['expectedType'],
+        expectedType as BindingSnapshotIntoTypeMismatchDetails["expectedType"],
       receivedType,
       expectedLength,
       receivedLength,
@@ -85,12 +92,12 @@ export function throwIntoLength(
   receivedLength: number,
 ): never {
   throw createError(
-    'binding.snapshotIntoLengthMismatch',
+    "binding.snapshotIntoLengthMismatch",
     `Into buffer length mismatch for "${key}"`,
     {
       key,
       expectedType:
-        expectedType as BindingSnapshotIntoLengthMismatchDetails['expectedType'],
+        expectedType as BindingSnapshotIntoLengthMismatchDetails["expectedType"],
       receivedType: expectedType,
       expectedLength,
       receivedLength,
@@ -99,10 +106,10 @@ export function throwIntoLength(
 }
 
 /** @internal Param planes (data) — binding-local union. */
-export type ParamPlane = 'PF32' | 'PI32' | 'PB';
+export type ParamPlane = "PF32" | "PI32" | "PB";
 
 /** @internal Meter planes (data) — binding-local union. */
-export type MeterPlane = 'MF32' | 'MF64' | 'MU32';
+export type MeterPlane = "MF32" | "MF64" | "MU32";
 
 type ParamDst = Float32Array | Int32Array | Uint8Array;
 type MeterDst = Float32Array | Float64Array | Uint32Array;
@@ -129,7 +136,7 @@ export function validateIntoBuffer<
   dst: ArrayBufferView & { length: number },
 ): void {
   const expectedName = expectedCtor.name;
-  const receivedName = (dst.constructor as { name?: string }).name ?? 'Unknown';
+  const receivedName = (dst.constructor as { name?: string }).name ?? "Unknown";
 
   // Constructor/type mismatch
   if (!(dst instanceof expectedCtor)) {
@@ -151,13 +158,13 @@ export function assertParamInto(
   expectedLength: number,
 ): void {
   switch (plane) {
-    case 'PF32':
+    case "PF32":
       validateIntoBuffer(key, Float32Array, expectedLength, dst);
       return;
-    case 'PI32':
+    case "PI32":
       validateIntoBuffer(key, Int32Array, expectedLength, dst);
       return;
-    case 'PB':
+    case "PB":
       validateIntoBuffer(key, Uint8Array, expectedLength, dst);
       return;
   }
@@ -171,14 +178,210 @@ export function assertMeterInto(
   expectedLength: number,
 ): void {
   switch (plane) {
-    case 'MF32':
+    case "MF32":
       validateIntoBuffer(key, Float32Array, expectedLength, dst);
       return;
-    case 'MF64':
+    case "MF64":
       validateIntoBuffer(key, Float64Array, expectedLength, dst);
       return;
-    case 'MU32':
+    case "MU32":
       validateIntoBuffer(key, Uint32Array, expectedLength, dst);
       return;
   }
+}
+
+interface SlotBase {
+  readonly offset: number;
+  readonly length: number;
+  readonly bytesPerElement: number;
+}
+
+/**
+ * Raw param slot description from the plan.
+ *
+ * @internal
+ */
+export interface ParamSlot extends SlotBase {
+  readonly plane: ParamPlane | "PU";
+}
+
+/**
+ * Raw meter slot description from the plan.
+ *
+ * @internal
+ */
+export interface MeterSlot extends SlotBase {
+  readonly plane: MeterPlane | "MU";
+}
+
+/**
+ * Param slot validated against backing capacity and aligned to elements.
+ *
+ * @remarks
+ * - `index` is the element index in the corresponding plane.
+ * - `plane` is guaranteed to be a data plane (no PU).
+ */
+export interface ValidatedParamSlot extends SlotBase {
+  readonly plane: ParamPlane;
+  readonly index: number;
+}
+
+/**
+ * Meter slot validated against backing capacity and aligned to elements.
+ *
+ * @remarks
+ * - `index` is the element index in the corresponding plane.
+ * - `plane` is guaranteed to be a data plane (no MU).
+ */
+export interface ValidatedMeterSlot extends SlotBase {
+  readonly plane: MeterPlane;
+  readonly index: number;
+}
+
+/**
+ * Validate param slots against the mapped planes and compute element indices.
+ *
+ * @internal
+ */
+export function validateParamSlots(
+  slots: Record<string, ParamSlot>,
+  views: ParamPlaneViews,
+): Record<string, ValidatedParamSlot> {
+  const validated: Record<string, ValidatedParamSlot> = {};
+
+  const keys = Object.keys(slots);
+  for (const key of keys) {
+    const slot = slots[key];
+    if (!slot) {
+      continue;
+    }
+
+    if (slot.plane !== "PF32" && slot.plane !== "PI32" && slot.plane !== "PB") {
+      continue;
+    }
+
+    const index = (slot.offset / slot.bytesPerElement) | 0;
+    const length = slot.length;
+
+    if (length === 1) {
+      let ok = false;
+      if (slot.plane === "PF32") {
+        ok = index >= 0 && index < views.PF32.length;
+      } else if (slot.plane === "PI32") {
+        ok = index >= 0 && index < views.PI32.length;
+      } else {
+        ok = index >= 0 && index < views.PB.length;
+      }
+
+      invariant(
+        ok,
+        "internal.assertionFailed",
+        `Param scalar "${key}" offset out of bounds`,
+        { detail: `param.scalar:${key}` },
+      );
+    } else {
+      const end = index + length;
+      let ok = false;
+      if (slot.plane === "PF32") {
+        ok = index >= 0 && end <= views.PF32.length;
+      } else if (slot.plane === "PI32") {
+        ok = index >= 0 && end <= views.PI32.length;
+      } else {
+        ok = index >= 0 && end <= views.PB.length;
+      }
+
+      invariant(
+        ok,
+        "internal.assertionFailed",
+        `Param array "${key}" range out of bounds`,
+        { detail: `param.array:${key}` },
+      );
+    }
+
+    validated[key] = {
+      plane: slot.plane,
+      offset: slot.offset,
+      length: slot.length,
+      bytesPerElement: slot.bytesPerElement,
+      index,
+    };
+  }
+
+  return validated;
+}
+
+/**
+ * Validate meter slots against the mapped planes and compute element indices.
+ *
+ * @internal
+ */
+export function validateMeterSlots(
+  slots: Record<string, MeterSlot>,
+  views: MeterPlaneViews,
+): Record<string, ValidatedMeterSlot> {
+  const validated: Record<string, ValidatedMeterSlot> = {};
+
+  const keys = Object.keys(slots);
+  for (const key of keys) {
+    const slot = slots[key];
+    if (!slot) {
+      continue;
+    }
+
+    if (
+      slot.plane !== "MF32" &&
+      slot.plane !== "MF64" &&
+      slot.plane !== "MU32"
+    ) {
+      continue;
+    }
+
+    const index = (slot.offset / slot.bytesPerElement) | 0;
+    const length = slot.length;
+
+    if (length === 1) {
+      let ok = false;
+      if (slot.plane === "MF32") {
+        ok = index >= 0 && index < views.MF32.length;
+      } else if (slot.plane === "MF64") {
+        ok = index >= 0 && index < views.MF64.length;
+      } else {
+        ok = index >= 0 && index < views.MU32.length;
+      }
+
+      invariant(
+        ok,
+        "internal.assertionFailed",
+        `Meter scalar "${key}" offset out of bounds`,
+        { detail: `meter.scalar:${key}` },
+      );
+    } else {
+      const end = index + length;
+      let ok = false;
+      if (slot.plane === "MF32") {
+        ok = index >= 0 && end <= views.MF32.length;
+      } else if (slot.plane === "MF64") {
+        ok = index >= 0 && end <= views.MF64.length;
+      } else {
+        ok = index >= 0 && end <= views.MU32.length;
+      }
+
+      invariant(
+        ok,
+        "internal.assertionFailed",
+        `Meter array "${key}" range out of bounds`,
+        { detail: `meter.array:${key}` },
+      );
+    }
+
+    validated[key] = {
+      plane: slot.plane,
+      offset: slot.offset,
+      length: slot.length,
+      bytesPerElement: slot.bytesPerElement,
+      index,
+    };
+  }
+
+  return validated;
 }

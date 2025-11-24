@@ -65,7 +65,7 @@ controller.params.update({
   cutoffHz: preset.cutoffHz,
 });
 
-controller.params.stage('eqBands', (dst) => {
+controller.params.stage("eqBands", (dst) => {
   dst.set(preset.eqBands);
 });
 ```
@@ -305,7 +305,7 @@ a strong smell that the wrong verb is being used.
 - IPC/network bridges:
 
   ```ts
-  socket.on('params:update', (msg: { params: ParamValues<typeof spec> }) => {
+  socket.on("params:update", (msg: { params: ParamValues<typeof spec> }) => {
     controller.params.hydrate(msg.params);
   });
   ```

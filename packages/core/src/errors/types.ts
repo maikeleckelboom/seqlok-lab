@@ -9,7 +9,8 @@
  * - Maintains type safety across the error handling system.
  */
 
-import type { CodeToPayload, ErrorCode } from './registry';
+import type { CodeToPayload, ErrorCode } from "./registry";
+import type { AssertTrue, IsExact } from "../internal/type-assert";
 
 export {
   ERROR_META,
@@ -18,7 +19,19 @@ export {
   type ErrorDetails,
   type ErrorMeta,
   type TypedArrayName,
-} from './registry';
+} from "./registry";
+
+export { interpretHealth, type HealthInterpretation } from "./health";
+
+export type * from "./codes/primitives";
+export type * from "./codes/env";
+export type * from "./codes/plan";
+export type * from "./codes/backing";
+export type * from "./codes/handoff";
+export type * from "./codes/binding";
+export type * from "./codes/diagnostics";
+export type * from "./codes/internal";
+export type * from "./codes/spec";
 
 /**
  * Compile-time guard: keep ErrorCode and CodeToPayload in perfect lockstep.
@@ -29,23 +42,8 @@ export {
  * - Causes a compile error if either side drifts silently.
  */
 type CodesFromPayloads = keyof CodeToPayload;
+type ErrorCodeMatchesPayloads = IsExact<ErrorCode, CodesFromPayloads>;
 
-type _ErrorCodeMatchesCodeToPayload = [ErrorCode] extends [CodesFromPayloads]
-  ? [CodesFromPayloads] extends [ErrorCode]
-    ? true
-    : false
-  : false;
-
-export const _errorCodeMatchesCodeToPayload: _ErrorCodeMatchesCodeToPayload = true;
-
-export { interpretHealth, type HealthInterpretation } from './health';
-
-export type * from './codes/primitives';
-export type * from './codes/env';
-export type * from './codes/plan';
-export type * from './codes/backing';
-export type * from './codes/handoff';
-export type * from './codes/binding';
-export type * from './codes/diagnostics';
-export type * from './codes/internal';
-export type * from './codes/spec';
+/** @internal */
+export type _ErrorCodeMatchesCodeToPayload =
+  AssertTrue<ErrorCodeMatchesPayloads>;

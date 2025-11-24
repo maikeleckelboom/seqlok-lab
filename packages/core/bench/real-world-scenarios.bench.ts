@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { bench, describe } from "vitest";
 
 import {
   allocateShared,
@@ -8,8 +8,8 @@ import {
   defineSpec,
   planLayout,
   receiveHandoff,
-} from '../src';
-import { MICRO_BENCH_OPTS } from '../vitest.config';
+} from "../src";
+import { MICRO_BENCH_OPTS } from "../vitest.config";
 
 /**
  * @fileoverview
@@ -22,7 +22,7 @@ import { MICRO_BENCH_OPTS } from '../vitest.config';
 let _blackhole = 0;
 
 const spec = defineSpec(({ param, meter }) => ({
-  id: 'bench/param-operations',
+  id: "bench/param-operations",
   params: {
     gain: param.f32({ min: 0, max: 2 }),
     cutoffHz: param.f32({ min: 20, max: 20_000 }),
@@ -50,8 +50,8 @@ for (let i = 0; i < eqWriteBuffer.length; i++) {
 
 /** Scalar-only update via set(): gain + cutoffHz. */
 function paramsSetTwoScalars(): void {
-  controller.params.set('gain', 1.0);
-  controller.params.set('cutoffHz', 4_000);
+  controller.params.set("gain", 1.0);
+  controller.params.set("cutoffHz", 4_000);
   _blackhole ^= 1;
 }
 
@@ -78,7 +78,7 @@ function paramsUpdateScalarsAndStageArray(): void {
   });
 
   // Array via stage()
-  controller.params.stage('eqBands', (view) => {
+  controller.params.stage("eqBands", (view) => {
     const len = view.length;
 
     for (let i = 0; i < len; i++) {
@@ -102,7 +102,7 @@ function paramsHydrateScalarsAndArray(): void {
 
 /** Array-only write of eqBands via stage(). */
 function paramsStageArrayOnly(): void {
-  controller.params.stage('eqBands', (view) => {
+  controller.params.stage("eqBands", (view) => {
     const len = view.length;
 
     for (let i = 0; i < len; i++) {
@@ -155,9 +155,9 @@ function interleavedControllerUpdateAndProcessorWithin(): void {
   });
 }
 
-describe('Parameter operations: DJ-style controller ↔ processor', () => {
+describe("Parameter operations: DJ-style controller ↔ processor", () => {
   bench(
-    'controller.params.set (two scalars)',
+    "controller.params.set (two scalars)",
     () => {
       paramsSetTwoScalars();
     },
@@ -165,7 +165,7 @@ describe('Parameter operations: DJ-style controller ↔ processor', () => {
   );
 
   bench(
-    'controller.params.update (3 scalars)',
+    "controller.params.update (3 scalars)",
     () => {
       paramsUpdateThreeScalars();
     },
@@ -173,7 +173,7 @@ describe('Parameter operations: DJ-style controller ↔ processor', () => {
   );
 
   bench(
-    'controller.params.update (3 scalars + f32[8])',
+    "controller.params.update (3 scalars + f32[8])",
     () => {
       paramsUpdateScalarsAndStageArray();
     },
@@ -181,7 +181,7 @@ describe('Parameter operations: DJ-style controller ↔ processor', () => {
   );
 
   bench(
-    'controller.params.hydrate (3 scalars + f32[8])',
+    "controller.params.hydrate (3 scalars + f32[8])",
     () => {
       paramsHydrateScalarsAndArray();
     },
@@ -189,7 +189,7 @@ describe('Parameter operations: DJ-style controller ↔ processor', () => {
   );
 
   bench(
-    'controller.params.stage (eqBands f32[8])',
+    "controller.params.stage (eqBands f32[8])",
     () => {
       paramsStageArrayOnly();
     },
@@ -197,7 +197,7 @@ describe('Parameter operations: DJ-style controller ↔ processor', () => {
   );
 
   bench(
-    'processor.params.within (scalars only)',
+    "processor.params.within (scalars only)",
     () => {
       processorWithinScalarsOnly();
     },
@@ -205,7 +205,7 @@ describe('Parameter operations: DJ-style controller ↔ processor', () => {
   );
 
   bench(
-    'processor.params.within (scalars + eqBands f32[8])',
+    "processor.params.within (scalars + eqBands f32[8])",
     () => {
       processorWithinScalarsAndArray();
     },
@@ -213,7 +213,7 @@ describe('Parameter operations: DJ-style controller ↔ processor', () => {
   );
 
   bench(
-    'interleaved controller.update + processor.within',
+    "interleaved controller.update + processor.within",
     () => {
       interleavedControllerUpdateAndProcessorWithin();
     },

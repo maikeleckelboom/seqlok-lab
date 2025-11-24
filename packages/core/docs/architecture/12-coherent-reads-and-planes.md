@@ -4,16 +4,16 @@
 
 This document brings together two closely related topics:
 
-* **Coherent reads** – how seqlock is used (or intentionally not used) by different roles.
-* **Memory planes** – how params and meters are laid out in shared memory.
+- **Coherent reads** – how seqlock is used (or intentionally not used) by different roles.
+- **Memory planes** – how params and meters are laid out in shared memory.
 
 It complements:
 
-* **03 – Concurrency model and roles** (Controller / Processor / Observer)
-* **10 – Primitives & seqlock**
-* **11 – Backing & plane layout**
-* **16 – E2E flow visual guide**
-* **17 – Hot vs cold path design philosophy**
+- **03 – Concurrency model and roles** (Controller / Processor / Observer)
+- **10 – Primitives & seqlock**
+- **11 – Backing & plane layout**
+- **16 – E2E flow visual guide**
+- **17 – Hot vs cold path design philosophy**
 
 ---
 
@@ -26,22 +26,22 @@ PU: [LOCK, SEQ]  // params control plane (Uint32Array)
 MU: [LOCK, SEQ]  // meters control plane (Uint32Array)
 ```
 
-* **LOCK** – parity-based lock used only by the single **writer** of that family.
-* **SEQ** – monotonically increasing **commit stamp** (`u32`). Incremented exactly once per successful commit.
+- **LOCK** – parity-based lock used only by the single **writer** of that family.
+- **SEQ** – monotonically increasing **commit stamp** (`u32`). Incremented exactly once per successful commit.
 
 High-level writer behaviour (per family):
 
-* While **writing**: `LOCK` is **odd**.
-* When **quiescent**: `LOCK` is **even**.
-* On each successful commit:
+- While **writing**: `LOCK` is **odd**.
+- When **quiescent**: `LOCK` is **even**.
+- On each successful commit:
 
-  * `SEQ` is bumped **once**.
-  * `LOCK` returns to an even value.
+  - `SEQ` is bumped **once**.
+  - `LOCK` returns to an even value.
 
 Readers never mutate `LOCK`/`SEQ`; they only:
 
-* Spin briefly while `LOCK` is odd (writer active).
-* Use `SEQ` to detect whether a read window was stable (same value before/after payload sampling).
+- Spin briefly while `LOCK` is odd (writer active).
+- Use `SEQ` to detect whether a read window was stable (same value before/after payload sampling).
 
 Concrete budgets (`spinBudget`, `retryBudget`, timeout behaviour) are defined in the seqlock primitives and ADRs; this
 doc stays at the architectural level.
@@ -52,11 +52,11 @@ doc stays at the architectural level.
 
 Seqlok's bindings are built around three roles:
 
-* **Processor** – hot path, real-time work.
-* **Controller** – cold path, orchestration and UI logic.
-* **Observer** – hot read-side for high-frequency visualizers (conceptual role; binding comes later).
+- **Processor** – hot path, real-time work.
+- **Controller** – cold path, orchestration and UI logic.
+- **Observer** – hot read-side for high-frequency visualizers (conceptual role; binding comes later).
 
-They do *not* all promise the same level of coherence.
+They do _not_ all promise the same level of coherence.
 
 ### 2.1 Processor binding – hot path, hard coherence
 
@@ -64,20 +64,20 @@ They do *not* all promise the same level of coherence.
 
 **Responsibilities:**
 
-* Read params under seqlock via `params.within(...)`.
-* Publish meters under seqlock via `meters.publish(...)`.
+- Read params under seqlock via `params.within(...)`.
+- Publish meters under seqlock via `meters.publish(...)`.
 
 **Guarantees:**
 
-* **Params:** hard coherence.
+- **Params:** hard coherence.
 
-  * Reads use seqlock internally.
-  * No half-written arrays.
-  * No mixed frames within a single `within(...)` callback.
+  - Reads use seqlock internally.
+  - No half-written arrays.
+  - No mixed frames within a single `within(...)` callback.
 
-* **Meters:** writer side is seqlock-protected.
+- **Meters:** writer side is seqlock-protected.
 
-  * Any reader that uses a seqlock-aware snapshot will see meter frames that correspond to a specific param snapshot.
+  - Any reader that uses a seqlock-aware snapshot will see meter frames that correspond to a specific param snapshot.
 
 This is the **reference implementation** of "coherent snapshot under seqlock". If we ever did a "naked read" for params
 here, that would be a bug.
@@ -90,27 +90,27 @@ here, that would be a bug.
 
 **Responsibilities:**
 
-* Authoritative writer for **params**.
-* Optionally read back params / meters to drive UI and tools.
+- Authoritative writer for **params**.
+- Optionally read back params / meters to drive UI and tools.
 
 **Concurrency reality:**
 
-* **Params:** controller is the **only writer**. The processor never writes params.
+- **Params:** controller is the **only writer**. The processor never writes params.
 
-  * Controller param reads are not racing with another writer.
-  * Naked reads are safe by design for params.
+  - Controller param reads are not racing with another writer.
+  - Naked reads are safe by design for params.
 
-* **Meters:** controller is a **reader** observing processor-written state.
+- **Meters:** controller is a **reader** observing processor-written state.
 
-  * Meters may be updated concurrently while the controller is reading.
+  - Meters may be updated concurrently while the controller is reading.
 
 **Contract:**
 
-* Controller meter snapshots are explicitly **cold-path, best-effort**:
+- Controller meter snapshots are explicitly **cold-path, best-effort**:
 
-  * Good for UI, tooling, and "rough" diagnostics.
-  * Allowed to observe mixed meter frames under heavy contention.
-  * **Not** suitable for strict, frame-perfect visualizations.
+  - Good for UI, tooling, and "rough" diagnostics.
+  - Allowed to observe mixed meter frames under heavy contention.
+  - **Not** suitable for strict, frame-perfect visualizations.
 
 The controller binding deliberately avoids pulling in diagnostics and rich policy. It stays small and cheap; stronger
 guarantees live in the observer role.
@@ -126,28 +126,28 @@ v0.1.x yet; it is expected to live in higher layers (e.g. `@seqlok/compose` or s
 
 **Responsibilities:**
 
-* High-rate, read-only access to meters (and optionally selected param views).
-* Provide **coherent per-frame snapshots** suitable for rendering, with policy for degraded conditions.
+- High-rate, read-only access to meters (and optionally selected param views).
+- Provide **coherent per-frame snapshots** suitable for rendering, with policy for degraded conditions.
 
 **Coherence strategy:**
 
-* Observer reads meters under `MU` seqlock using a policy-aware helper (conceptually `snapshotWithPolicy`):
+- Observer reads meters under `MU` seqlock using a policy-aware helper (conceptually `snapshotWithPolicy`):
 
-  * Wraps a low-level snapshot function with seqlock and a retry/degrade policy.
-  * If the writer is mid-commit:
+  - Wraps a low-level snapshot function with seqlock and a retry/degrade policy.
+  - If the writer is mid-commit:
 
-    * Spin and retry within a bounded budget, or
-    * Fall back to a degrade policy (e.g. reuse last good frame, mark frame as stale).
+    - Spin and retry within a bounded budget, or
+    - Fall back to a degrade policy (e.g. reuse last good frame, mark frame as stale).
 
-* Observer is allowed to depend on diagnostics:
+- Observer is allowed to depend on diagnostics:
 
-  * It may increment counters.
-  * It may classify "too many retries", "degraded snapshot", etc.
+  - It may increment counters.
+  - It may classify "too many retries", "degraded snapshot", etc.
 
 **Contract:**
 
-* Observer is where the **strong, visualizer-grade coherence guarantee** for meters lives.
-* If you need strict, non-torn frames at 60–240 Hz, you should be reading via an observer-style path, not via the plain
+- Observer is where the **strong, visualizer-grade coherence guarantee** for meters lives.
+- If you need strict, non-torn frames at 60–240 Hz, you should be reading via an observer-style path, not via the plain
   controller snapshot.
 
 ---
@@ -156,8 +156,8 @@ v0.1.x yet; it is expected to live in higher layers (e.g. `@seqlok/compose` or s
 
 The processor reads **params** written by the controller via `processor.params.within(cb)`. Inside `cb`:
 
-* **Scalars** are plain JS values captured coherently for the duration of the call.
-* **Arrays** are ephemeral aliasing views into the backing planes (no allocation on the hot path).
+- **Scalars** are plain JS values captured coherently for the duration of the call.
+- **Arrays** are ephemeral aliasing views into the backing planes (no allocation on the hot path).
 
 ### Conceptual algorithm – `params.within(cb)`
 
@@ -180,8 +180,8 @@ The binding uses seqlock over `(PU.LOCK, PU.SEQ)`:
 
 The callback is **synchronous** and **scoped**:
 
-* Do **not** `await` inside `within`.
-* Do **not** store references to the param view or inner arrays for later use.
+- Do **not** `await` inside `within`.
+- Do **not** store references to the param view or inner arrays for later use.
 
 ### Flow diagram (conceptual)
 
@@ -203,8 +203,8 @@ flowchart TD
 ```ts
 // processor side (AudioWorklet / worker)
 processor.params.within((p) => {
-  const ratio = p.timeRatio;     // coherent scalar
-  const coeffs = p.coeffs;       // aliasing Float32Array view
+  const ratio = p.timeRatio; // coherent scalar
+  const coeffs = p.coeffs; // aliasing Float32Array view
 
   const out = this.dsp.process(input, ratio, coeffs);
 
@@ -217,8 +217,8 @@ processor.params.within((p) => {
 
 Within a single `within` window:
 
-* All params are mutually coherent.
-* Any number of `meters.publish(...)` calls derive causally from that snapshot.
+- All params are mutually coherent.
+- Any number of `meters.publish(...)` calls derive causally from that snapshot.
 
 ---
 
@@ -266,7 +266,7 @@ const frameBuffers = {
 };
 
 function renderLoop() {
-  const frame = observer.meters.snapshotWithPolicy(['rms', 'spectrum'], {
+  const frame = observer.meters.snapshotWithPolicy(["rms", "spectrum"], {
     into: frameBuffers,
     // policy options: budgets, degrade behaviour, etc.
   });
@@ -281,9 +281,9 @@ function renderLoop() {
 
 Key properties we will preserve for any eventual observer binding:
 
-* Visualizer gets **coherent** frames (no ghost combinations).
-* Policy decides how to behave under high contention.
-* Diagnostics can track how often we had to degrade.
+- Visualizer gets **coherent** frames (no ghost combinations).
+- Policy decides how to behave under high contention.
+- Diagnostics can track how often we had to degrade.
 
 ---
 
@@ -303,14 +303,14 @@ For the controller, a typical `snapshot` is just:
 
 There is **no** seqlock dance for meters on the controller:
 
-* Reads may overlap with processor writes.
-* It is possible to observe a frame where some fields are from "before" and some from "after" an update.
+- Reads may overlap with processor writes.
+- It is possible to observe a frame where some fields are from "before" and some from "after" an update.
 
 That sounds scary in the abstract, but for:
 
-* UI meters,
-* debugging panels,
-* coarse-grained tooling,
+- UI meters,
+- debugging panels,
+- coarse-grained tooling,
 
 this is an acceptable trade-off: simpler implementation, no diagnostics coupling, and still extremely useful.
 
@@ -345,7 +345,7 @@ type PU = Uint32Array;
 ```
 
 | Plane | Stores                                                   | Notes                                    |
-|:-----:|:---------------------------------------------------------|:-----------------------------------------|
+| :---: | :------------------------------------------------------- | :--------------------------------------- |
 | PF32  | `param.f32`, `param.f32.array({ length })`               | IEEE754 single precision                 |
 | PI32  | `param.i32`, `param.i32.array({ length })`, enum indices | Enums stored as **indices**, not labels  |
 |  PB   | `param.bool`, `param.bool.array({ length })`             | 0 or 1 bytes                             |
@@ -369,7 +369,7 @@ type MU = Uint32Array;
 ```
 
 | Plane | Stores                                     | Notes                                    |
-|:-----:|:-------------------------------------------|:-----------------------------------------|
+| :---: | :----------------------------------------- | :--------------------------------------- |
 | MF32  | `meter.f32`, `meter.f32.array({ length })` |                                          |
 | MF64  | `meter.f64`, `meter.f64.array({ length })` |                                          |
 | MU32  | `meter.u32`, bool meters as 0/1 numbers    | Pragmatic: Atomics want 32-bit views     |
@@ -383,8 +383,8 @@ Bool meters are exposed to JS as **0/1 numbers** to avoid per-frame conversions 
 
 The planner emits:
 
-* `offsetBytes` – byte offset from the start of the backing.
-* `length` – element length in that plane.
+- `offsetBytes` – byte offset from the start of the backing.
+- `length` – element length in that plane.
 
 Bindings use this to construct views:
 
@@ -402,26 +402,26 @@ User-facing bindings precompute these indices so user code never touches raw off
 
 Within the documented roles and helpers:
 
-* **Coherent by construction**
+- **Coherent by construction**
 
-  * `processor.params.within` and observer-style meter snapshots pair reads with seqlock state.
-  * Readers using these helpers never see torn combinations for that family.
+  - `processor.params.within` and observer-style meter snapshots pair reads with seqlock state.
+  - Readers using these helpers never see torn combinations for that family.
 
-* **Zero allocations on hot paths**
+- **Zero allocations on hot paths**
 
-  * Processor-side `params.within` + `meters.publish` allocate nothing.
-  * Observer snapshots can reuse buffers (`into`) to avoid allocations.
-  * Controller snapshots can *also* reuse buffers, but are still "best-effort" in terms of coherence.
+  - Processor-side `params.within` + `meters.publish` allocate nothing.
+  - Observer snapshots can reuse buffers (`into`) to avoid allocations.
+  - Controller snapshots can _also_ reuse buffers, but are still "best-effort" in terms of coherence.
 
-* **Bounded retries**
+- **Bounded retries**
 
-  * Seqlock-based readers spin & retry only while a writer is mid-commit.
-  * Budgets prevent unbounded loops and surface timeouts as clear errors or degraded frames.
+  - Seqlock-based readers spin & retry only while a writer is mid-commit.
+  - Budgets prevent unbounded loops and surface timeouts as clear errors or degraded frames.
 
-* **Cheap change detection**
+- **Cheap change detection**
 
-  * `version()` on params/meters exposes the underlying `SEQ` as a single atomic load.
-  * Poll `version()` to avoid unnecessary snapshot work when nothing has changed.
+  - `version()` on params/meters exposes the underlying `SEQ` as a single atomic load.
+  - Poll `version()` to avoid unnecessary snapshot work when nothing has changed.
 
 ---
 
@@ -429,11 +429,11 @@ Within the documented roles and helpers:
 
 If you need more detail or want to see how this plugs into the rest of the system:
 
-* **Primitives & Seqlock** – dual-counter design, `tryRead`, `publish`, error paths.
-* **Backing & layout** – plane planning, alignment, and backing flavours (single SAB / split / shared Wasm).
-* **Concurrency model & roles** – how Controller, Processor, and Observer interact beyond just coherence.
-* **Hot vs cold path design philosophy** – why not “just use seqlock everywhere”.
-* **ADR docs for observer & MWMR** – the deeper rationale behind the role split and topology-level MWMR.
+- **Primitives & Seqlock** – dual-counter design, `tryRead`, `publish`, error paths.
+- **Backing & layout** – plane planning, alignment, and backing flavours (single SAB / split / shared Wasm).
+- **Concurrency model & roles** – how Controller, Processor, and Observer interact beyond just coherence.
+- **Hot vs cold path design philosophy** – why not “just use seqlock everywhere”.
+- **ADR docs for observer & MWMR** – the deeper rationale behind the role split and topology-level MWMR.
 
 Together, these give the full picture: **how bytes are laid out, how seqlocks guard them, and how each role is allowed
 to read or write those bytes.**

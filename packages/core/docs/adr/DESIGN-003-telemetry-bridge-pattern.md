@@ -37,12 +37,12 @@ Steps:
 ## 3. Implementation sketch (Node + UDP)
 
 ```ts
-import dgram from 'node:dgram';
-import { setTimeout as sleep } from 'node:timers/promises';
-import { bindObserver } from '@seqlok/core';
+import dgram from "node:dgram";
+import { setTimeout as sleep } from "node:timers/promises";
+import { bindObserver } from "@seqlok/core";
 
 // 1. Setup
-const socket = dgram.createSocket('udp4');
+const socket = dgram.createSocket("udp4");
 const observer = bindObserver(receivedHandoff); // swarm domain
 
 // Example shape: vec4 per agent: [x, y, z, w]
@@ -76,8 +76,11 @@ async function runTelemetryBridge(tickMs: number): Promise<void> {
 
 function step(): void {
   // Snapshot: coherent, zero-allocation view
-  const { currentPos, velocity } = observer.meters.snapshot(['currentPos', 'velocity']);
-  const { targetPos } = observer.params.snapshot(['targetPos']);
+  const { currentPos, velocity } = observer.meters.snapshot([
+    "currentPos",
+    "velocity",
+  ]);
+  const { targetPos } = observer.params.snapshot(["targetPos"]);
 
   // Hot loop: pack and send
   for (let i = 0; i < DRONE_COUNT; i += 1) {

@@ -18,7 +18,7 @@ import type {
   ScalarMeterKeys,
   ScalarParamKeys,
   SpecInput,
-} from '../../spec/types';
+} from "../../spec/types";
 
 /**
  * Monotonic sequence number for param updates (PU domain).
@@ -45,41 +45,47 @@ type Display<T> = T extends (...args: readonly unknown[]) => unknown
   ? T
   : { [K in keyof T]: T[K] } & {};
 
-type ParamsOf<S extends SpecInput> = S['params'] extends object ? S['params'] : object;
-type MetersOf<S extends SpecInput> = S['meters'] extends object ? S['meters'] : object;
+type ParamsOf<S extends SpecInput> = S["params"] extends object
+  ? S["params"]
+  : object;
+type MetersOf<S extends SpecInput> = S["meters"] extends object
+  ? S["meters"]
+  : object;
 
-type ParamAt<S extends SpecInput, K extends ParamKeys<S>> = K extends keyof ParamsOf<S>
-  ? ParamsOf<S>[K]
-  : never;
+type ParamAt<
+  S extends SpecInput,
+  K extends ParamKeys<S>,
+> = K extends keyof ParamsOf<S> ? ParamsOf<S>[K] : never;
 
-type MeterAt<S extends SpecInput, K extends MeterKeys<S>> = K extends keyof MetersOf<S>
-  ? MetersOf<S>[K]
-  : never;
+type MeterAt<
+  S extends SpecInput,
+  K extends MeterKeys<S>,
+> = K extends keyof MetersOf<S> ? MetersOf<S>[K] : never;
 
 type EnumValuesOf<D> = D extends { values: readonly (infer V)[] } ? V : never;
 
 // Param kind universe (spec-level `kind` field).
 type ParamKind =
-  | 'f32'
-  | 'i32'
-  | 'bool'
-  | 'enum'
-  | 'f32.array'
-  | 'i32.array'
-  | 'u8.array'
-  | 'bool.array'
-  | 'enum.array';
+  | "f32"
+  | "i32"
+  | "bool"
+  | "enum"
+  | "f32.array"
+  | "i32.array"
+  | "u8.array"
+  | "bool.array"
+  | "enum.array";
 
 // Meter kind universe (spec-level `kind` field).
 type MeterKind =
-  | 'f32'
-  | 'u32'
-  | 'f64'
-  | 'bool'
-  | 'f32.array'
-  | 'u32.array'
-  | 'f64.array'
-  | 'bool.array';
+  | "f32"
+  | "u32"
+  | "f64"
+  | "bool"
+  | "f32.array"
+  | "u32.array"
+  | "f64.array"
+  | "bool.array";
 
 /**
  * Processor-side param value map.
@@ -94,11 +100,11 @@ interface ParamProcessorMap {
   i32: number;
   bool: boolean;
   enum: number; // enum scalar → numeric index on processor
-  'f32.array': Float32Array;
-  'i32.array': Int32Array;
-  'u8.array': Uint8Array;
-  'bool.array': Uint8Array;
-  'enum.array': Int32Array; // indices
+  "f32.array": Float32Array;
+  "i32.array": Int32Array;
+  "u8.array": Uint8Array;
+  "bool.array": Uint8Array;
+  "enum.array": Int32Array; // indices
 }
 
 /**
@@ -113,10 +119,10 @@ interface MeterProcessorMap {
   u32: number;
   f64: number;
   bool: boolean;
-  'f32.array': Float32Array;
-  'u32.array': Uint32Array;
-  'f64.array': Float64Array;
-  'bool.array': Uint8Array;
+  "f32.array": Float32Array;
+  "u32.array": Uint32Array;
+  "f64.array": Float64Array;
+  "bool.array": Uint8Array;
 }
 
 /**
@@ -131,11 +137,11 @@ interface ParamControllerMap {
   f32: number;
   i32: number;
   bool: boolean;
-  'f32.array': Readonly<Float32Array>;
-  'i32.array': Readonly<Int32Array>;
-  'u8.array': Readonly<Uint8Array>;
-  'bool.array': Readonly<Uint8Array>;
-  'enum.array': Readonly<Int32Array>; // indices
+  "f32.array": Readonly<Float32Array>;
+  "i32.array": Readonly<Int32Array>;
+  "u8.array": Readonly<Uint8Array>;
+  "bool.array": Readonly<Uint8Array>;
+  "enum.array": Readonly<Int32Array>; // indices
 }
 
 /**
@@ -150,10 +156,10 @@ interface MeterControllerMap {
   u32: number;
   f64: number;
   bool: boolean;
-  'f32.array': Readonly<Float32Array>;
-  'u32.array': Readonly<Uint32Array>;
-  'f64.array': Readonly<Float64Array>;
-  'bool.array': Readonly<Uint8Array>;
+  "f32.array": Readonly<Float32Array>;
+  "u32.array": Readonly<Uint32Array>;
+  "f64.array": Readonly<Float64Array>;
+  "bool.array": Readonly<Uint8Array>;
 }
 
 /**
@@ -202,9 +208,9 @@ export type ParamValueFor<S extends SpecInput, K extends ParamKeys<S>> =
   ParamAt<S, K> extends {
     kind: infer Kind;
   }
-    ? Kind extends 'enum'
+    ? Kind extends "enum"
       ? EnumValuesOf<ParamAt<S, K>>
-      : Kind extends Exclude<ParamKind, 'enum'>
+      : Kind extends Exclude<ParamKind, "enum">
         ? ParamControllerMap[Kind]
         : never
     : never;
@@ -250,7 +256,9 @@ export type CoherentValue<T extends number | string | boolean> = T;
 type ScalarFor<
   S extends SpecInput,
   K extends ScalarParamKeys<S>,
-> = ParamShape<S>[K] extends number | string | boolean ? ParamShape<S>[K] : never;
+> = ParamShape<S>[K] extends number | string | boolean
+  ? ParamShape<S>[K]
+  : never;
 
 /**
  * Processor-side coherent param shape.
@@ -323,7 +331,7 @@ export type RawParamShape<S extends SpecInput> = ParamShape<S>;
  *
  * Default behaviour today is effectively `'reject'`.
  */
-export type RangePolicy = 'clamp' | 'reject';
+export type RangePolicy = "clamp" | "reject";
 
 /**
  * Param-side policy options for a controller binding.
@@ -353,7 +361,7 @@ export interface ControllerParamPolicyOptions {
  * - `'throw'`        → `degrade: 'never'` + throw on timeout.
  * - `'returnLatest'` → `degrade: 'returnLatest'`.
  */
-export type MeterDegradePolicy = 'returnLatest' | 'throw';
+export type MeterDegradePolicy = "returnLatest" | "throw";
 
 /**
  * Meter-side policy options for a controller binding.
@@ -404,19 +412,6 @@ export interface ControllerOptions {
    * Policies for the meters (reader) domain.
    */
   readonly meters?: ControllerMeterPolicyOptions;
-
-  /**
-   * General controller-wide flags.
-   *
-   * @remarks
-   * - When `true` (default), this controller binding is exclusive for its backing:
-   *   attempting to create a second exclusive controller for the same backing
-   *   will throw an internal assertion error.
-   * - Set to `false` only for advanced "shared controller" scenarios.
-   *
-   * @default true
-   */
-  readonly exclusive?: boolean;
 }
 
 /**
@@ -765,28 +760,28 @@ export interface ControllerMeters<S extends SpecInput> {
 }
 
 type MeterScalarFor<S extends SpecInput, K extends MeterKeys<S>> = NonNullable<
-  S['meters']
+  S["meters"]
 >[K] extends {
-  kind: 'bool';
+  kind: "bool";
 }
   ? boolean
   : number;
 
 type MeterArrayFor<S extends SpecInput, K extends MeterKeys<S>> = NonNullable<
-  S['meters']
+  S["meters"]
 >[K] extends {
-  kind: 'f32.array';
+  kind: "f32.array";
 }
   ? Float32Array
-  : NonNullable<S['meters']>[K] extends {
-        kind: 'f64.array';
+  : NonNullable<S["meters"]>[K] extends {
+        kind: "f64.array";
       }
     ? Float64Array
-    : NonNullable<S['meters']>[K] extends {
-          kind: 'u32.array';
+    : NonNullable<S["meters"]>[K] extends {
+          kind: "u32.array";
         }
       ? Uint32Array
-      : NonNullable<S['meters']>[K] extends { kind: 'bool.array' }
+      : NonNullable<S["meters"]>[K] extends { kind: "bool.array" }
         ? Uint8Array
         : never;
 
@@ -857,7 +852,7 @@ export interface ProcessorParams<S extends SpecInput> {
    *   - Scalar params as coherent values (atomic read guarantee).
    *   - Array params as ephemeral typed arrays (callback-scoped).
    */
-  within<T>(callback: (view: ProcessorParamsView<S>) => T): T;
+  within(callback: (view: ProcessorParamsView<S>) => void): void;
 
   /**
    * Current PU sequence number for the binding.
@@ -906,14 +901,14 @@ export type MetersSnapshot<S extends SpecInput> = Readonly<
   Display<{ [K in MeterKeys<S>]: MeterValueFor<S, K> }>
 >;
 
-type ParamSnapshotKeys<S extends SpecInput, KS extends readonly ParamKeys<S>[]> = Extract<
-  KS[number],
-  ParamKeys<S>
->;
-type MeterSnapshotKeys<S extends SpecInput, KS extends readonly MeterKeys<S>[]> = Extract<
-  KS[number],
-  MeterKeys<S>
->;
+type ParamSnapshotKeys<
+  S extends SpecInput,
+  KS extends readonly ParamKeys<S>[],
+> = Extract<KS[number], ParamKeys<S>>;
+type MeterSnapshotKeys<
+  S extends SpecInput,
+  KS extends readonly MeterKeys<S>[],
+> = Extract<KS[number], MeterKeys<S>>;
 
 /**
  * Controller-visible partial snapshot object for params.
@@ -936,3 +931,163 @@ export type SnapshotMetersObject<
   S extends SpecInput,
   KS extends readonly MeterKeys<S>[],
 > = Readonly<Display<{ [K in MeterSnapshotKeys<S, KS>]: MeterValueFor<S, K> }>>;
+
+/**
+ * Configuration for a seqlock-protected read in an Observer context.
+ */
+export interface ObserverCoherentOptions {
+  readonly where?: string;
+  readonly spinBudget?: number;
+  readonly retryBudget?: number;
+  readonly degrade?: MeterDegradePolicy;
+}
+
+/**
+ * Options for binding an observer.
+ *
+ * @remarks
+ * - Configures retry budgets for both param and meter reads.
+ * - Observers are strictly read-only.
+ */
+export interface ObserverOptions {
+  readonly spinBudget?: number;
+  readonly retryBudget?: number;
+  readonly degrade?: MeterDegradePolicy;
+  readonly params?: ObserverCoherentOptions;
+  readonly meters?: ObserverCoherentOptions;
+}
+
+/**
+ * Observer-side param binding.
+ *
+ * @remarks
+ * - `snapshot()` / `snapshot(keys)` expose controller-like snapshots for
+ *   convenience; array values may be backed by ephemeral views.
+ * - `within(...)` mirrors `processor.params.within` for hot-path, zero-copy reads.
+ */
+export interface ObserverParams<S extends SpecInput> {
+  /**
+   * Full snapshot of all params.
+   */
+  snapshot(): ParamsSnapshot<S>;
+
+  /**
+   * Snapshot for a selected set of param keys (array form).
+   *
+   * @remarks
+   * - `snapshot(['gain', 'mode'])` form.
+   */
+  snapshot<const K extends readonly ParamKeys<S>[]>(
+    keys: K,
+  ): SnapshotParamsObject<S, K>;
+
+  /**
+   * Varargs snapshot overload for convenience.
+   *
+   * @remarks
+   * - `snapshot('gain', 'mode')` form.
+   */
+  snapshot<const K extends readonly ParamKeys<S>[]>(
+    ...keys: K
+  ): SnapshotParamsObject<S, K>;
+
+  /**
+   * Snapshot for a selected set of param keys, or for a `{ keys }` options object.
+   *
+   * @remarks
+   * - When passed an array, behaves like the array overload.
+   * - When passed `{ keys }`, behaves the same, but allows future extension
+   *   without breaking callers.
+   */
+  snapshot<const K extends readonly ParamKeys<S>[]>(
+    // eslint-disable-next-line @typescript-eslint/unified-signatures
+    keysOrOptions:
+      | K
+      | {
+          readonly keys: K;
+        },
+  ): SnapshotParamsObject<S, K>;
+
+  /**
+   * Read parameters within a seqlock-protected critical section.
+   */
+  within(callback: (view: ProcessorParamsView<S>) => void): void;
+
+  /**
+   * Current PU sequence number for this observer.
+   */
+  version(): PUSeq;
+}
+
+/**
+ * Observer-side meter binding.
+ *
+ * @remarks
+ * - Exposes the same snapshot ergonomics as `ControllerMeters`, but:
+ *   - No `into` support (arrays are ephemeral views into backing planes).
+ *   - Strictly read-only; no publish/write surface.
+ */
+export interface ObserverMeters<S extends SpecInput> {
+  /**
+   * Full snapshot of all meters.
+   */
+  snapshot(): MetersSnapshot<S>;
+
+  /**
+   * Snapshot for a selected set of meter keys (array form).
+   *
+   * @remarks
+   * - `snapshot(['rms', 'peak'])` form.
+   */
+  snapshot<const K extends readonly MeterKeys<S>[]>(
+    keys: K,
+  ): SnapshotMetersObject<S, K>;
+
+  /**
+   * Varargs snapshot overload for convenience.
+   *
+   * @remarks
+   * - `snapshot('rms', 'peak')` form.
+   */
+  snapshot<const K extends readonly MeterKeys<S>[]>(
+    ...keys: K
+  ): SnapshotMetersObject<S, K>;
+
+  /**
+   * Snapshot for a selected set of meter keys, or for a `{ keys }` options object.
+   *
+   * @remarks
+   * - When passed an array, behaves like the array overload.
+   * - When passed `{ keys }`, behaves the same, but allows future extension
+   *   (e.g. observer-specific options) without breaking callers.
+   */
+  snapshot<const K extends readonly MeterKeys<S>[]>(
+    // eslint-disable-next-line @typescript-eslint/unified-signatures
+    keysOrOptions:
+      | K
+      | {
+          readonly keys: K;
+        },
+  ): SnapshotMetersObject<S, K>;
+
+  /**
+   * Current MU sequence number.
+   */
+  version(): MUSeq;
+}
+
+/**
+ * Observer binding: read-only facade for params and meters.
+ *
+ * @remarks
+ * - Intended for visualizations, telemetry, HUDs, and remote inspectors.
+ * - `params` exposes coherent reads via `within(...)` and small snapshots.
+ * - `meters` exposes coherent snapshots with rich overloads.
+ * - No write capability.
+ */
+export interface ObserverBinding<S extends SpecInput> {
+  readonly params: ObserverParams<S>;
+  readonly meters: ObserverMeters<S>;
+
+  dispose(): void;
+}

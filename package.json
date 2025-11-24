@@ -12,6 +12,7 @@
     "eslint-import-resolver-typescript": "catalog:",
     "eslint-plugin-import": "catalog:",
     "fast-check": "catalog:",
+    "markdownlint-cli2": "catalog:",
     "prettier": "catalog:",
     "rimraf": "catalog:",
     "simple-git-hooks": "catalog:",
@@ -21,19 +22,23 @@
     "vitest": "catalog:"
   },
   "scripts": {
-    "format": "prettier --write packages/**/* examples/**/*",
     "prepare": "simple-git-hooks",
     "clean": "pnpm -w -r -F \"@seqlok/*\" run clean && rimraf .eslintcache node_modules/.vite node_modules/.cache pnpm-debug.log",
     "purge": "pnpm run clean && rimraf node_modules packages/**/node_modules",
     "build": "pnpm -w run clean && pnpm -w -r -F \"@seqlok/*\" run build",
-    "lint": "pnpm -w -r -F \"@seqlok/*\" run lint",
-    "lint:fix": "pnpm -w -r -F \"@seqlok/*\" run lint:fix",
     "test": "pnpm -w -F \"@seqlok/core\" run test",
     "bench": "pnpm -w -F \"@seqlok/core\" run bench",
+    "bench:report": "pnpm -w -F \"@seqlok/core\" run bench:report",
     "test:types": "pnpm -w -F \"@seqlok/core\" run test:types",
     "test:watch": "pnpm run test --watch",
     "test:cov": "pnpm -w -F \"@seqlok/core\" run test:cov",
-    "commitlint": "commitlint --color"
+    "commitlint": "commitlint --color",
+    "lint:md": "markdownlint-cli2",
+    "lint:md:fix": "markdownlint-cli2 --fix",
+    "lint": "pnpm -w -r -F \"@seqlok/*\" run lint",
+    "lint:fix": "pnpm -w -r -F \"@seqlok/*\" run lint:fix",
+    "lint:all": "pnpm lint && pnpm lint:md",
+    "format": "prettier --ignore-path .prettierignore --write ."
   },
   "simple-git-hooks": {
     "commit-msg": "pnpm commitlint --edit $1"

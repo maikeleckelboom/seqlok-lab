@@ -8,39 +8,39 @@
  * - Handles packing of parameters and meters into memory planes.
  */
 
-import { createError } from '../errors/error';
-import { BYTES_PER_ELEM, type PlaneKey } from '../primitives/planes';
+import { createError } from "../errors/error";
+import { BYTES_PER_ELEM, type PlaneKey } from "../primitives/planes";
 
-import type { EntrySlot, LockStrideBytes, PlaneByteLengths } from './types';
+import type { EntrySlot, LockStrideBytes, PlaneByteLengths } from "./types";
 import type {
   MeterDef,
   ParamDef,
   ScalarMeterDef,
   ScalarParamDef,
   SpecInput,
-} from '../spec/types';
+} from "../spec/types";
 
 /**
  * Internal per-plane byte aggregates used during planning.
  */
-type ParamPlaneBytes = Pick<PlaneByteLengths, 'PF32' | 'PI32' | 'PB'>;
-type MeterPlaneBytes = Pick<PlaneByteLengths, 'MF32' | 'MF64' | 'MU32'>;
+type ParamPlaneBytes = Pick<PlaneByteLengths, "PF32" | "PI32" | "PB">;
+type MeterPlaneBytes = Pick<PlaneByteLengths, "MF32" | "MF64" | "MU32">;
 
 function isScalarParam(paramDef: ParamDef): paramDef is ScalarParamDef {
   return (
-    paramDef.kind === 'f32' ||
-    paramDef.kind === 'i32' ||
-    paramDef.kind === 'bool' ||
-    paramDef.kind === 'enum'
+    paramDef.kind === "f32" ||
+    paramDef.kind === "i32" ||
+    paramDef.kind === "bool" ||
+    paramDef.kind === "enum"
   );
 }
 
 function isScalarMeter(meterDef: MeterDef): meterDef is ScalarMeterDef {
   return (
-    meterDef.kind === 'f32' ||
-    meterDef.kind === 'f64' ||
-    meterDef.kind === 'u32' ||
-    meterDef.kind === 'bool'
+    meterDef.kind === "f32" ||
+    meterDef.kind === "f64" ||
+    meterDef.kind === "u32" ||
+    meterDef.kind === "bool"
   );
 }
 
@@ -62,30 +62,38 @@ const MAX_ARRAY_LENGTH = 1_000_000; // tune as needed
 
 function assertArrayLength(key: string, length: number): void {
   if (!Number.isFinite(length) || length <= 0) {
-    throw createError('spec.arrayInvalid', 'Array length must be positive and finite', {
-      where: 'plan.planLayout',
-      key,
-      length,
-      reason: 'nonPositive',
-    });
+    throw createError(
+      "spec.arrayInvalid",
+      "Array length must be positive and finite",
+      {
+        where: "plan.planLayout",
+        key,
+        length,
+        reason: "nonPositive",
+      },
+    );
   }
 
   if (!Number.isInteger(length)) {
-    throw createError('spec.arrayInvalid', 'Array length must be an integer', {
-      where: 'plan.planLayout',
+    throw createError("spec.arrayInvalid", "Array length must be an integer", {
+      where: "plan.planLayout",
       key,
       length,
-      reason: 'fractional',
+      reason: "fractional",
     });
   }
 
   if (length > MAX_ARRAY_LENGTH) {
-    throw createError('spec.builderInvalid', 'Array length exceeds supported maximum', {
-      where: 'plan.planLayout',
-      reason: 'overflowRisk',
-      key,
-      detail: String(length),
-    });
+    throw createError(
+      "spec.builderInvalid",
+      "Array length exceeds supported maximum",
+      {
+        where: "plan.planLayout",
+        reason: "overflowRisk",
+        key,
+        detail: String(length),
+      },
+    );
   }
 }
 
@@ -108,11 +116,11 @@ export function assertValidSpecForPlanning(spec: SpecInput): void {
 
   if (paramKeys.length === 0 && meterKeys.length === 0) {
     throw createError(
-      'spec.builderInvalid',
-      'Spec must define at least one param or meter',
+      "spec.builderInvalid",
+      "Spec must define at least one param or meter",
       {
-        where: 'plan.planLayout',
-        reason: 'emptyParams',
+        where: "plan.planLayout",
+        reason: "emptyParams",
       },
     );
   }
@@ -120,10 +128,14 @@ export function assertValidSpecForPlanning(spec: SpecInput): void {
   // Cross-section duplicate key: same name in params and meters.
   for (const key of paramKeys) {
     if (key in metersObj) {
-      throw createError('spec.duplicateKey', 'Key is used for both param and meter', {
-        section: 'params',
-        key,
-      });
+      throw createError(
+        "spec.duplicateKey",
+        "Key is used for both param and meter",
+        {
+          section: "params",
+          key,
+        },
+      );
     }
   }
 }
@@ -133,30 +145,30 @@ export function assertValidSpecForPlanning(spec: SpecInput): void {
  */
 export function planeOfParam(def: ParamDef): PlaneKey {
   switch (def.kind) {
-    case 'f32':
-      return 'PF32';
-    case 'i32':
-      return 'PI32';
-    case 'bool':
-      return 'PB';
-    case 'enum':
-      return 'PI32';
+    case "f32":
+      return "PF32";
+    case "i32":
+      return "PI32";
+    case "bool":
+      return "PB";
+    case "enum":
+      return "PI32";
 
-    case 'f32.array':
-      return 'PF32';
-    case 'i32.array':
-      return 'PI32';
-    case 'bool.array':
-      return 'PB';
-    case 'enum.array':
-      return 'PI32';
+    case "f32.array":
+      return "PF32";
+    case "i32.array":
+      return "PI32";
+    case "bool.array":
+      return "PB";
+    case "enum.array":
+      return "PI32";
 
     default: {
       const kind = (def as { kind?: unknown }).kind;
-      throw createError('spec.builderInvalid', 'Invalid param kind', {
-        where: 'plan.planeOfParam',
-        reason: 'invalidKind',
-        detail: typeof kind === 'string' ? kind : String(kind),
+      throw createError("spec.builderInvalid", "Invalid param kind", {
+        where: "plan.planeOfParam",
+        reason: "invalidKind",
+        detail: typeof kind === "string" ? kind : String(kind),
       });
     }
   }
@@ -165,32 +177,32 @@ export function planeOfParam(def: ParamDef): PlaneKey {
 /**
  * Resolve a METER definition to its storage plane.
  */
-export function planeOfMeter(def: MeterDef): 'MF32' | 'MF64' | 'MU32' {
+export function planeOfMeter(def: MeterDef): "MF32" | "MF64" | "MU32" {
   switch (def.kind) {
-    case 'f32':
-      return 'MF32';
-    case 'f64':
-      return 'MF64';
-    case 'u32':
-      return 'MU32';
-    case 'bool':
-      return 'MU32';
+    case "f32":
+      return "MF32";
+    case "f64":
+      return "MF64";
+    case "u32":
+      return "MU32";
+    case "bool":
+      return "MU32";
 
-    case 'f32.array':
-      return 'MF32';
-    case 'f64.array':
-      return 'MF64';
-    case 'u32.array':
-      return 'MU32';
-    case 'bool.array':
-      return 'MU32';
+    case "f32.array":
+      return "MF32";
+    case "f64.array":
+      return "MF64";
+    case "u32.array":
+      return "MU32";
+    case "bool.array":
+      return "MU32";
 
     default: {
       const kind = (def as { kind?: unknown }).kind;
-      throw createError('spec.builderInvalid', 'Invalid meter kind', {
-        where: 'plan.planeOfMeter',
-        reason: 'invalidKind',
-        detail: typeof kind === 'string' ? kind : String(kind),
+      throw createError("spec.builderInvalid", "Invalid meter kind", {
+        where: "plan.planeOfMeter",
+        reason: "invalidKind",
+        detail: typeof kind === "string" ? kind : String(kind),
       });
     }
   }
@@ -250,17 +262,19 @@ export function packParamSlots(params: Readonly<Record<string, ParamDef>>): {
     const length = lenOfParam(def);
 
     let offset: number;
-    if (plane === 'PF32') {
+    if (plane === "PF32") {
       offset = PF32;
       PF32 += length * elemBytes;
-    } else if (plane === 'PI32') {
+    } else if (plane === "PI32") {
       offset = PI32;
       PI32 += length * elemBytes;
-    } else if (plane === 'PB') {
+    } else if (plane === "PB") {
       offset = PB;
       PB += length * elemBytes;
     } else {
-      throw createError('plan.failed', 'Unexpected param plane', { detail: plane });
+      throw createError("plan.failed", "Unexpected param plane", {
+        detail: plane,
+      });
     }
 
     slots[key] = { plane, offset, length, bytesPerElement: elemBytes };
@@ -289,18 +303,20 @@ export function packMeterSlots(meters: Readonly<Record<string, MeterDef>>): {
     const length = lenOfMeter(def);
 
     let offset: number;
-    if (plane === 'MF32') {
+    if (plane === "MF32") {
       offset = MF32;
       MF32 += length * elemBytes;
-    } else if (plane === 'MF64') {
+    } else if (plane === "MF64") {
       offset = MF64;
       MF64 += length * elemBytes;
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    } else if (plane === 'MU32') {
+    } else if (plane === "MU32") {
       offset = MU32;
       MU32 += length * elemBytes;
     } else {
-      throw createError('plan.failed', 'Unexpected meter plane', { detail: plane });
+      throw createError("plan.failed", "Unexpected meter plane", {
+        detail: plane,
+      });
     }
 
     slots[key] = { plane, offset, length, bytesPerElement: elemBytes };

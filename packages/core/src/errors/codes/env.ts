@@ -8,10 +8,11 @@
  * - Registered into the global error registry as the `env.*` domain.
  */
 
-import type { ErrorDetails, ErrorMeta } from '../registry';
+import type { AssertTrue, IsExact } from "../../internal/type-assert";
+import type { ErrorDetails, ErrorMeta } from "../registry";
 
-export type EnvErrorCode = 'env.unsupported' | 'env.coopCoepRequired';
-export type EnvErrorKey = 'unsupported' | 'coopCoepRequired';
+export type EnvErrorCode = "env.unsupported" | "env.coopCoepRequired";
+export type EnvErrorKey = "unsupported" | "coopCoepRequired";
 
 /**
  * Details for `env.unsupported` errors.
@@ -21,15 +22,15 @@ export type EnvErrorKey = 'unsupported' | 'coopCoepRequired';
  */
 export interface EnvUnsupportedDetails extends ErrorDetails {
   readonly feature:
-    | 'SharedArrayBuffer'
-    | 'Atomics'
-    | 'WebAssembly'
-    | 'WebAssembly.Memory';
+    | "SharedArrayBuffer"
+    | "Atomics"
+    | "WebAssembly"
+    | "WebAssembly.Memory";
   readonly reason?: string;
 }
 
 export interface EnvCoopCoepDetails extends ErrorDetails {
-  readonly context: 'browser' | 'worker';
+  readonly context: "browser" | "worker";
   readonly hasCoopHeader?: boolean;
   readonly hasCoepHeader?: boolean;
 }
@@ -41,25 +42,25 @@ interface EnvErrorDescriptor<C extends EnvErrorCode> {
 }
 
 interface EnvErrorsMap {
-  unsupported: EnvErrorDescriptor<'env.unsupported'>;
-  coopCoepRequired: EnvErrorDescriptor<'env.coopCoepRequired'>;
+  unsupported: EnvErrorDescriptor<"env.unsupported">;
+  coopCoepRequired: EnvErrorDescriptor<"env.coopCoepRequired">;
 }
 
 const ENV_ERRORS_DEF = {
   unsupported: {
-    code: 'env.unsupported',
-    message: 'Required env feature unavailable',
+    code: "env.unsupported",
+    message: "Required env feature unavailable",
     meta: {
-      severity: 'fatal',
+      severity: "fatal",
       recoverable: false,
       boundarySafe: true,
     },
   },
   coopCoepRequired: {
-    code: 'env.coopCoepRequired',
-    message: 'COOP/COEP headers required for SharedArrayBuffer',
+    code: "env.coopCoepRequired",
+    message: "COOP/COEP headers required for SharedArrayBuffer",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
@@ -68,11 +69,8 @@ const ENV_ERRORS_DEF = {
 
 export const ENV_ERRORS: EnvErrorsMap = ENV_ERRORS_DEF;
 
-type _CodesFromDescriptors = EnvErrorsMap[EnvErrorKey]['code'];
-type _VerifyRuntimeCodes = EnvErrorCode extends _CodesFromDescriptors
-  ? _CodesFromDescriptors extends EnvErrorCode
-    ? true
-    : never
-  : never;
-const _verifyEnvCodesMatch: _VerifyRuntimeCodes = true;
-void _verifyEnvCodesMatch;
+type EnvCodesFromDescriptors = EnvErrorsMap[EnvErrorKey]["code"];
+type EnvCodesEqual = IsExact<EnvErrorCode, EnvCodesFromDescriptors>;
+
+/** @internal */
+export type _EnvCodesMatch = AssertTrue<EnvCodesEqual>;

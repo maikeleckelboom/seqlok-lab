@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { publish, tryRead, type SeqPair } from '../../src/primitives/seqlock';
+import { publish, tryRead, type SeqPair } from "../../src/primitives/seqlock";
 
-describe('Seqlock Contention & Fallback Mechanisms', () => {
+describe("Seqlock Contention & Fallback Mechanisms", () => {
   /**
    * specific helper to create a SharedArrayBuffer-backed sequence pair
    * for testing concurrency primitives.
@@ -13,7 +13,7 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     return { u32, lockIndex: 0, seqIndex: 1 };
   }
 
-  it('returns fallback value when lock stays held and spin budget is exhausted', () => {
+  it("returns fallback value when lock stays held and spin budget is exhausted", () => {
     const pair = makeSeqPair();
 
     // Simulate active writer: Lock is odd, Sequence is 0
@@ -21,7 +21,10 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     pair.u32[1] = 0;
 
     const fallbackValue = 42;
-    const result = tryRead(pair, () => fallbackValue, { spinBudget: 10, retryBudget: 0 });
+    const result = tryRead(pair, () => fallbackValue, {
+      spinBudget: 10,
+      retryBudget: 0,
+    });
 
     expect(result.ok).toBe(false);
     // Implementation may optimize spins, so we assert valid range rather than exact count
@@ -30,7 +33,7 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     expect(result.value).toBe(fallbackValue);
   });
 
-  it('throws timeout when retry budget is exhausted under rapid writes', () => {
+  it("throws timeout when retry budget is exhausted under rapid writes", () => {
     const pair = makeSeqPair();
     let readCount = 0;
 
@@ -51,7 +54,7 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     ).toThrow(/timeout/i);
   });
 
-  it('succeeds on first attempt under no contention', () => {
+  it("succeeds on first attempt under no contention", () => {
     const pair = makeSeqPair();
     pair.u32[0] = 0; // Lock even (unlocked)
     pair.u32[1] = 0; // Sequence 0
@@ -65,7 +68,7 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     expect(result.value).toBe(expectedValue);
   });
 
-  it('detects lock state change occurring mid-read', () => {
+  it("detects lock state change occurring mid-read", () => {
     const pair = makeSeqPair();
     pair.u32[0] = 0;
     pair.u32[1] = 5;
@@ -85,7 +88,7 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     expect(result.status.retries).toBeGreaterThan(0);
   });
 
-  it('handles sequence integer overflow (wraparound) correctly', () => {
+  it("handles sequence integer overflow (wraparound) correctly", () => {
     const pair = makeSeqPair();
     pair.u32[0] = 0;
     pair.u32[1] = 0xffffffff; // Max u32 value
@@ -101,7 +104,7 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     expect(pair.u32[0]).toBe(2);
   });
 
-  it('throws timeout when no coherent read is possible within budget', () => {
+  it("throws timeout when no coherent read is possible within budget", () => {
     const pair = makeSeqPair();
     let attempts = 0;
 
@@ -120,7 +123,7 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     ).toThrow(/timeout/i);
   });
 
-  it('resets spin counter between retries (documented behavior)', () => {
+  it("resets spin counter between retries (documented behavior)", () => {
     const pair = makeSeqPair();
     let callCount = 0;
 
@@ -143,7 +146,7 @@ describe('Seqlock Contention & Fallback Mechanisms', () => {
     expect(callCount).toBeGreaterThan(1);
   });
 
-  it('tracks lock progression through a full publish cycle', () => {
+  it("tracks lock progression through a full publish cycle", () => {
     const pair = makeSeqPair();
     pair.u32[0] = 4; // Start even
     pair.u32[1] = 10;

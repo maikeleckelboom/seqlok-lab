@@ -8,7 +8,8 @@
  * - Registered into the global error registry as the `plan.*` domain.
  */
 
-import type { ErrorDetails, ErrorMeta } from '../registry';
+import type { AssertTrue, IsExact } from "../../internal/type-assert";
+import type { ErrorDetails, ErrorMeta } from "../registry";
 
 /**
  * String union of all plan-layer error codes.
@@ -16,7 +17,7 @@ import type { ErrorDetails, ErrorMeta } from '../registry';
  * @remarks
  * These codes are stable and safe to persist in logs and telemetry.
  */
-export type PlanErrorCode = 'plan.failed' | 'plan.overflowRisk';
+export type PlanErrorCode = "plan.failed" | "plan.overflowRisk";
 
 /**
  * Detail payload for a generic planning failure.
@@ -54,14 +55,14 @@ interface PlanErrorDescriptor<C extends PlanErrorCode> {
 /**
  * Keys of the plan error descriptor map.
  */
-export type PlanErrorKey = 'failed' | 'overflowRisk';
+export type PlanErrorKey = "failed" | "overflowRisk";
 
 /**
  * Map of all plan-layer error descriptors.
  */
 interface PlanErrorsMap {
-  failed: PlanErrorDescriptor<'plan.failed'>;
-  overflowRisk: PlanErrorDescriptor<'plan.overflowRisk'>;
+  failed: PlanErrorDescriptor<"plan.failed">;
+  overflowRisk: PlanErrorDescriptor<"plan.overflowRisk">;
 }
 
 /**
@@ -73,36 +74,27 @@ interface PlanErrorsMap {
  */
 export const PLAN_ERRORS: PlanErrorsMap = {
   failed: {
-    code: 'plan.failed',
-    message: 'Failed to compute memory layout plan',
+    code: "plan.failed",
+    message: "Failed to compute memory layout plan",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: false,
       boundarySafe: true,
     },
   },
   overflowRisk: {
-    code: 'plan.overflowRisk',
-    message: 'Planned memory exceeds soft limit',
+    code: "plan.overflowRisk",
+    message: "Planned memory exceeds soft limit",
     meta: {
-      severity: 'warning',
+      severity: "warning",
       recoverable: true,
       boundarySafe: true,
     },
   },
 };
 
-type _CodesFromDescriptors = PlanErrorsMap[PlanErrorKey]['code'];
-type _CodesExact = PlanErrorCode;
+type PlanCodesFromDescriptors = PlanErrorsMap[PlanErrorKey]["code"];
+type PlanCodesEqual = IsExact<PlanErrorCode, PlanCodesFromDescriptors>;
 
-/**
- * Compile-time check that {@link PlanErrorCode} matches {@link PLAN_ERRORS}.
- */
-type _PlanCodesMatch = _CodesFromDescriptors extends _CodesExact
-  ? _CodesExact extends _CodesFromDescriptors
-    ? true
-    : never
-  : never;
-
-const _planCodesMatch: _PlanCodesMatch = true;
-void _planCodesMatch;
+/** @internal */
+export type _PlanCodesMatch = AssertTrue<PlanCodesEqual>;

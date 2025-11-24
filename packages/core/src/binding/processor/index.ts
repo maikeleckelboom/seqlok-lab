@@ -10,12 +10,12 @@
  * - Delegates to the low-level implementation with the plan from handoff.
  */
 
-import { processorImpl } from './impl';
+import { processorImpl } from "./impl";
 
-import type { Backing } from '../../backing/types';
-import type { ReceivedHandoff } from '../../handoff/types';
-import type { SpecInput } from '../../spec/types';
-import type { ProcessorBinding, ProcessorOptions } from '../common/types';
+import type { Backing } from "../../backing/types";
+import type { ReceivedHandoff } from "../../handoff/types";
+import type { SpecInput } from "../../spec/types";
+import type { ProcessorBinding, ProcessorOptions } from "../common/types";
 
 /**
  * Public processor binding.
@@ -50,13 +50,13 @@ export function bindProcessor<const S extends SpecInput>(
   options: ProcessorOptions = {},
 ): ProcessorBinding<S> {
   const backing: Backing =
-    received.packing === 'shared'
+    received.packing === "shared"
       ? {
-          kind: 'shared',
+          kind: "shared",
           sab: received.sab,
         }
       : {
-          kind: 'shared-partitioned',
+          kind: "shared-partitioned",
           planes: received.planes,
         };
 

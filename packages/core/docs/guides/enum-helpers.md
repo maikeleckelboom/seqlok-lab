@@ -20,7 +20,7 @@ import {
   enumLabelFromIndex,
   type EnumLabel,
   type EnumKeyOf,
-} from '@seqlok/core';
+} from "@seqlok/core";
 ```
 
 Core shape:
@@ -35,7 +35,7 @@ declare function enumValues<S extends SpecInput, K extends EnumKeyOf<S>>(
 Typical usage:
 
 ```ts
-const modes = enumValues<DemoSpec, 'simMode'>(spec, 'simMode');
+const modes = enumValues<DemoSpec, "simMode">(spec, "simMode");
 // modes: readonly SimMode[]
 ```
 
@@ -49,33 +49,33 @@ Requirements:
 ## 1. Classic `<select>` bound to an enum param
 
 ```ts
-import type { ControllerBinding } from '@seqlok/core';
-import { enumValues } from '@seqlok/core';
-import { spec } from './spec';
+import type { ControllerBinding } from "@seqlok/core";
+import { enumValues } from "@seqlok/core";
+import { spec } from "./spec";
 
 type DemoSpec = typeof spec;
-type SimMode = DemoSpec['params']['simMode']['values'][number];
+type SimMode = DemoSpec["params"]["simMode"]["values"][number];
 
 export function createSimModeControl(
   ctl: ControllerBinding<DemoSpec>,
 ): HTMLSelectElement {
-  const modes = enumValues<DemoSpec, 'simMode'>(spec, 'simMode');
+  const modes = enumValues<DemoSpec, "simMode">(spec, "simMode");
 
-  const select = document.createElement('select');
+  const select = document.createElement("select");
 
   for (const mode of modes) {
-    const option = document.createElement('option');
+    const option = document.createElement("option");
     option.value = mode;
     option.textContent = mode;
     select.appendChild(option);
   }
 
-  select.addEventListener('change', () => {
+  select.addEventListener("change", () => {
     const value = select.value as SimMode;
     ctl.params.update({ simMode: value });
   });
 
-  const { simMode } = ctl.params.snapshot(['simMode']);
+  const { simMode } = ctl.params.snapshot(["simMode"]);
   select.value = simMode;
 
   return select;
@@ -89,28 +89,30 @@ Use case: simple mode switcher with no hard-coded vocabulary.
 ## 2. Localized labels / pretty names with `enumPaletteFor`
 
 ```ts
-import { enumPaletteFor, type ControllerBinding } from '@seqlok/core';
-import { spec } from './spec';
+import { enumPaletteFor, type ControllerBinding } from "@seqlok/core";
+import { spec } from "./spec";
 
 type DemoSpec = typeof spec;
-type SimMode = DemoSpec['params']['simMode']['values'][number];
+type SimMode = DemoSpec["params"]["simMode"]["values"][number];
 
 const MODE_LABELS: Record<SimMode, string> = {
-  basic: 'Basic',
-  turbo: 'Turbo Boost',
-  debug: 'Debug / Inspect',
+  basic: "Basic",
+  turbo: "Turbo Boost",
+  debug: "Debug / Inspect",
 };
 
-export function createSimModeButtons(ctl: ControllerBinding<DemoSpec>): HTMLDivElement {
-  const palette = enumPaletteFor<DemoSpec, 'simMode'>(spec, 'simMode');
+export function createSimModeButtons(
+  ctl: ControllerBinding<DemoSpec>,
+): HTMLDivElement {
+  const palette = enumPaletteFor<DemoSpec, "simMode">(spec, "simMode");
 
-  const container = document.createElement('div');
+  const container = document.createElement("div");
 
   for (const mode of palette.values) {
-    const btn = document.createElement('button');
+    const btn = document.createElement("button");
     btn.textContent = MODE_LABELS[mode];
 
-    btn.addEventListener('click', () => {
+    btn.addEventListener("click", () => {
       ctl.params.update({ simMode: mode });
     });
 
@@ -118,10 +120,10 @@ export function createSimModeButtons(ctl: ControllerBinding<DemoSpec>): HTMLDivE
   }
 
   const syncUi = () => {
-    const { simMode } = ctl.params.snapshot(['simMode']);
+    const { simMode } = ctl.params.snapshot(["simMode"]);
     for (const [i, mode] of palette.values.entries()) {
       const btn = container.children[i] as HTMLButtonElement;
-      btn.classList.toggle('active', mode === simMode);
+      btn.classList.toggle("active", mode === simMode);
     }
   };
 
@@ -138,14 +140,14 @@ Use case: segmented controls / buttons with localized labels.
 ## 3. Decode `Int32Array` indices → labels (`enum.array`)
 
 ```ts
-import { enumArrayToLabels } from '@seqlok/core';
-import { spec } from './spec';
+import { enumArrayToLabels } from "@seqlok/core";
+import { spec } from "./spec";
 
 type DemoSpec = typeof spec;
-type PadState = DemoSpec['params']['padStates']['values'][number];
+type PadState = DemoSpec["params"]["padStates"]["values"][number];
 
 function debugPadStates(raw: Int32Array): PadState[] {
-  return enumArrayToLabels<DemoSpec, 'padStates'>(spec, 'padStates', raw);
+  return enumArrayToLabels<DemoSpec, "padStates">(spec, "padStates", raw);
 }
 
 // In a test:
@@ -161,17 +163,24 @@ Out-of-range index → `spec.enumInvalid` with `{ key, values, invalidIndex }`.
 ## 4. Encode labels → `Int32Array` indices
 
 ```ts
-import { enumLabelsToArray } from '@seqlok/core';
-import { spec } from './spec';
+import { enumLabelsToArray } from "@seqlok/core";
+import { spec } from "./spec";
 
 type DemoSpec = typeof spec;
-type PadState = DemoSpec['params']['padStates']['values'][number];
+type PadState = DemoSpec["params"]["padStates"]["values"][number];
 
-const PATTERN_A: readonly PadState[] = ['off', 'dim', 'full', 'full', 'dim', 'off'];
+const PATTERN_A: readonly PadState[] = [
+  "off",
+  "dim",
+  "full",
+  "full",
+  "dim",
+  "off",
+];
 
-const patternEncoded = enumLabelsToArray<DemoSpec, 'padStates'>(
+const patternEncoded = enumLabelsToArray<DemoSpec, "padStates">(
   spec,
-  'padStates',
+  "padStates",
   PATTERN_A,
 );
 // Int32Array with indices
@@ -184,36 +193,36 @@ Typo in a label → `spec.enumInvalid` with `{ key, values, received }`.
 ## 5. Enum labels to colors/icons (HUD / legend)
 
 ```ts
-import { enumPaletteFor } from '@seqlok/core';
-import { spec } from './spec';
+import { enumPaletteFor } from "@seqlok/core";
+import { spec } from "./spec";
 
 type DemoSpec = typeof spec;
-type DynamicsLabel = DemoSpec['params']['dynamics']['values'][number];
+type DynamicsLabel = DemoSpec["params"]["dynamics"]["values"][number];
 
 const DYNAMICS_COLOR: Record<DynamicsLabel, string> = {
-  slow: '#3b82f6',
-  medium: '#facc15',
-  fast: '#ef4444',
+  slow: "#3b82f6",
+  medium: "#facc15",
+  fast: "#ef4444",
 };
 
 export function createDynamicsLegend(): HTMLDivElement {
-  const palette = enumPaletteFor<DemoSpec, 'dynamics'>(spec, 'dynamics');
-  const container = document.createElement('div');
+  const palette = enumPaletteFor<DemoSpec, "dynamics">(spec, "dynamics");
+  const container = document.createElement("div");
 
   for (const label of palette.values) {
-    const swatch = document.createElement('div');
-    swatch.style.display = 'inline-flex';
-    swatch.style.alignItems = 'center';
-    swatch.style.gap = '0.5rem';
+    const swatch = document.createElement("div");
+    swatch.style.display = "inline-flex";
+    swatch.style.alignItems = "center";
+    swatch.style.gap = "0.5rem";
 
-    const box = document.createElement('span');
-    box.style.display = 'inline-block';
-    box.style.width = '1rem';
-    box.style.height = '1rem';
-    box.style.borderRadius = '0.25rem';
+    const box = document.createElement("span");
+    box.style.display = "inline-block";
+    box.style.width = "1rem";
+    box.style.height = "1rem";
+    box.style.borderRadius = "0.25rem";
     box.style.backgroundColor = DYNAMICS_COLOR[label];
 
-    const text = document.createElement('span');
+    const text = document.createElement("span");
     text.textContent = label;
 
     swatch.appendChild(box);
@@ -232,23 +241,27 @@ Use case: HUD legends / LED maps driven directly from the enum vocabulary.
 ## 6. Stable numeric codes
 
 ```ts
-import { enumIndexFromLabel, enumLabelFromIndex, enumValues } from '@seqlok/core';
-import { spec } from './spec';
+import {
+  enumIndexFromLabel,
+  enumLabelFromIndex,
+  enumValues,
+} from "@seqlok/core";
+import { spec } from "./spec";
 
 type DemoSpec = typeof spec;
-type SimMode = DemoSpec['params']['simMode']['values'][number];
+type SimMode = DemoSpec["params"]["simMode"]["values"][number];
 
 function serializeSimMode(mode: SimMode): number {
-  return enumIndexFromLabel<DemoSpec, 'simMode'>(spec, 'simMode', mode);
+  return enumIndexFromLabel<DemoSpec, "simMode">(spec, "simMode", mode);
 }
 
 function deserializeSimMode(idx: number): SimMode | undefined {
-  return enumLabelFromIndex<DemoSpec, 'simMode'>(spec, 'simMode', idx);
+  return enumLabelFromIndex<DemoSpec, "simMode">(spec, "simMode", idx);
 }
 
 function example() {
-  const modes = enumValues<DemoSpec, 'simMode'>(spec, 'simMode');
-  const encoded = serializeSimMode('turbo'); // e.g. 1
+  const modes = enumValues<DemoSpec, "simMode">(spec, "simMode");
+  const encoded = serializeSimMode("turbo"); // e.g. 1
   const decoded = deserializeSimMode(encoded); // 'turbo' | undefined
 }
 ```
@@ -260,25 +273,35 @@ Use case: compact, order-sensitive encodings (palettes, network, textures).
 ## 7. Reusable "enum buttons" helper for demos
 
 ```ts
-import { enumPaletteFor, type ControllerBinding, type SpecInput } from '@seqlok/core';
+import {
+  enumPaletteFor,
+  type ControllerBinding,
+  type SpecInput,
+} from "@seqlok/core";
 
-export type EnumParamKey<S extends SpecInput> = Extract<keyof S['params'], string>;
+export type EnumParamKey<S extends SpecInput> = Extract<
+  keyof S["params"],
+  string
+>;
 
-export function createEnumButtons<S extends SpecInput, K extends EnumParamKey<S>>(
+export function createEnumButtons<
+  S extends SpecInput,
+  K extends EnumParamKey<S>,
+>(
   ctl: ControllerBinding<S>,
   spec: S,
   key: K,
-  labels: Record<S['params'][K]['values'][number], string>,
+  labels: Record<S["params"][K]["values"][number], string>,
 ): HTMLDivElement {
   const palette = enumPaletteFor<S, K>(spec, key);
-  const container = document.createElement('div');
+  const container = document.createElement("div");
 
   for (const value of palette.values) {
-    const btn = document.createElement('button');
+    const btn = document.createElement("button");
     btn.textContent = labels[value];
 
-    btn.addEventListener('click', () => {
-      ctl.params.update({ [key]: value } as Partial<S['params']>);
+    btn.addEventListener("click", () => {
+      ctl.params.update({ [key]: value } as Partial<S["params"]>);
     });
 
     container.appendChild(btn);
@@ -290,7 +313,7 @@ export function createEnumButtons<S extends SpecInput, K extends EnumParamKey<S>
 
     for (const [i, value] of palette.values.entries()) {
       const btn = container.children[i] as HTMLButtonElement;
-      btn.classList.toggle('active', value === current);
+      btn.classList.toggle("active", value === current);
     }
   };
 
@@ -303,15 +326,15 @@ Example use:
 
 ```ts
 type DemoSpec = typeof spec;
-type SimMode = DemoSpec['params']['simMode']['values'][number];
+type SimMode = DemoSpec["params"]["simMode"]["values"][number];
 
 const MODE_LABELS: Record<SimMode, string> = {
-  basic: 'Basic',
-  turbo: 'Turbo Boost',
-  debug: 'Debug / Inspect',
+  basic: "Basic",
+  turbo: "Turbo Boost",
+  debug: "Debug / Inspect",
 };
 
-const simModeControl = createEnumButtons(ctl, spec, 'simMode', MODE_LABELS);
+const simModeControl = createEnumButtons(ctl, spec, "simMode", MODE_LABELS);
 ```
 
 ---

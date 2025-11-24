@@ -44,7 +44,7 @@ Example: swarm / particle positions and energy.
 
 ```ts
 const swarmVisSpec = defineSpec(({ meter }) => ({
-  id: 'swarm-visualization',
+  id: "swarm-visualization",
 
   meters: {
     posX: meter.f32.array({ length: MAX_AGENTS }),
@@ -73,7 +73,7 @@ The main-thread observer acts as a thin copy pipe from SAB → GPU buffer. The p
 const observer = bindObserver(receivedHandoff);
 
 // Measure once for buffer sizes
-const initial = observer.meters.snapshot(['posX', 'posY', 'posZ']);
+const initial = observer.meters.snapshot(["posX", "posY", "posZ"]);
 const gpuPosX = device.createBuffer({
   size: initial.posX.byteLength,
   usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
@@ -89,7 +89,11 @@ const gpuPosZ = device.createBuffer({
 
 function frame() {
   // 1. Coherent meter snapshot
-  const { posX, posY, posZ } = observer.meters.snapshot(['posX', 'posY', 'posZ']);
+  const { posX, posY, posZ } = observer.meters.snapshot([
+    "posX",
+    "posY",
+    "posZ",
+  ]);
 
   // 2. Upload to GPU (no allocations, just blits)
   device.queue.writeBuffer(gpuPosX, 0, posX, 0, posX.byteLength);

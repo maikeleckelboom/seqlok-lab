@@ -1,6 +1,6 @@
-import { SeqlokError } from '../../src/errors/error';
+import { SeqlokError } from "../../src/errors/error";
 
-import type { ErrorCode, ErrorPayload } from '../../src/errors/registry';
+import type { ErrorCode, ErrorPayload } from "../../src/errors/registry";
 
 export function expectSeqlokError<C extends ErrorCode>(
   thrown: unknown,
@@ -14,6 +14,8 @@ export function expectSeqlokError<C extends ErrorCode>(
   }
 }
 
-export function getDetails<C extends ErrorCode>(err: SeqlokError<C>): ErrorPayload<C> {
+export function getDetails<C extends ErrorCode>(
+  err: SeqlokError<C>,
+): ErrorPayload<C> {
   return err.details;
 }

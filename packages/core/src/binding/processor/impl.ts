@@ -13,16 +13,16 @@ import {
   mapViews,
   type MeterPlaneViews,
   type ParamPlaneViews,
-} from '../../backing/map-views';
-import { invariant } from '../../errors/invariant';
-import { publish } from '../../primitives/seqlock';
-import { makeWithin } from '../common/coherent';
-import { noteBinding, releaseBinding } from '../common/registry';
-import { throwUnknownKey } from '../common/validate';
+} from "../../backing/map-views";
+import { invariant } from "../../errors/invariant";
+import { publish } from "../../primitives/seqlock";
+import { makeWithin } from "../common/coherent";
+import { claimBinding, releaseBinding } from "../common/registry";
+import { throwUnknownKey } from "../common/validate";
 
-import type { Backing } from '../../backing/types';
-import type { Plan } from '../../plan/types';
-import type { SpecInput } from '../../spec/types';
+import type { Backing } from "../../backing/types";
+import type { Plan } from "../../plan/types";
+import type { SpecInput } from "../../spec/types";
 import type {
   Ephemeral,
   MeterWriter,
@@ -32,10 +32,13 @@ import type {
   ProcessorOptions,
   ProcessorParams,
   PUSeq,
-} from '../common/types';
-import type { MeterPlane, ParamPlane } from '../common/validate';
+} from "../common/types";
+import type { MeterPlane, ParamPlane } from "../common/validate";
 
-type WithinCallback<S extends SpecInput> = Parameters<ProcessorParams<S>['within']>[0];
+type WithinCallback<S extends SpecInput> = Parameters<
+  ProcessorParams<S>["within"]
+>[0];
+
 type WithinView<S extends SpecInput> =
   WithinCallback<S> extends (view: infer V) => unknown ? V : never;
 
@@ -55,7 +58,7 @@ interface SlotBase {
  * - `plane` may refer to a logical param plane or the PU lock plane.
  */
 interface ParamSlot extends SlotBase {
-  readonly plane: ParamPlane | 'PU';
+  readonly plane: ParamPlane | "PU";
 }
 
 /**
@@ -65,21 +68,21 @@ interface ParamSlot extends SlotBase {
  * - `plane` may refer to a logical meter plane or the MU lock plane.
  */
 interface MeterSlot extends SlotBase {
-  readonly plane: MeterPlane | 'MU';
+  readonly plane: MeterPlane | "MU";
 }
 
 /**
  * Type guard that narrows param planes to data planes.
  */
-function isParamDataPlane(p: ParamSlot['plane']): p is ParamPlane {
-  return p === 'PF32' || p === 'PI32' || p === 'PB';
+function isParamDataPlane(p: ParamSlot["plane"]): p is ParamPlane {
+  return p === "PF32" || p === "PI32" || p === "PB";
 }
 
 /**
  * Type guard that narrows meter planes to data planes.
  */
-function isMeterDataPlane(p: MeterSlot['plane']): p is MeterPlane {
-  return p === 'MF32' || p === 'MF64' || p === 'MU32';
+function isMeterDataPlane(p: MeterSlot["plane"]): p is MeterPlane {
+  return p === "MF32" || p === "MF64" || p === "MU32";
 }
 
 /**
@@ -89,10 +92,15 @@ function isMeterDataPlane(p: MeterSlot['plane']): p is MeterPlane {
  * - Throws `internal.assertionFailed` when the view is `undefined`.
  */
 function ensurePlane<T>(v: T | undefined, where: string, detail: string): T {
-  invariant(v !== undefined, 'internal.assertionFailed', 'expected defined plane view', {
-    where,
-    detail,
-  });
+  invariant(
+    v !== undefined,
+    "internal.assertionFailed",
+    "expected defined plane view",
+    {
+      where,
+      detail,
+    },
+  );
   return v;
 }
 
@@ -110,8 +118,8 @@ function readNumberAt(
 ): number {
   invariant(
     index >= 0 && index < values.length,
-    'internal.assertionFailed',
-    'offset out of range',
+    "internal.assertionFailed",
+    "offset out of range",
     {
       where,
       detail: `${String(index)}/${String(values.length)}`,
@@ -119,9 +127,9 @@ function readNumberAt(
   );
   const v = values[index];
   invariant(
-    typeof v === 'number',
-    'internal.assertionFailed',
-    'expected numeric element',
+    typeof v === "number",
+    "internal.assertionFailed",
+    "expected numeric element",
     {
       where,
       detail: String(index),
@@ -144,25 +152,30 @@ function paramArrayViewFor(
     length: number;
   },
 ): Ephemeral<Float32Array> | Ephemeral<Int32Array> | Ephemeral<Uint8Array> {
-  invariant(slot.length > 1, 'internal.assertionFailed', 'array param expected', {
-    where: 'param.array',
-    detail: slot.plane,
-  });
+  invariant(
+    slot.length > 1,
+    "internal.assertionFailed",
+    "array param expected",
+    {
+      where: "param.array",
+      detail: slot.plane,
+    },
+  );
   const start = (slot.offset / slot.bytesPerElement) | 0;
   const end = start + slot.length;
   switch (slot.plane) {
-    case 'PF32':
-      return ensurePlane(views.PF32, 'param.array', 'PF32').subarray(
+    case "PF32":
+      return ensurePlane(views.PF32, "param.array", "PF32").subarray(
         start,
         end,
       ) as Ephemeral<Float32Array>;
-    case 'PI32':
-      return ensurePlane(views.PI32, 'param.array', 'PI32').subarray(
+    case "PI32":
+      return ensurePlane(views.PI32, "param.array", "PI32").subarray(
         start,
         end,
       ) as Ephemeral<Int32Array>;
-    case 'PB':
-      return ensurePlane(views.PB, 'param.array', 'PB').subarray(
+    case "PB":
+      return ensurePlane(views.PB, "param.array", "PB").subarray(
         start,
         end,
       ) as Ephemeral<Uint8Array>;
@@ -186,18 +199,18 @@ function readParamScalar(
 ): number | boolean {
   const i = (slot.offset / slot.bytesPerElement) | 0;
   switch (slot.plane) {
-    case 'PF32': {
-      const at = ensurePlane(views.PF32, 'param.scalar', 'PF32');
-      return readNumberAt(at, i, 'param.scalar');
+    case "PF32": {
+      const at = ensurePlane(views.PF32, "param.scalar", "PF32");
+      return readNumberAt(at, i, "param.scalar");
     }
-    case 'PI32': {
-      const at = ensurePlane(views.PI32, 'param.scalar', 'PI32');
+    case "PI32": {
+      const at = ensurePlane(views.PI32, "param.scalar", "PI32");
       // Signed 32-bit coercion
-      return readNumberAt(at, i, 'param.scalar') | 0;
+      return readNumberAt(at, i, "param.scalar") | 0;
     }
-    case 'PB': {
-      const a = ensurePlane(views.PB, 'param.scalar', 'PB');
-      const v = readNumberAt(a, i, 'param.scalar');
+    case "PB": {
+      const a = ensurePlane(views.PB, "param.scalar", "PB");
+      const v = readNumberAt(a, i, "param.scalar");
       return v !== 0;
     }
   }
@@ -217,25 +230,30 @@ function meterArrayViewFor(
     length: number;
   },
 ): Ephemeral<Float32Array> | Ephemeral<Float64Array> | Ephemeral<Uint32Array> {
-  invariant(slot.length > 1, 'internal.assertionFailed', 'array meter expected', {
-    where: 'meter.array',
-    detail: slot.plane,
-  });
+  invariant(
+    slot.length > 1,
+    "internal.assertionFailed",
+    "array meter expected",
+    {
+      where: "meter.array",
+      detail: slot.plane,
+    },
+  );
   const start = (slot.offset / slot.bytesPerElement) | 0;
   const end = start + slot.length;
   switch (slot.plane) {
-    case 'MF32':
-      return ensurePlane(views.MF32, 'meter.array', 'MF32').subarray(
+    case "MF32":
+      return ensurePlane(views.MF32, "meter.array", "MF32").subarray(
         start,
         end,
       ) as Ephemeral<Float32Array>;
-    case 'MF64':
-      return ensurePlane(views.MF64, 'meter.array', 'MF64').subarray(
+    case "MF64":
+      return ensurePlane(views.MF64, "meter.array", "MF64").subarray(
         start,
         end,
       ) as Ephemeral<Float64Array>;
-    case 'MU32':
-      return ensurePlane(views.MU32, 'meter.array', 'MU32').subarray(
+    case "MU32":
+      return ensurePlane(views.MU32, "meter.array", "MU32").subarray(
         start,
         end,
       ) as Ephemeral<Uint32Array>;
@@ -267,8 +285,8 @@ function makeScalarWriter(
 ): (value: number) => void {
   invariant(
     index >= 0 && index < values.length,
-    'internal.assertionFailed',
-    'offset out of range',
+    "internal.assertionFailed",
+    "offset out of range",
     {
       where,
       detail: `${String(index)}/${String(values.length)}`,
@@ -283,9 +301,14 @@ function makeScalarWriter(
  * Assert that the processor binding has not been disposed.
  */
 function assertNotDisposed(disposed: boolean, where: string): void {
-  invariant(!disposed, 'internal.assertionFailed', 'processor binding disposed', {
-    where,
-  });
+  invariant(
+    !disposed,
+    "internal.assertionFailed",
+    "processor binding disposed",
+    {
+      where,
+    },
+  );
 }
 
 /**
@@ -302,7 +325,7 @@ export function processorImpl<const S extends SpecInput>(
   backing: Backing,
   options: ProcessorOptions = {},
 ): ProcessorBinding<S> {
-  noteBinding(backing, 'processor');
+  claimBinding(backing, "processor");
 
   try {
     const mapped: MappedViews = mapViews(plan, backing);
@@ -325,7 +348,7 @@ export function processorImpl<const S extends SpecInput>(
      * - Builds a param view with scalars and ephemeral arrays.
      */
     const rawReader = () => {
-      assertNotDisposed(disposed, 'processor.params.within');
+      assertNotDisposed(disposed, "processor.params.within");
 
       const view: Record<string, unknown> = {};
       for (const key of Object.keys(paramSlots)) {
@@ -333,11 +356,14 @@ export function processorImpl<const S extends SpecInput>(
 
         invariant(
           !!slot0 && isParamDataPlane(slot0.plane),
-          'internal.assertionFailed',
-          'unexpected param plane',
+          "internal.assertionFailed",
+          "unexpected param plane",
           {
-            where: slot0?.length && slot0.length > 1 ? 'param.array' : 'param.scalar',
-            detail: slot0?.plane ?? 'unknown',
+            where:
+              slot0?.length && slot0.length > 1
+                ? "param.array"
+                : "param.scalar",
+            detail: slot0?.plane ?? "unknown",
           },
         );
 
@@ -362,7 +388,7 @@ export function processorImpl<const S extends SpecInput>(
       {
         spinBudget: options.params?.spinBudget ?? 1024,
         retryBudget: options.params?.retryBudget ?? 8,
-        where: 'processor.params.within',
+        where: "processor.params.within",
       },
       rawReader,
     );
@@ -375,15 +401,15 @@ export function processorImpl<const S extends SpecInput>(
        * - Provides coherent scalar values and ephemeral array views.
        * - Retries according to the configured spin/retry budgets.
        */
-      within: ((callback) => {
+      within: (callback): void => {
         withinWrapper(callback);
-      }) as ProcessorParams<S>['within'],
+      },
 
       /**
        * Current PU sequence number for the binding.
        */
       version(): PUSeq {
-        assertNotDisposed(disposed, 'processor.params.version');
+        assertNotDisposed(disposed, "processor.params.version");
         const u = mapped.locks.PU;
         return Atomics.load(u, plan.locks.PU.seq) >>> 0;
       },
@@ -398,27 +424,37 @@ export function processorImpl<const S extends SpecInput>(
 
       const elIndex = elementIndex(slot0);
       switch (slot0.plane) {
-        case 'MF32': {
-          const a = ensurePlane(mapped.meters.MF32, 'meter.scalar', 'MF32');
-          scalarWriters[key] = makeScalarWriter(a, elIndex, (v) => v, 'meter.scalar');
+        case "MF32": {
+          const a = ensurePlane(mapped.meters.MF32, "meter.scalar", "MF32");
+          scalarWriters[key] = makeScalarWriter(
+            a,
+            elIndex,
+            (v) => v,
+            "meter.scalar",
+          );
           break;
         }
-        case 'MF64': {
-          const a = ensurePlane(mapped.meters.MF64, 'meter.scalar', 'MF64');
-          scalarWriters[key] = makeScalarWriter(a, elIndex, (v) => v, 'meter.scalar');
+        case "MF64": {
+          const a = ensurePlane(mapped.meters.MF64, "meter.scalar", "MF64");
+          scalarWriters[key] = makeScalarWriter(
+            a,
+            elIndex,
+            (v) => v,
+            "meter.scalar",
+          );
           break;
         }
-        case 'MU32': {
-          const a = ensurePlane(mapped.meters.MU32, 'meter.scalar', 'MU32');
+        case "MU32": {
+          const a = ensurePlane(mapped.meters.MU32, "meter.scalar", "MU32");
           scalarWriters[key] = makeScalarWriter(
             a,
             elIndex,
             (v) => v >>> 0,
-            'meter.scalar',
+            "meter.scalar",
           );
           break;
         }
-        case 'MU':
+        case "MU":
           break;
       }
     }
@@ -429,7 +465,10 @@ export function processorImpl<const S extends SpecInput>(
       seqIndex: plan.locks.MU.seq,
     };
 
-    type EM = Ephemeral<Float32Array> | Ephemeral<Float64Array> | Ephemeral<Uint32Array>;
+    type EM =
+      | Ephemeral<Float32Array>
+      | Ephemeral<Float64Array>
+      | Ephemeral<Uint32Array>;
 
     const meters: ProcessorMeters<S> = {
       /**
@@ -443,7 +482,7 @@ export function processorImpl<const S extends SpecInput>(
        *   - `stage(key, dst => ...)` exposes ephemeral views.
        */
       publish<T>(cb: (writer: MeterWriter<S>) => T): T {
-        assertNotDisposed(disposed, 'processor.meters.publish');
+        assertNotDisposed(disposed, "processor.meters.publish");
 
         const w: Record<string, unknown> = {};
         for (const key of Object.keys(scalarWriters)) {
@@ -453,34 +492,37 @@ export function processorImpl<const S extends SpecInput>(
         function stage(key: string, cb2: (dst: EM) => void): void {
           const slot0 = meterSlots[key];
           if (!slot0) {
-            throwUnknownKey('meters', key, Object.keys(meterSlots));
+            throwUnknownKey("meters", key, Object.keys(meterSlots));
           }
           invariant(
             slot0.length > 1,
-            'internal.assertionFailed',
-            'array meter expected',
+            "internal.assertionFailed",
+            "array meter expected",
             {
-              where: 'meter.stage',
+              where: "meter.stage",
               detail: key,
             },
           );
           invariant(
             isMeterDataPlane(slot0.plane),
-            'internal.assertionFailed',
-            'unexpected meter plane',
+            "internal.assertionFailed",
+            "unexpected meter plane",
             {
-              where: 'meter.stage',
+              where: "meter.stage",
               detail: slot0.plane,
             },
           );
-          const view = meterArrayViewFor(mapped.meters, { ...slot0, plane: slot0.plane });
+          const view = meterArrayViewFor(mapped.meters, {
+            ...slot0,
+            plane: slot0.plane,
+          });
           cb2(view);
         }
 
         function set(key: string, value: number): void {
           const scalarWriter = scalarWriters[key];
           if (!scalarWriter) {
-            throwUnknownKey('meters', key, Object.keys(scalarWriters));
+            throwUnknownKey("meters", key, Object.keys(scalarWriters));
           }
           scalarWriter(value);
         }
@@ -495,7 +537,7 @@ export function processorImpl<const S extends SpecInput>(
        * Current MU sequence number for the binding.
        */
       version(): MUSeq {
-        assertNotDisposed(disposed, 'processor.meters.version');
+        assertNotDisposed(disposed, "processor.meters.version");
         const u = mapped.locks.MU;
         return Atomics.load(u, plan.locks.MU.seq) >>> 0;
       },
@@ -509,11 +551,11 @@ export function processorImpl<const S extends SpecInput>(
           return;
         }
         disposed = true;
-        releaseBinding(backing, 'processor');
+        releaseBinding(backing, "processor");
       },
     };
   } catch (error) {
-    releaseBinding(backing, 'processor');
+    releaseBinding(backing, "processor");
     throw error;
   }
 }

@@ -14,10 +14,10 @@ import {
   createRangeInput,
   isPlainObject,
   parseArrayLen,
-} from './validate';
+} from "./validate";
 
-import type { SpecInput } from './types';
-import type { ScalarRangeInput } from './validate';
+import type { SpecInput } from "./types";
+import type { ScalarRangeInput } from "./validate";
 
 /**
  * Scalar param builders.
@@ -26,19 +26,19 @@ import type { ScalarRangeInput } from './validate';
  * still being assignable to the wider ScalarParamDef (`min?: number`, etc.).
  */
 interface F32Builder {
-  (): { readonly kind: 'f32' };
+  (): { readonly kind: "f32" };
 
   <TMin extends number>(range: {
     readonly min: TMin;
   }): {
-    readonly kind: 'f32';
+    readonly kind: "f32";
     readonly min: TMin;
   };
 
   <TMax extends number>(range: {
     readonly max: TMax;
   }): {
-    readonly kind: 'f32';
+    readonly kind: "f32";
     readonly max: TMax;
   };
 
@@ -46,7 +46,7 @@ interface F32Builder {
     readonly min: TMin;
     readonly max: TMax;
   }): {
-    readonly kind: 'f32';
+    readonly kind: "f32";
     readonly min: TMin;
     readonly max: TMax;
   };
@@ -54,25 +54,25 @@ interface F32Builder {
   array<TLen extends number>(
     length: TLen | { readonly length: TLen },
   ): {
-    readonly kind: 'f32.array';
+    readonly kind: "f32.array";
     readonly length: TLen;
   };
 }
 
 interface I32Builder {
-  (): { readonly kind: 'i32' };
+  (): { readonly kind: "i32" };
 
   <TMin extends number>(range: {
     readonly min: TMin;
   }): {
-    readonly kind: 'i32';
+    readonly kind: "i32";
     readonly min: TMin;
   };
 
   <TMax extends number>(range: {
     readonly max: TMax;
   }): {
-    readonly kind: 'i32';
+    readonly kind: "i32";
     readonly max: TMax;
   };
 
@@ -80,7 +80,7 @@ interface I32Builder {
     readonly min: TMin;
     readonly max: TMax;
   }): {
-    readonly kind: 'i32';
+    readonly kind: "i32";
     readonly min: TMin;
     readonly max: TMax;
   };
@@ -88,18 +88,18 @@ interface I32Builder {
   array<TLen extends number>(
     length: TLen | { readonly length: TLen },
   ): {
-    readonly kind: 'i32.array';
+    readonly kind: "i32.array";
     readonly length: TLen;
   };
 }
 
 interface BoolBuilder {
-  (): { readonly kind: 'bool' };
+  (): { readonly kind: "bool" };
 
   array<TLen extends number>(
     length: TLen | { readonly length: TLen },
   ): {
-    readonly kind: 'bool.array';
+    readonly kind: "bool.array";
     readonly length: TLen;
   };
 }
@@ -119,7 +119,7 @@ interface EnumBuilder {
   <const V extends readonly string[]>(
     values: V,
   ): {
-    readonly kind: 'enum';
+    readonly kind: "enum";
     readonly values: V;
   };
 
@@ -127,7 +127,7 @@ interface EnumBuilder {
   <const V extends readonly string[]>(config: {
     readonly values: V;
   }): {
-    readonly kind: 'enum';
+    readonly kind: "enum";
     readonly values: V;
   };
 
@@ -135,7 +135,7 @@ interface EnumBuilder {
     readonly values: V;
     readonly length: TLen;
   }): {
-    readonly kind: 'enum.array';
+    readonly kind: "enum.array";
     readonly values: V;
     readonly length: TLen;
   };
@@ -145,39 +145,39 @@ interface EnumBuilder {
  * Meter builders — arrays get literal-preserving length as well.
  */
 interface MeterF32Builder {
-  (): { readonly kind: 'f32' };
+  (): { readonly kind: "f32" };
 
   array<TLen extends number>(
     length: TLen | { readonly length: TLen },
   ): {
-    readonly kind: 'f32.array';
+    readonly kind: "f32.array";
     readonly length: TLen;
   };
 }
 
 interface MeterF64Builder {
-  (): { readonly kind: 'f64' };
+  (): { readonly kind: "f64" };
 
   array<TLen extends number>(
     length: TLen | { readonly length: TLen },
   ): {
-    readonly kind: 'f64.array';
+    readonly kind: "f64.array";
     readonly length: TLen;
   };
 }
 
 interface MeterU32Builder {
-  (): { readonly kind: 'u32' };
+  (): { readonly kind: "u32" };
 
   array<TLen extends number>(
     length: TLen | { readonly length: TLen },
   ): {
-    readonly kind: 'u32.array';
+    readonly kind: "u32.array";
     readonly length: TLen;
   };
 }
 
-type MeterBoolBuilder = () => { readonly kind: 'bool' };
+type MeterBoolBuilder = () => { readonly kind: "bool" };
 
 export interface ParamBuilders {
   readonly f32: F32Builder;
@@ -207,7 +207,10 @@ export interface MeterBuilders {
 
 // Builder form: unconstrained, `const S` for maximal literal preservation.
 export function defineSpec<const S>(
-  build: (api: { readonly param: ParamBuilders; readonly meter: MeterBuilders }) => S,
+  build: (api: {
+    readonly param: ParamBuilders;
+    readonly meter: MeterBuilders;
+  }) => S,
 ): S;
 
 // Plain-object form: must already be a SpecInput.
@@ -215,9 +218,14 @@ export function defineSpec<S extends SpecInput>(spec: S): S;
 
 // Implementation shared by both overloads.
 export function defineSpec<S>(
-  arg: S | ((api: { readonly param: ParamBuilders; readonly meter: MeterBuilders }) => S),
+  arg:
+    | S
+    | ((api: {
+        readonly param: ParamBuilders;
+        readonly meter: MeterBuilders;
+      }) => S),
 ): S {
-  if (typeof arg !== 'function') {
+  if (typeof arg !== "function") {
     return arg;
   }
 
@@ -226,23 +234,25 @@ export function defineSpec<S>(
     const max = input?.max;
 
     if (min !== undefined || max !== undefined) {
-      assertValidateScalarRange('param.f32', createRangeInput(min, max));
+      assertValidateScalarRange("param.f32", createRangeInput(min, max));
     }
 
     if (min !== undefined && max !== undefined) {
-      return { kind: 'f32' as const, min, max };
+      return { kind: "f32" as const, min, max };
     }
     if (min !== undefined) {
-      return { kind: 'f32' as const, min };
+      return { kind: "f32" as const, min };
     }
     if (max !== undefined) {
-      return { kind: 'f32' as const, max };
+      return { kind: "f32" as const, max };
     }
-    return { kind: 'f32' as const };
+    return { kind: "f32" as const };
   }) as F32Builder;
 
-  f32.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
-    kind: 'f32.array' as const,
+  f32.array = <TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ) => ({
+    kind: "f32.array" as const,
     length: parseArrayLen(length) as TLen,
   });
 
@@ -251,32 +261,36 @@ export function defineSpec<S>(
     const max = r?.max;
 
     if (min !== undefined || max !== undefined) {
-      assertValidateScalarRange('param.i32', createRangeInput(min, max), {
+      assertValidateScalarRange("param.i32", createRangeInput(min, max), {
         integer: true,
       });
     }
 
     if (min !== undefined && max !== undefined) {
-      return { kind: 'i32' as const, min, max };
+      return { kind: "i32" as const, min, max };
     }
     if (min !== undefined) {
-      return { kind: 'i32' as const, min };
+      return { kind: "i32" as const, min };
     }
     if (max !== undefined) {
-      return { kind: 'i32' as const, max };
+      return { kind: "i32" as const, max };
     }
-    return { kind: 'i32' as const };
+    return { kind: "i32" as const };
   }) as I32Builder;
 
-  i32.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
-    kind: 'i32.array' as const,
+  i32.array = <TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ) => ({
+    kind: "i32.array" as const,
     length: parseArrayLen(length) as TLen,
   });
 
-  const bool = (() => ({ kind: 'bool' as const })) as BoolBuilder;
+  const bool = (() => ({ kind: "bool" as const })) as BoolBuilder;
 
-  bool.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
-    kind: 'bool.array' as const,
+  bool.array = <TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ) => ({
+    kind: "bool.array" as const,
     length: parseArrayLen(length) as TLen,
   });
 
@@ -286,14 +300,17 @@ export function defineSpec<S>(
     const raw: V = isPlainObject(argEnum)
       ? (argEnum as { readonly values: V }).values
       : argEnum;
-    return { kind: 'enum' as const, values: asNonEmpty(raw) };
+    return { kind: "enum" as const, values: asNonEmpty(raw) };
   };
 
-  const arrayEnum = <const V extends readonly string[], TLen extends number>(opts: {
+  const arrayEnum = <
+    const V extends readonly string[],
+    TLen extends number,
+  >(opts: {
     readonly values: V;
     readonly length: TLen;
   }) => ({
-    kind: 'enum.array' as const,
+    kind: "enum.array" as const,
     values: asNonEmpty(opts.values),
     length: parseArrayLen(opts.length) as TLen,
   });
@@ -301,28 +318,34 @@ export function defineSpec<S>(
   const enumBuilder = scalarEnum as EnumBuilder;
   enumBuilder.array = arrayEnum;
 
-  const meterF32 = (() => ({ kind: 'f32' as const })) as MeterF32Builder;
+  const meterF32 = (() => ({ kind: "f32" as const })) as MeterF32Builder;
 
-  meterF32.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
-    kind: 'f32.array' as const,
+  meterF32.array = <TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ) => ({
+    kind: "f32.array" as const,
     length: parseArrayLen(length) as TLen,
   });
 
-  const meterF64 = (() => ({ kind: 'f64' as const })) as MeterF64Builder;
+  const meterF64 = (() => ({ kind: "f64" as const })) as MeterF64Builder;
 
-  meterF64.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
-    kind: 'f64.array' as const,
+  meterF64.array = <TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ) => ({
+    kind: "f64.array" as const,
     length: parseArrayLen(length) as TLen,
   });
 
-  const meterU32 = (() => ({ kind: 'u32' as const })) as MeterU32Builder;
+  const meterU32 = (() => ({ kind: "u32" as const })) as MeterU32Builder;
 
-  meterU32.array = <TLen extends number>(length: TLen | { readonly length: TLen }) => ({
-    kind: 'u32.array' as const,
+  meterU32.array = <TLen extends number>(
+    length: TLen | { readonly length: TLen },
+  ) => ({
+    kind: "u32.array" as const,
     length: parseArrayLen(length) as TLen,
   });
 
-  const meterBool: MeterBoolBuilder = () => ({ kind: 'bool' as const });
+  const meterBool: MeterBoolBuilder = () => ({ kind: "bool" as const });
 
   const param = {
     f32,

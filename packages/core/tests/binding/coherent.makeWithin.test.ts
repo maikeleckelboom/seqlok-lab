@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from "vitest";
 
-import { makeWithin } from '../../src/binding/common/coherent';
+import { makeWithin } from "../../src/binding/common/coherent";
 
-describe('Make Within: Coherent Read Primitive', () => {
-  it('executes the reader and callback with a coherent value when lock acquisition succeeds', () => {
+describe("Make Within: Coherent Read Primitive", () => {
+  it("executes the reader and callback with a coherent value when lock acquisition succeeds", () => {
     const u32 = new Uint32Array(4);
     const pair = { u32, lockIndex: 0, seqIndex: 1 };
 
@@ -13,7 +13,7 @@ describe('Make Within: Coherent Read Primitive', () => {
     const within = makeWithin(
       pair,
       {
-        where: 'tests.binding.coherent.makeWithin:success',
+        where: "tests.binding.coherent.makeWithin:success",
         spinBudget: 8,
         retryBudget: 2,
       },
@@ -28,7 +28,7 @@ describe('Make Within: Coherent Read Primitive', () => {
     expect(callback).toHaveBeenCalledWith(expectedState);
   });
 
-  it('throws binding.coherentRetryExhausted when retry budget is exhausted due to contention', () => {
+  it("throws binding.coherentRetryExhausted when retry budget is exhausted due to contention", () => {
     const u32 = new Uint32Array(4);
     const pair = { u32, lockIndex: 0, seqIndex: 1 };
 
@@ -40,7 +40,7 @@ describe('Make Within: Coherent Read Primitive', () => {
     const within = makeWithin(
       pair,
       {
-        where: 'tests.binding.coherent.makeWithin:failure',
+        where: "tests.binding.coherent.makeWithin:failure",
         spinBudget: 1,
         retryBudget: 0,
       },
@@ -62,7 +62,7 @@ describe('Make Within: Coherent Read Primitive', () => {
 
     // Verify specific error code structure
     const err = thrownError as { code?: string; message?: string };
-    expect(err.code).toBe('binding.coherentRetryExhausted');
+    expect(err.code).toBe("binding.coherentRetryExhausted");
     expect(err.message).toMatch(/coherent read/i);
   });
 });

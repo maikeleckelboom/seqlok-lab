@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { bench, describe } from "vitest";
 
 import {
   allocateShared,
@@ -8,8 +8,8 @@ import {
   defineSpec,
   planLayout,
   receiveHandoff,
-} from '../src';
-import { MICRO_BENCH_OPTS } from '../vitest.config';
+} from "../src";
+import { MICRO_BENCH_OPTS } from "../vitest.config";
 
 /**
  * @fileoverview
@@ -22,9 +22,9 @@ import { MICRO_BENCH_OPTS } from '../vitest.config';
  * in isolation, without seqlock or controller logic in the way.
  */
 
-describe('MeterWriter sugar: set vs stage, direct vs named', () => {
+describe("MeterWriter sugar: set vs stage, direct vs named", () => {
   const spec = defineSpec(({ param, meter }) => ({
-    id: 'bench/meter-writer-sugar',
+    id: "bench/meter-writer-sugar",
     params: {
       dummy: param.f32({ min: 0, max: 1 }),
     },
@@ -42,7 +42,7 @@ describe('MeterWriter sugar: set vs stage, direct vs named', () => {
   const processor = bindProcessor(received);
 
   // Keep meters live with a dummy param write.
-  controller.params.set('dummy', 0.5);
+  controller.params.set("dummy", 0.5);
 
   // Shared source buffer for spectrum writes.
   const spectrumSource = new Float32Array(512);
@@ -50,7 +50,7 @@ describe('MeterWriter sugar: set vs stage, direct vs named', () => {
 
   // Scalar meter write via writer.level(v) vs writer.set('level', v).
   bench(
-    'meter scalar: writer.level(0.75)',
+    "meter scalar: writer.level(0.75)",
     () => {
       processor.meters.publish((writer) => {
         writer.level(0.75);
@@ -63,7 +63,7 @@ describe('MeterWriter sugar: set vs stage, direct vs named', () => {
     "meter scalar: writer.set('level', 0.75)",
     () => {
       processor.meters.publish((writer) => {
-        writer.set('level', 0.75);
+        writer.set("level", 0.75);
       });
     },
     MICRO_BENCH_OPTS,
@@ -74,7 +74,7 @@ describe('MeterWriter sugar: set vs stage, direct vs named', () => {
     "meter array: writer.stage('spectrum', cb)",
     () => {
       processor.meters.publish((writer) => {
-        writer.stage('spectrum', (dest) => {
+        writer.stage("spectrum", (dest) => {
           dest.set(spectrumSource);
         });
       });

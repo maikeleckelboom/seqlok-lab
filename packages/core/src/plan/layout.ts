@@ -16,12 +16,12 @@ import {
   totalBytes,
   withAlignedSeqlockForMeters,
   withAlignedSeqlockForParams,
-} from './validate';
-import { createError } from '../errors/error';
-import { hashSpec } from '../spec/hash';
+} from "./validate";
+import { createError } from "../errors/error";
+import { hashSpec } from "../spec/hash";
 
-import type { EntrySlot, LockStrideBytes, Plan, PlanOptions } from './types';
-import type { MeterDef, ParamDef, SpecInput } from '../spec/types';
+import type { EntrySlot, LockStrideBytes, Plan, PlanOptions } from "./types";
+import type { MeterDef, ParamDef, SpecInput } from "../spec/types";
 
 /**
  * Default logical stride reserved for each seqlock plane (PU/MU).
@@ -58,16 +58,17 @@ export function planLayout<S extends SpecInput>(
   const paramsObj: Readonly<Record<string, ParamDef>> = inputSpec.params ?? {};
   const metersObj: Readonly<Record<string, MeterDef>> = inputSpec.meters ?? {};
 
-  const lockStrideBytes: LockStrideBytes = options.lockStrideBytes ?? DEFAULT_LOCK_STRIDE;
+  const lockStrideBytes: LockStrideBytes =
+    options.lockStrideBytes ?? DEFAULT_LOCK_STRIDE;
 
   if (
     !Number.isFinite(lockStrideBytes) ||
     lockStrideBytes < 8 ||
     !Number.isInteger(lockStrideBytes)
   ) {
-    throw createError('spec.builderInvalid', 'Invalid lockStrideBytes option', {
-      where: 'plan.planLayout',
-      reason: 'alignmentFailed',
+    throw createError("spec.builderInvalid", "Invalid lockStrideBytes option", {
+      where: "plan.planLayout",
+      reason: "alignmentFailed",
       detail: String(lockStrideBytes),
     });
   }
@@ -82,12 +83,16 @@ export function planLayout<S extends SpecInput>(
   const bytesTotal = totalBytes(planes);
 
   if (bytesTotal > PLAN_SOFT_LIMIT_BYTES) {
-    throw createError('plan.overflowRisk', 'Planned memory exceeds soft limit', {
-      where: 'plan.planLayout',
-      detail: 'plan.size',
-      estimatedBytes: bytesTotal,
-      softLimitBytes: PLAN_SOFT_LIMIT_BYTES,
-    });
+    throw createError(
+      "plan.overflowRisk",
+      "Planned memory exceeds soft limit",
+      {
+        where: "plan.planLayout",
+        detail: "plan.size",
+        estimatedBytes: bytesTotal,
+        softLimitBytes: PLAN_SOFT_LIMIT_BYTES,
+      },
+    );
   }
 
   let hash: ReturnType<typeof hashSpec>;
@@ -95,12 +100,12 @@ export function planLayout<S extends SpecInput>(
     hash = hashSpec(inputSpec);
   } catch (cause) {
     throw createError(
-      'spec.builderInvalid',
-      'Spec planning failed while hashing spec',
+      "spec.builderInvalid",
+      "Spec planning failed while hashing spec",
       {
-        where: 'plan.planLayout',
-        reason: 'planFailed',
-        detail: 'hashSpec',
+        where: "plan.planLayout",
+        reason: "planFailed",
+        detail: "hashSpec",
       },
       cause,
     );
@@ -112,10 +117,10 @@ export function planLayout<S extends SpecInput>(
     bytesTotal,
     planes,
     params: paramSlots as Readonly<{
-      [K in keyof S['params']]: EntrySlot;
+      [K in keyof S["params"]]: EntrySlot;
     }>,
     meters: meterSlots as Readonly<{
-      [K in keyof S['meters']]: EntrySlot;
+      [K in keyof S["meters"]]: EntrySlot;
     }>,
     locks: {
       PU: { lock: 0, seq: 1 },

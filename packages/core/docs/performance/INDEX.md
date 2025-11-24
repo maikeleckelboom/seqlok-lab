@@ -12,7 +12,7 @@ by the benchmark harness and may be overwritten; do not hand-edit them.
 - [bench-results.generated.md](./bench-results.generated.md)
   Human-readable summary of recent benchmark runs and key micro-operation costs.
 
-- [bench-results.json](./bench-results.json)
+- [bench-results.json](../../bench-results.json)
   Raw structured benchmark data suitable for scripts, dashboards, or further analysis.
 
 Use these results when tuning hot paths, validating regressions, or communicating performance characteristics.

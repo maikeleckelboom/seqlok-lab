@@ -1,24 +1,24 @@
-import { describe, expect, it, expectTypeOf } from 'vitest';
+import { describe, expect, it, expectTypeOf } from "vitest";
 
-import { defineSpec } from '../../src/spec/define';
+import { defineSpec } from "../../src/spec/define";
 
-describe('DSL: type inference & validation', () => {
-  it('preserves literal enum values with as const', () => {
+describe("DSL: type inference & validation", () => {
+  it("preserves literal enum values with as const", () => {
     const _spec = defineSpec(({ param }) => ({
-      id: 'literal-enum',
+      id: "literal-enum",
       params: {
-        mode: param.enum(['sine', 'square', 'saw']),
+        mode: param.enum(["sine", "square", "saw"]),
       },
       meters: {},
     }));
 
     type Mode = (typeof _spec.params.mode.values)[number];
-    expectTypeOf<Mode>().toEqualTypeOf<'sine' | 'square' | 'saw'>();
+    expectTypeOf<Mode>().toEqualTypeOf<"sine" | "square" | "saw">();
   });
 
-  it('infers array lengths correctly', () => {
+  it("infers array lengths correctly", () => {
     const _spec = defineSpec(({ param, meter }) => ({
-      id: 'array-lengths',
+      id: "array-lengths",
       params: {
         curve: param.f32.array(128),
       },
@@ -34,31 +34,31 @@ describe('DSL: type inference & validation', () => {
     expectTypeOf<SpectrumLen>().toEqualTypeOf<1024>();
   });
 
-  it('accepts both scalar and object forms for enum', () => {
+  it("accepts both scalar and object forms for enum", () => {
     const spec1 = defineSpec(({ param }) => ({
-      id: 'enum-scalar',
+      id: "enum-scalar",
       params: {
-        mode: param.enum(['a', 'b'] as const),
+        mode: param.enum(["a", "b"] as const),
       },
       meters: {},
     }));
 
     const spec2 = defineSpec(({ param }) => ({
-      id: 'enum-object',
+      id: "enum-object",
       params: {
-        mode: param.enum({ values: ['a', 'b'] }),
+        mode: param.enum({ values: ["a", "b"] }),
       },
       meters: {},
     }));
 
-    expect(spec1.params.mode.values).toEqual(['a', 'b']);
-    expect(spec2.params.mode.values).toEqual(['a', 'b']);
+    expect(spec1.params.mode.values).toEqual(["a", "b"]);
+    expect(spec2.params.mode.values).toEqual(["a", "b"]);
   });
 
-  it('throws on invalid numeric range (min > max)', () => {
+  it("throws on invalid numeric range (min > max)", () => {
     expect(() => {
       defineSpec(({ param }) => ({
-        id: 'bad-range',
+        id: "bad-range",
         params: {
           gain: param.f32({ min: 10, max: 1 }), // Invalid: min > max.
         },
@@ -67,10 +67,10 @@ describe('DSL: type inference & validation', () => {
     }).toThrow(/range|min|max/i);
   });
 
-  it('throws on non-integer i32 range bounds', () => {
+  it("throws on non-integer i32 range bounds", () => {
     expect(() => {
       defineSpec(({ param }) => ({
-        id: 'fractional-i32',
+        id: "fractional-i32",
         params: {
           steps: param.i32({ min: 1.5, max: 10 }), // Invalid: Fractional min.
         },
@@ -79,10 +79,10 @@ describe('DSL: type inference & validation', () => {
     }).toThrow(/integer/i);
   });
 
-  it('throws on non-positive array lengths', () => {
+  it("throws on non-positive array lengths", () => {
     expect(() => {
       defineSpec(({ param }) => ({
-        id: 'zero-array',
+        id: "zero-array",
         params: {
           invalid: param.f32.array(0), // Invalid: Zero length.
         },
@@ -92,7 +92,7 @@ describe('DSL: type inference & validation', () => {
 
     expect(() => {
       defineSpec(({ param }) => ({
-        id: 'negative-array',
+        id: "negative-array",
         params: {
           invalid: param.f32.array(-5), // Invalid: Negative length.
         },
@@ -101,10 +101,10 @@ describe('DSL: type inference & validation', () => {
     }).toThrow(/positive|length/i);
   });
 
-  it('throws on empty enum values', () => {
+  it("throws on empty enum values", () => {
     expect(() => {
       defineSpec(({ param }) => ({
-        id: 'empty-enum',
+        id: "empty-enum",
         params: {
           mode: param.enum([]),
         },
@@ -113,21 +113,21 @@ describe('DSL: type inference & validation', () => {
     }).toThrow(/enum|value|empty/i);
   });
 
-  it('throws on enum with empty string values', () => {
+  it("throws on enum with empty string values", () => {
     expect(() => {
       defineSpec(({ param }) => ({
-        id: 'empty-string-enum',
+        id: "empty-string-enum",
         params: {
-          mode: param.enum(['valid', '', 'another']),
+          mode: param.enum(["valid", "", "another"]),
         },
         meters: {},
       }));
     }).toThrow(/nonempty|string/i);
   });
 
-  it('accepts array length when passed as an object', () => {
+  it("accepts array length when passed as an object", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'object-length',
+      id: "object-length",
       params: {
         data: param.f32.array({ length: 256 }),
       },
@@ -137,12 +137,12 @@ describe('DSL: type inference & validation', () => {
     expect(spec.params.data.length).toBe(256);
   });
 
-  it('preserves enum array literal types', () => {
+  it("preserves enum array literal types", () => {
     const _spec = defineSpec(({ param }) => ({
-      id: 'enum-array',
+      id: "enum-array",
       params: {
         states: param.enum.array({
-          values: ['idle', 'active', 'paused'],
+          values: ["idle", "active", "paused"],
           length: 8,
         }),
       },
@@ -150,25 +150,25 @@ describe('DSL: type inference & validation', () => {
     }));
 
     type State = (typeof _spec.params.states.values)[number];
-    expectTypeOf<State>().toEqualTypeOf<'idle' | 'active' | 'paused'>();
+    expectTypeOf<State>().toEqualTypeOf<"idle" | "active" | "paused">();
   });
 
-  it('allows minimal scalar f32/i32 without ranges', () => {
+  it("allows minimal scalar f32/i32 without ranges", () => {
     const spec = defineSpec(() => ({
-      id: 'minimal',
+      id: "minimal",
       params: {
-        f: { kind: 'f32' },
-        i: { kind: 'i32' },
+        f: { kind: "f32" },
+        i: { kind: "i32" },
       },
     }));
 
-    expect(spec.params.f.kind).toBe('f32');
-    expect(spec.params.i.kind).toBe('i32');
+    expect(spec.params.f.kind).toBe("f32");
+    expect(spec.params.i.kind).toBe("i32");
   });
 
-  it('distinguishes param vs meter builders', () => {
+  it("distinguishes param vs meter builders", () => {
     const spec = defineSpec(({ param, meter }) => ({
-      id: 'builder-types',
+      id: "builder-types",
       params: {
         pf32: param.f32({ min: 0, max: 1 }),
       },
@@ -179,15 +179,15 @@ describe('DSL: type inference & validation', () => {
       },
     }));
 
-    expect(spec.params.pf32.kind).toBe('f32');
-    expect(spec.meters.mf32.kind).toBe('f32');
-    expect(spec.meters.mf64.kind).toBe('f64');
-    expect(spec.meters.mu32.kind).toBe('u32');
+    expect(spec.params.pf32.kind).toBe("f32");
+    expect(spec.meters.mf32.kind).toBe("f32");
+    expect(spec.meters.mf64.kind).toBe("f64");
+    expect(spec.meters.mu32.kind).toBe("u32");
   });
 
-  it('infers readonly constraint on spec properties', () => {
+  it("infers readonly constraint on spec properties", () => {
     const _spec = defineSpec(({ param }) => ({
-      id: 'readonly-check',
+      id: "readonly-check",
       params: {
         gain: param.f32({ min: 0, max: 1 }),
       },
@@ -198,15 +198,15 @@ describe('DSL: type inference & validation', () => {
     expectTypeOf<Check>().toEqualTypeOf<true>();
   });
 
-  it('validates meter bool kind (new in v1)', () => {
+  it("validates meter bool kind (new in v1)", () => {
     const spec = defineSpec(({ meter }) => ({
-      id: 'meter-bool',
+      id: "meter-bool",
       params: {},
       meters: {
         active: meter.bool(),
       },
     }));
 
-    expect(spec.meters.active.kind).toBe('bool');
+    expect(spec.meters.active.kind).toBe("bool");
   });
 });

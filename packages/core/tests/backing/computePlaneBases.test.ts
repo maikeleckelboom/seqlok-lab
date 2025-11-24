@@ -1,17 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   BACKING_PLANE_PACK_ORDER_V1,
   computeBackingPlaneBases,
-} from '../../src/backing/map-views';
-import { planLayout } from '../../src/plan/layout';
-import { specFromPlaneBytes } from '../helpers/spec-from-bytes';
+} from "../../src/backing/map-views";
+import { planLayout } from "../../src/plan/layout";
+import { specFromPlaneBytes } from "../helpers/spec-from-bytes";
 
 const BYTES_F32 = 4;
 const BYTES_F64 = 8;
 
-describe('Backing Plane Layout Calculation', () => {
-  it('calculates contiguous base offsets matching the V1 packing order and total size', () => {
+describe("Backing Plane Layout Calculation", () => {
+  it("calculates contiguous base offsets matching the V1 packing order and total size", () => {
     // Define mixed plane sizes to verify arithmetic contiguity across different types
     const planeSizes = {
       PF32: 8 * BYTES_F32,

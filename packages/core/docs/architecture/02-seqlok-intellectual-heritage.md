@@ -193,7 +193,7 @@ Seqlok's CQRS-style split:
 
 ```ts
 // ✅ controller side (UI / host)
-controller.params.set('gain', slider.value);
+controller.params.set("gain", slider.value);
 const meters = controller.meters.snapshot();
 console.log(meters.peak);
 
@@ -363,7 +363,7 @@ You'd need custom locking, manual versioning, and disciplined usage to make this
 // ✅ Seqlok-style
 
 // controller / UI:
-controller.params.set('gain', slider.value);
+controller.params.set("gain", slider.value);
 
 // processor / audio:
 processor.params.within((params) => {

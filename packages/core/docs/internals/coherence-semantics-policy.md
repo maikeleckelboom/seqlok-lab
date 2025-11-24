@@ -36,9 +36,9 @@ The binding layer uses a **degradation policy** plus budgets to decide how to ha
 
 ```ts
 export type MeterDegradePolicy =
-  | 'never' // Throw on failure (strict coherence)
-  | 'stale' // Return last known good snapshot
-  | 'zeroed'; // Return sentinel values (e.g. zeros)
+  | "never" // Throw on failure (strict coherence)
+  | "stale" // Return last known good snapshot
+  | "zeroed"; // Return sentinel values (e.g. zeros)
 
 export interface ControllerMeterPolicyOptions {
   /**
@@ -125,7 +125,7 @@ For call sites where you want **provably coherent snapshots or loud failures**, 
 
 ```ts
 const STRICT_METER_POLICY: ControllerMeterPolicyOptions = {
-  degrade: 'never', // No fallbacks — either coherent or error
+  degrade: "never", // No fallbacks — either coherent or error
   spinBudget: 100,
   retryBudget: 4,
 };
@@ -139,9 +139,9 @@ _binding_ sees these budgets and the degrade policy.
 Shape of the controller snapshot wrapper:
 
 ```ts
-import { tryRead } from '../primitives/seqlock';
-import { createError } from '../errors/error';
-import { incrementCounter } from '../diagnostics/counters';
+import { tryRead } from "../primitives/seqlock";
+import { createError } from "../errors/error";
+import { incrementCounter } from "../diagnostics/counters";
 
 interface SnapshotOptions {
   readonly spinBudget: number;
@@ -157,7 +157,10 @@ function snapshotWithPolicy<T>(
 ): T {
   const { spinBudget, retryBudget, where, degrade } = options;
 
-  const result = tryRead(/* pair */ /* ... */ reader, { spinBudget, retryBudget });
+  const result = tryRead(/* pair */ /* ... */ reader, {
+    spinBudget,
+    retryBudget,
+  });
 
   if (result.ok) {
     return result.value;
@@ -166,18 +169,18 @@ function snapshotWithPolicy<T>(
   const { spins, retries } = result.status;
 
   if (spins >= spinBudget) {
-    incrementCounter('spinBudgetExhausted');
+    incrementCounter("spinBudgetExhausted");
   }
 
   if (retries >= retryBudget) {
-    incrementCounter('retryBudgetExhausted');
+    incrementCounter("retryBudgetExhausted");
   }
 
-  if (degrade === 'never') {
-    throw createError('binding.snapshotRetryExhausted', { where });
+  if (degrade === "never") {
+    throw createError("binding.snapshotRetryExhausted", { where });
   }
 
-  incrementCounter('degradedSnapshots');
+  incrementCounter("degradedSnapshots");
 
   return getDegradedSnapshot();
 }
@@ -198,7 +201,7 @@ Given the counters above, a typical strict diagnostics configuration looks like:
 
 ```ts
 const result = await runWithDiagnostics(() => runCriticalScenario(), {
-  scenarioId: 'critical:coherence-test',
+  scenarioId: "critical:coherence-test",
   thresholds: {
     degradedSnapshots: 0, // In strict mode we don't expect any degradation
     spinBudgetExhausted: 0, // Any exhaustion is suspicious
@@ -269,7 +272,7 @@ export interface ControllerMeterPolicyOptions {
 
 ```ts
 const options: {
-  degrade: 'never';
+  degrade: "never";
   spinBudget: 100;
   retryBudget: 4;
 };
@@ -281,7 +284,7 @@ const options: {
 
 ```ts
 const options: {
-  degrade: 'stale';
+  degrade: "stale";
   spinBudget: 50;
   retryBudget: 2;
 };
@@ -293,7 +296,7 @@ const options: {
 
 ```ts
 const options: {
-  degrade: 'never';
+  degrade: "never";
   spinBudget: 10; // Deliberately low
   retryBudget: 2; // Deliberately low
 };
@@ -305,7 +308,7 @@ const options: {
 
 ```ts
 const options: {
-  degrade: 'zeroed';
+  degrade: "zeroed";
   spinBudget: 5;
   retryBudget: 1;
 };

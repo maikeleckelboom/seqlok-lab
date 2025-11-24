@@ -114,9 +114,9 @@ Canonical wrapper (shape):
 
 ```ts
 // controller.snapshot.ts (shape only)
-import { tryRead } from '../primitives/seqlock';
-import { createError } from '../errors';
-import { incrementCounter } from '../diagnostics/counters';
+import { tryRead } from "../primitives/seqlock";
+import { createError } from "../errors";
+import { incrementCounter } from "../diagnostics/counters";
 
 interface SnapshotOptions {
   readonly spinBudget: number;
@@ -138,14 +138,14 @@ function snapshotWithSeqlock<T>(options: SnapshotOptions, reader: () => T): T {
     const { spins, retries } = result.status;
 
     if (spins >= spinBudget) {
-      incrementCounter('spinBudgetExhausted');
+      incrementCounter("spinBudgetExhausted");
     }
 
     if (retries >= retryBudget) {
-      incrementCounter('retryBudgetExhausted');
+      incrementCounter("retryBudgetExhausted");
     }
 
-    throw createError('binding.snapshotRetryExhausted', { where });
+    throw createError("binding.snapshotRetryExhausted", { where });
   }
 
   return result.value;
@@ -172,15 +172,15 @@ function snapshotWithFallback<T>(
     const { spins, retries } = result.status;
 
     if (spins >= spinBudget) {
-      incrementCounter('spinBudgetExhausted');
+      incrementCounter("spinBudgetExhausted");
     }
 
     if (retries >= retryBudget) {
-      incrementCounter('retryBudgetExhausted');
+      incrementCounter("retryBudgetExhausted");
     }
 
     // We choose to continue in a degraded mode instead of throwing.
-    incrementCounter('degradedSnapshots');
+    incrementCounter("degradedSnapshots");
 
     return degradedReader();
   }
@@ -199,9 +199,9 @@ Canonical pattern:
 
 ```ts
 // processor.impl.ts (shape only)
-import { tryRead } from '../primitives/seqlock';
-import { createError } from '../errors';
-import { incrementCounter } from '../diagnostics/counters';
+import { tryRead } from "../primitives/seqlock";
+import { createError } from "../errors";
+import { incrementCounter } from "../diagnostics/counters";
 
 export function makeWithin<S>(
   spinBudget: number,
@@ -220,14 +220,14 @@ export function makeWithin<S>(
       const { spins, retries } = result.status;
 
       if (spins >= spinBudget) {
-        incrementCounter('spinBudgetExhausted');
+        incrementCounter("spinBudgetExhausted");
       }
 
       if (retries >= retryBudget) {
-        incrementCounter('retryBudgetExhausted');
+        incrementCounter("retryBudgetExhausted");
       }
 
-      throw createError('binding.coherentRetryExhausted', { where });
+      throw createError("binding.coherentRetryExhausted", { where });
     }
 
     cb(result.value);
@@ -323,7 +323,7 @@ function checkDiagnosticsThresholds(
     counters.degradedSnapshots > thresholds.degradedSnapshots
   ) {
     violations.push({
-      metric: 'degradedSnapshots',
+      metric: "degradedSnapshots",
       actual: counters.degradedSnapshots,
       threshold: thresholds.degradedSnapshots,
     });
@@ -334,7 +334,7 @@ function checkDiagnosticsThresholds(
     counters.spinBudgetExhausted > thresholds.spinBudgetExhausted
   ) {
     violations.push({
-      metric: 'spinBudgetExhausted',
+      metric: "spinBudgetExhausted",
       actual: counters.spinBudgetExhausted,
       threshold: thresholds.spinBudgetExhausted,
     });
@@ -345,7 +345,7 @@ function checkDiagnosticsThresholds(
     counters.retryBudgetExhausted > thresholds.retryBudgetExhausted
   ) {
     violations.push({
-      metric: 'retryBudgetExhausted',
+      metric: "retryBudgetExhausted",
       actual: counters.retryBudgetExhausted,
       threshold: thresholds.retryBudgetExhausted,
     });
@@ -405,7 +405,7 @@ Example check:
 
 ```ts
 const result = await runWithDiagnostics(() => runDeckLoadAndScrubScenario(), {
-  scenarioId: 'stress:deck-load-and-scrub',
+  scenarioId: "stress:deck-load-and-scrub",
   thresholds: {
     degradedSnapshots: 100,
     spinBudgetExhausted: 10,

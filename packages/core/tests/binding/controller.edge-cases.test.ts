@@ -1,13 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { allocateShared, bindController, defineSpec, planLayout } from '../../src';
+import {
+  allocateShared,
+  bindController,
+  defineSpec,
+  planLayout,
+} from "../../src";
 
-describe('Controller: Edge Cases & Validation', () => {
-  it('rejects enum writes with invalid string labels', () => {
+describe("Controller: Edge Cases & Validation", () => {
+  it("rejects enum writes with invalid string labels", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'enum-validation',
+      id: "enum-validation",
       params: {
-        mode: param.enum(['sine', 'square', 'saw']),
+        mode: param.enum(["sine", "square", "saw"]),
       },
     }));
 
@@ -17,13 +22,13 @@ describe('Controller: Edge Cases & Validation', () => {
 
     expect(() => {
       // @ts-expect-error Testing runtime validation for non-existent enum key
-      ctl.params.set('mode', 'triangle');
+      ctl.params.set("mode", "triangle");
     }).toThrow(/enum|invalid|value/i);
   });
 
   it('clamps out-of-range f32 values when rangePolicy is set to "clamp"', () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'range-policy-clamp',
+      id: "range-policy-clamp",
       params: {
         gain: param.f32({ min: 0, max: 1 }),
       },
@@ -32,24 +37,24 @@ describe('Controller: Edge Cases & Validation', () => {
     const plan = planLayout(spec);
     const backing = allocateShared(plan);
     const ctl = bindController(spec, plan, backing, {
-      params: { rangePolicy: 'clamp' },
+      params: { rangePolicy: "clamp" },
     });
 
     const versionBefore = ctl.params.version();
 
     // Should not throw; value should be clamped to max (1)
-    ctl.params.set('gain', 1.5);
+    ctl.params.set("gain", 1.5);
 
     const versionAfter = ctl.params.version();
     expect(versionAfter).toBe(versionBefore + 1);
 
-    const { gain } = ctl.params.snapshot(['gain']);
+    const { gain } = ctl.params.snapshot(["gain"]);
     expect(gain).toBe(1);
   });
 
   it('throws on out-of-range f32 values when rangePolicy is set to "reject"', () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'range-policy-reject',
+      id: "range-policy-reject",
       params: {
         rate: param.f32({ min: 0.5, max: 4 }),
       },
@@ -58,17 +63,17 @@ describe('Controller: Edge Cases & Validation', () => {
     const plan = planLayout(spec);
     const backing = allocateShared(plan);
     const ctl = bindController(spec, plan, backing, {
-      params: { rangePolicy: 'reject' },
+      params: { rangePolicy: "reject" },
     });
 
     expect(() => {
-      ctl.params.set('rate', 5);
+      ctl.params.set("rate", 5);
     }).toThrow(/out of range|range|bounds/i);
   });
 
   it('validates "into" buffer type compatibility for parameter snapshots', () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'buffer-type-mismatch',
+      id: "buffer-type-mismatch",
       params: {
         curve: param.f32.array(64),
       },
@@ -85,7 +90,7 @@ describe('Controller: Edge Cases & Validation', () => {
     expect(() => {
       // @ts-expect-error Intentionally passing wrong TypedArray type
       ctl.params.snapshot({
-        keys: ['curve'],
+        keys: ["curve"],
         into: { curve: wrongBuffer },
       });
     }).toThrow(/type|Float32Array|Int32Array/i);
@@ -93,7 +98,7 @@ describe('Controller: Edge Cases & Validation', () => {
 
   it('validates "into" buffer length compatibility for parameter snapshots', () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'buffer-length-mismatch',
+      id: "buffer-length-mismatch",
       params: {
         coeffs: param.f32.array(128),
       },
@@ -108,16 +113,16 @@ describe('Controller: Edge Cases & Validation', () => {
 
     expect(() => {
       ctl.params.snapshot({
-        keys: ['coeffs'],
+        keys: ["coeffs"],
         into: { coeffs: wrongSize },
       });
     }).toThrow(/length|size|128|64/i);
   });
 
-  it('handles empty parameter specifications gracefully', () => {
+  it("handles empty parameter specifications gracefully", () => {
     const spec = defineSpec(() => ({
-      id: 'empty-params',
-      meters: { peak: { kind: 'f32' } },
+      id: "empty-params",
+      meters: { peak: { kind: "f32" } },
     }));
 
     const plan = planLayout(spec);
@@ -128,9 +133,9 @@ describe('Controller: Edge Cases & Validation', () => {
     expect(Object.keys(snap)).toHaveLength(0);
   });
 
-  it('normalizes boolean parameters from numeric 0/1 inputs', () => {
+  it("normalizes boolean parameters from numeric 0/1 inputs", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'bool-numeric-coercion',
+      id: "bool-numeric-coercion",
       params: {
         enabled: param.bool(),
       },
@@ -141,17 +146,17 @@ describe('Controller: Edge Cases & Validation', () => {
     const ctl = bindController(spec, plan, backing);
 
     // @ts-expect-error Testing runtime coercion of numeric truthy
-    ctl.params.set('enabled', 1);
+    ctl.params.set("enabled", 1);
     expect(ctl.params.snapshot().enabled).toBe(true);
 
     // @ts-expect-error Testing runtime coercion of numeric falsy
-    ctl.params.set('enabled', 0);
+    ctl.params.set("enabled", 0);
     expect(ctl.params.snapshot().enabled).toBe(false);
   });
 
-  it('throws when attempting to stage a non-existent array parameter', () => {
+  it("throws when attempting to stage a non-existent array parameter", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'unknown-stage-key',
+      id: "unknown-stage-key",
       params: {
         valid: param.f32.array(8),
       },
@@ -163,17 +168,17 @@ describe('Controller: Edge Cases & Validation', () => {
 
     expect(() => {
       // @ts-expect-error Argument 'invalid' is not assignable to parameter of type 'valid'
-      ctl.params.stage('invalid', () => {
+      ctl.params.stage("invalid", () => {
         /* empty */
       });
     }).toThrow(/unknown|key|param/i);
   });
 
-  it('accepts scalar enum writes via numeric index (runtime interop)', () => {
+  it("accepts scalar enum writes via numeric index (runtime interop)", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'enum-index-write',
+      id: "enum-index-write",
       params: {
-        waveform: param.enum(['sine', 'square', 'saw']),
+        waveform: param.enum(["sine", "square", "saw"]),
       },
     }));
 
@@ -182,17 +187,17 @@ describe('Controller: Edge Cases & Validation', () => {
     const ctl = bindController(spec, plan, backing);
 
     // Writing index 1 ('square') directly
-    ctl.params.set('waveform', 1 as unknown as never);
+    ctl.params.set("waveform", 1 as unknown as never);
 
     const snap = ctl.params.snapshot();
     // Snapshot returns the string representation, or at least validates the update occurred
     expect(snap.waveform).toMatch(/square|1/);
   });
 
-  it('rejects zero-length array parameters during specification or layout planning', () => {
+  it("rejects zero-length array parameters during specification or layout planning", () => {
     const build = () =>
       defineSpec(({ param }) => ({
-        id: 'zero-length-array',
+        id: "zero-length-array",
         params: {
           empty: param.f32.array(0),
         },

@@ -1,8 +1,8 @@
-import { Worker } from 'node:worker_threads';
+import { Worker } from "node:worker_threads";
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { tryRead, type SeqPair } from '../../src/primitives/seqlock';
+import { tryRead, type SeqPair } from "../../src/primitives/seqlock";
 
 interface SeqlockErrorLike {
   readonly code: string;
@@ -13,17 +13,17 @@ interface SeqlockErrorLike {
  * These occur when the retry budget is exhausted due to high contention.
  */
 function isSeqlockTimeout(error: unknown): error is SeqlockErrorLike & {
-  readonly code: 'primitives.seqlockTimeout';
+  readonly code: "primitives.seqlockTimeout";
 } {
-  if (typeof error !== 'object' || error === null) {
+  if (typeof error !== "object" || error === null) {
     return false;
   }
   const maybe = error as { code?: unknown };
-  return maybe.code === 'primitives.seqlockTimeout';
+  return maybe.code === "primitives.seqlockTimeout";
 }
 
-describe('Seqlock Cross-Thread Stress', () => {
-  it('reads monotone values under concurrent publishes', async () => {
+describe("Seqlock Cross-Thread Stress", () => {
+  it("reads monotone values under concurrent publishes", async () => {
     const WRITES = 50_000;
     const VALUE_INDEX = 2;
     const MAX_OK_READS = 2000;
@@ -75,11 +75,11 @@ describe('Seqlock Cross-Thread Stress', () => {
 
     // Track worker completion via message, though the exit code check is primary
     let done = false;
-    worker.on('message', (msg: unknown) => {
+    worker.on("message", (msg: unknown) => {
       if (
-        typeof msg === 'object' &&
+        typeof msg === "object" &&
         msg !== null &&
-        (msg as { type?: string }).type === 'done'
+        (msg as { type?: string }).type === "done"
       ) {
         done = true;
       }
@@ -130,7 +130,7 @@ describe('Seqlock Cross-Thread Stress', () => {
 
     // Ensure the worker exits cleanly
     const exitCode = await new Promise<number>((resolve) => {
-      worker.on('exit', (code) => {
+      worker.on("exit", (code) => {
         resolve(code);
       });
     });

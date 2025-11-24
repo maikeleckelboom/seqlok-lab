@@ -1,13 +1,13 @@
-import fc from 'fast-check';
-import { describe, expect, it } from 'vitest';
+import fc from "fast-check";
+import { describe, expect, it } from "vitest";
 
-import { allocateSharedPartitioned } from '../../src/backing/allocate-shared-partitioned';
-import { mapViews } from '../../src/backing/map-views';
-import { planLayout } from '../../src/plan/layout';
-import { specFromPlaneBytes } from '../helpers/spec-from-bytes';
+import { allocateSharedPartitioned } from "../../src/backing/allocate-shared-partitioned";
+import { mapViews } from "../../src/backing/map-views";
+import { planLayout } from "../../src/plan/layout";
+import { specFromPlaneBytes } from "../helpers/spec-from-bytes";
 
-import type { SharedBacking } from '../../src/backing/types';
-import type { PlaneByteLengths } from '../../src/plan/types';
+import type { SharedBacking } from "../../src/backing/types";
+import type { PlaneByteLengths } from "../../src/plan/types";
 
 const BYTES_F32 = 4;
 const BYTES_F64 = 8;
@@ -36,15 +36,15 @@ function arbPlaneBytes(): fc.Arbitrary<PlaneByteLengths> {
     .filter((b) => b.PF32 + b.PI32 + b.MF32 + b.MF64 > 0);
 }
 
-describe('Map Views: Parity & Consistency (Property-Based)', () => {
-  it('ensures mapped view byte lengths are identical across contiguous and partitioned backings', () => {
+describe("Map Views: Parity & Consistency (Property-Based)", () => {
+  it("ensures mapped view byte lengths are identical across contiguous and partitioned backings", () => {
     fc.assert(
       fc.property(arbPlaneBytes(), (req) => {
         const plan = planLayout(specFromPlaneBytes(req));
 
         // Strategy A: Contiguous SharedArrayBuffer
         const contiguousBacking: SharedBacking = {
-          kind: 'shared',
+          kind: "shared",
           sab: new SharedArrayBuffer(plan.bytesTotal),
         };
 

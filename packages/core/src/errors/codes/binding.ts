@@ -8,21 +8,26 @@
  * - Registered into the global error registry as the `binding.*` domain.
  */
 
-import type { BufferDetails, RangeDetails, UnknownKeyDetails } from '../details';
-import type { ErrorDetails, ErrorMeta } from '../registry';
+import type { AssertTrue, IsExact } from "../../internal/type-assert";
+import type {
+  BufferDetails,
+  RangeDetails,
+  UnknownKeyDetails,
+} from "../details";
+import type { ErrorDetails, ErrorMeta } from "../registry";
 
 /**
  * Binding error codes.
  */
 export type BindingErrorCode =
-  | 'binding.unknownKey'
-  | 'binding.paramRange'
-  | 'binding.paramInvalidValue'
-  | 'binding.shapeInvalid'
-  | 'binding.snapshotIntoTypeMismatch'
-  | 'binding.snapshotIntoLengthMismatch'
-  | 'binding.snapshotRetryExhausted'
-  | 'binding.coherentRetryExhausted';
+  | "binding.unknownKey"
+  | "binding.paramRange"
+  | "binding.paramInvalidValue"
+  | "binding.shapeInvalid"
+  | "binding.snapshotIntoTypeMismatch"
+  | "binding.snapshotIntoLengthMismatch"
+  | "binding.snapshotRetryExhausted"
+  | "binding.coherentRetryExhausted";
 
 /**
  * Unknown key in params/meters.
@@ -78,14 +83,14 @@ interface BindingErrorDescriptor<C extends BindingErrorCode> {
  * Key space for binding descriptors.
  */
 export type BindingErrorKey =
-  | 'unknownKey'
-  | 'paramRange'
-  | 'paramInvalidValue'
-  | 'shapeInvalid'
-  | 'snapshotIntoTypeMismatch'
-  | 'snapshotIntoLengthMismatch'
-  | 'snapshotRetryExhausted'
-  | 'coherentRetryExhausted';
+  | "unknownKey"
+  | "paramRange"
+  | "paramInvalidValue"
+  | "shapeInvalid"
+  | "snapshotIntoTypeMismatch"
+  | "snapshotIntoLengthMismatch"
+  | "snapshotRetryExhausted"
+  | "coherentRetryExhausted";
 
 /**
  * Domain-local descriptors used for IDE navigation and as a single
@@ -97,109 +102,93 @@ export type BindingErrorKey =
  *   `--isolatedDeclarations`.
  */
 interface BindingErrorsMap {
-  unknownKey: BindingErrorDescriptor<'binding.unknownKey'>;
-  paramRange: BindingErrorDescriptor<'binding.paramRange'>;
-  paramInvalidValue: BindingErrorDescriptor<'binding.paramInvalidValue'>;
-  shapeInvalid: BindingErrorDescriptor<'binding.shapeInvalid'>;
-  snapshotIntoTypeMismatch: BindingErrorDescriptor<'binding.snapshotIntoTypeMismatch'>;
-  snapshotIntoLengthMismatch: BindingErrorDescriptor<'binding.snapshotIntoLengthMismatch'>;
-  snapshotRetryExhausted: BindingErrorDescriptor<'binding.snapshotRetryExhausted'>;
-  coherentRetryExhausted: BindingErrorDescriptor<'binding.coherentRetryExhausted'>;
+  unknownKey: BindingErrorDescriptor<"binding.unknownKey">;
+  paramRange: BindingErrorDescriptor<"binding.paramRange">;
+  paramInvalidValue: BindingErrorDescriptor<"binding.paramInvalidValue">;
+  shapeInvalid: BindingErrorDescriptor<"binding.shapeInvalid">;
+  snapshotIntoTypeMismatch: BindingErrorDescriptor<"binding.snapshotIntoTypeMismatch">;
+  snapshotIntoLengthMismatch: BindingErrorDescriptor<"binding.snapshotIntoLengthMismatch">;
+  snapshotRetryExhausted: BindingErrorDescriptor<"binding.snapshotRetryExhausted">;
+  coherentRetryExhausted: BindingErrorDescriptor<"binding.coherentRetryExhausted">;
 }
 
 export const BINDING_ERRORS: BindingErrorsMap = {
   unknownKey: {
-    code: 'binding.unknownKey',
-    message: 'Unknown binding key',
+    code: "binding.unknownKey",
+    message: "Unknown binding key",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
   },
   paramRange: {
-    code: 'binding.paramRange',
-    message: 'Param out of range',
+    code: "binding.paramRange",
+    message: "Param out of range",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
   },
   paramInvalidValue: {
-    code: 'binding.paramInvalidValue',
-    message: 'Param invalid value',
+    code: "binding.paramInvalidValue",
+    message: "Param invalid value",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
   },
   shapeInvalid: {
-    code: 'binding.shapeInvalid',
-    message: 'Invalid shape',
+    code: "binding.shapeInvalid",
+    message: "Invalid shape",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
   },
   snapshotIntoTypeMismatch: {
-    code: 'binding.snapshotIntoTypeMismatch',
-    message: 'Snapshot into: typed array mismatch',
+    code: "binding.snapshotIntoTypeMismatch",
+    message: "Snapshot into: typed array mismatch",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: false,
     },
   },
   snapshotIntoLengthMismatch: {
-    code: 'binding.snapshotIntoLengthMismatch',
-    message: 'Snapshot into: length mismatch',
+    code: "binding.snapshotIntoLengthMismatch",
+    message: "Snapshot into: length mismatch",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: false,
     },
   },
   snapshotRetryExhausted: {
-    code: 'binding.snapshotRetryExhausted',
-    message: 'Snapshot retries exhausted',
+    code: "binding.snapshotRetryExhausted",
+    message: "Snapshot retries exhausted",
     meta: {
-      severity: 'warning',
+      severity: "warning",
       recoverable: true,
       boundarySafe: false,
     },
   },
   coherentRetryExhausted: {
-    code: 'binding.coherentRetryExhausted',
-    message: 'Coherent retries exhausted',
+    code: "binding.coherentRetryExhausted",
+    message: "Coherent retries exhausted",
     meta: {
-      severity: 'warning',
+      severity: "warning",
       recoverable: true,
       boundarySafe: false,
     },
   },
 } as const;
 
-export const BINDING_CODES: Record<BindingErrorCode, string> = {
-  'binding.unknownKey': 'Unknown binding key',
-  'binding.paramRange': 'Param out of range',
-  'binding.paramInvalidValue': 'Param invalid value',
-  'binding.shapeInvalid': 'Invalid shape',
-  'binding.snapshotIntoTypeMismatch': 'Snapshot into: typed array mismatch',
-  'binding.snapshotIntoLengthMismatch': 'Snapshot into: length mismatch',
-  'binding.snapshotRetryExhausted': 'Snapshot retries exhausted',
-  'binding.coherentRetryExhausted': 'Coherent retries exhausted',
-} as const;
+type BindingCodesFromDescriptors = BindingErrorsMap[BindingErrorKey]["code"];
+type BindingCodesEqual = IsExact<BindingErrorCode, BindingCodesFromDescriptors>;
 
-type _CodesFromDescriptors = BindingErrorsMap[BindingErrorKey]['code'];
-type _CodesExact = BindingErrorCode;
-export type _BindingCodesMatch = _CodesFromDescriptors extends _CodesExact
-  ? _CodesExact extends _CodesFromDescriptors
-    ? true
-    : never
-  : never;
-
-const _bindingCodesMatch: _BindingCodesMatch = true;
-void _bindingCodesMatch;
+/** @internal */
+export type _BindingCodesMatch = AssertTrue<BindingCodesEqual>;

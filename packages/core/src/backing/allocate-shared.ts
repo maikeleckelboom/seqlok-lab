@@ -12,12 +12,12 @@
  * @internal
  */
 
-import { createError } from '../errors/error';
-import { throwEnvUnsupported } from '../errors/helpers';
+import { createError } from "../errors/error";
+import { throwEnvUnsupported } from "../errors/helpers";
 
-import type { SharedBacking } from './types';
-import type { Plan } from '../plan/types';
-import type { SpecInput } from '../spec/types';
+import type { SharedBacking } from "./types";
+import type { Plan } from "../plan/types";
+import type { SpecInput } from "../spec/types";
 
 /**
  * Allocates a contiguous SharedArrayBuffer for the entire layout.
@@ -36,26 +36,28 @@ import type { SpecInput } from '../spec/types';
  * // backing.sab contains all planes contiguously
  * ```
  */
-export function allocateShared<S extends SpecInput>(plan: Plan<S>): SharedBacking {
-  if (typeof SharedArrayBuffer === 'undefined') {
+export function allocateShared<S extends SpecInput>(
+  plan: Plan<S>,
+): SharedBacking {
+  if (typeof SharedArrayBuffer === "undefined") {
     throwEnvUnsupported(
-      'SharedArrayBuffer',
-      'missing SharedArrayBuffer (check COOP/COEP for browsers)',
+      "SharedArrayBuffer",
+      "missing SharedArrayBuffer (check COOP/COEP for browsers)",
     );
   }
 
   try {
     const sab = new SharedArrayBuffer(plan.bytesTotal);
-    return { kind: 'shared', sab };
+    return { kind: "shared", sab };
   } catch (cause) {
     throw createError(
-      'backing.allocFailed',
-      'Failed to allocate SharedArrayBuffer',
+      "backing.allocFailed",
+      "Failed to allocate SharedArrayBuffer",
       {
-        plane: 'all',
+        plane: "all",
         requestedBytes: plan.bytesTotal,
         allocatedBytes: 0,
-        where: 'allocateShared',
+        where: "allocateShared",
       },
       cause,
     );
@@ -74,13 +76,13 @@ export function allocateShared<S extends SpecInput>(plan: Plan<S>): SharedBackin
  */
 export function backingByteLength(
   backing:
-    | { kind: 'shared'; sab: SharedArrayBuffer }
+    | { kind: "shared"; sab: SharedArrayBuffer }
     | {
-        kind: 'wasm-shared';
+        kind: "wasm-shared";
         memory: WebAssembly.Memory;
       },
 ): number {
-  return backing.kind === 'shared'
+  return backing.kind === "shared"
     ? backing.sab.byteLength
     : (backing.memory.buffer as ArrayBufferLike).byteLength;
 }

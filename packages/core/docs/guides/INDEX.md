@@ -34,7 +34,7 @@ know the basic golden flow:
   - `enumValues`
   - `enumPaletteFor`
   - `enumArrayToLabels` / `enumLabelsToArray`
-  - `enumIndexFromLabel` / `enumLabelFromIndex`
+  - `enumIndexFromLabel` / `getEnumLabelForIndex`
 
 More guides can land here over time as we standardize recurring patterns in real demos.
 

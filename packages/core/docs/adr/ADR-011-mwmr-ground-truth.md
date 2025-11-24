@@ -142,8 +142,8 @@ These rules are **hard constraints**. Any violation is an architectural defect:
 const ctrlUI = bindController(spec, backing); // UI thread
 const ctrlMIDI = bindController(spec, backing); // MIDI thread
 
-ctrlUI.params.set('gain', 0.8); // RACE
-ctrlMIDI.params.set('gain', 0.9); // RACE
+ctrlUI.params.set("gain", 0.8); // RACE
+ctrlMIDI.params.set("gain", 0.9); // RACE
 ```
 
 **Why wrong:**
@@ -163,12 +163,12 @@ const controller = bindController(spec, backing); // Deck worker
 
 // UI thread
 onSliderChange((value) => {
-  controller.params.set('gain', value); // Called from UI thread
+  controller.params.set("gain", value); // Called from UI thread
 });
 
 // MIDI thread
 onMIDIFader((value) => {
-  controller.params.set('gain', value); // Called from MIDI thread
+  controller.params.set("gain", value); // Called from MIDI thread
 });
 ```
 
@@ -211,7 +211,7 @@ function enqueueFromAnyThread(cmd: Command) {
 const observer = bindObserver(spec, received);
 
 function updateFromHUD(value: number) {
-  observer.params.set('gain', value); // Type error: no such method
+  observer.params.set("gain", value); // Type error: no such method
 }
 ```
 
@@ -286,14 +286,14 @@ const deckHandoff = buildHandoff(deckPlan, deckBacking);
 // Main Thread: Observer + Ring Producer
 // ─────────────────────────────────────────────────────────
 const deckObserver = bindObserver(deckSpec, deckHandoff);
-const uiRing = system.getRingProducer('transport', 'ui-main');
+const uiRing = system.getRingProducer("transport", "ui-main");
 
 slider.onInput = (value) => {
-  uiRing.push({ type: 'SET_GAIN', value }); // Intent, not direct write
+  uiRing.push({ type: "SET_GAIN", value }); // Intent, not direct write
 };
 
 function renderFrame() {
-  const meters = deckObserver.meters.snapshot(['rms', 'peak']);
+  const meters = deckObserver.meters.snapshot(["rms", "peak"]);
   updateVUMeters(meters); // Read-only
   requestAnimationFrame(renderFrame);
 }
@@ -302,14 +302,14 @@ function renderFrame() {
 // MIDI Bridge Thread: Observer + Ring Producer
 // ─────────────────────────────────────────────────────────
 const midiObserver = bindObserver(deckSpec, deckHandoff);
-const midiRing = system.getRingProducer('transport', 'midi-bridge');
+const midiRing = system.getRingProducer("transport", "midi-bridge");
 
-midiController.on('fader', (value) => {
-  midiRing.push({ type: 'SET_GAIN', value }); // Intent
+midiController.on("fader", (value) => {
+  midiRing.push({ type: "SET_GAIN", value }); // Intent
 });
 
 setInterval(() => {
-  const { playhead } = midiObserver.params.snapshot(['playhead']);
+  const { playhead } = midiObserver.params.snapshot(["playhead"]);
   updateMIDILEDs(playhead); // Read-only
 }, 16);
 
@@ -317,19 +317,19 @@ setInterval(() => {
 // Deck Worker Thread: Controller + Ring Consumer (HUB)
 // ─────────────────────────────────────────────────────────
 const deckController = bindController(deckSpec, deckBacking);
-const transportRing = system.getRingConsumer('transport');
+const transportRing = system.getRingConsumer("transport");
 
 function deckWorkerTick() {
   // Drain ALL intent sources (UI, MIDI, network, AI, automation)
   transportRing.drain((cmd) => {
     switch (cmd.type) {
-      case 'SET_GAIN':
-        deckController.params.set('gain', cmd.value);
+      case "SET_GAIN":
+        deckController.params.set("gain", cmd.value);
         break;
-      case 'SEEK':
+      case "SEEK":
         deckController.params.update({ playhead: cmd.frame });
         break;
-      case 'HYDRATE':
+      case "HYDRATE":
         deckController.params.hydrate(cmd.preset);
         break;
     }
@@ -362,7 +362,7 @@ function audioProcess(inputs: Float32Array[], outputs: Float32Array[]) {
 const vizObserver = bindObserver(deckSpec, deckHandoff);
 
 function renderParticles() {
-  const { waveformData } = vizObserver.meters.snapshot(['waveformData']);
+  const { waveformData } = vizObserver.meters.snapshot(["waveformData"]);
 
   // Upload SAB-backed view directly to GPU
   device.queue.writeBuffer(storageBuffer, 0, waveformData);

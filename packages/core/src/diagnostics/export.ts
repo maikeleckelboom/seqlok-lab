@@ -8,15 +8,18 @@
  * - Used for integrating with monitoring systems and debugging tools.
  */
 
-import { createError } from '../errors/error';
+import { createError } from "../errors/error";
 
-import type { DiagnosticsCounterName, DiagnosticsCountersSnapshot } from './counters';
-import type { DiagnosticsCounterDetails } from '../errors/codes/diagnostics';
+import type {
+  DiagnosticsCounterName,
+  DiagnosticsCountersSnapshot,
+} from "./counters";
+import type { DiagnosticsCounterDetails } from "../errors/codes/diagnostics";
 
 /**
  * Supported export formats for diagnostics counters.
  */
-export type DiagnosticsExportFormat = 'json' | 'prometheus' | 'csv';
+export type DiagnosticsExportFormat = "json" | "prometheus" | "csv";
 
 /**
  * Options for exporting diagnostics data.
@@ -47,8 +50,13 @@ export interface DiagnosticsExportOptions {
  *
  * @throws SeqlokError<'diagnostics.counterInvalid'>
  */
-function assertValidCounterSnapshot(snapshot: DiagnosticsCountersSnapshot): void {
-  const entries = Object.entries(snapshot) as [DiagnosticsCounterName, number][];
+function assertValidCounterSnapshot(
+  snapshot: DiagnosticsCountersSnapshot,
+): void {
+  const entries = Object.entries(snapshot) as [
+    DiagnosticsCounterName,
+    number,
+  ][];
 
   for (const [name, value] of entries) {
     if (!Number.isFinite(value) || value < 0) {
@@ -58,8 +66,8 @@ function assertValidCounterSnapshot(snapshot: DiagnosticsCountersSnapshot): void
       };
 
       throw createError(
-        'diagnostics.counterInvalid',
-        'Diagnostics counter invalid',
+        "diagnostics.counterInvalid",
+        "Diagnostics counter invalid",
         details,
       );
     }
@@ -89,10 +97,13 @@ function exportToPrometheus(
   snapshot: DiagnosticsCountersSnapshot,
   options: DiagnosticsExportOptions,
 ): string {
-  const prefix = options.metricPrefix ?? 'seqlok';
+  const prefix = options.metricPrefix ?? "seqlok";
   const lines: string[] = [];
 
-  const entries = Object.entries(snapshot) as [DiagnosticsCounterName, number][];
+  const entries = Object.entries(snapshot) as [
+    DiagnosticsCounterName,
+    number,
+  ][];
 
   for (const [name, value] of entries) {
     const metricName = `${prefix}_${name}`;
@@ -100,7 +111,7 @@ function exportToPrometheus(
     lines.push(`${metricName} ${String(value)}`);
   }
 
-  return `${lines.join('\n')}\n`;
+  return `${lines.join("\n")}\n`;
 }
 
 /**
@@ -110,25 +121,28 @@ function exportToCsv(
   snapshot: DiagnosticsCountersSnapshot,
   options: DiagnosticsExportOptions,
 ): string {
-  const entries = Object.entries(snapshot) as [DiagnosticsCounterName, number][];
+  const entries = Object.entries(snapshot) as [
+    DiagnosticsCounterName,
+    number,
+  ][];
 
   const rows: string[] = [];
   const includeTimestamp = options.includeTimestamp === true;
 
   if (includeTimestamp) {
-    rows.push('timestamp,metric,value');
+    rows.push("timestamp,metric,value");
     const timestamp = Date.now();
     for (const [name, value] of entries) {
       rows.push(`${String(timestamp)},${name},${String(value)}`);
     }
   } else {
-    rows.push('metric,value');
+    rows.push("metric,value");
     for (const [name, value] of entries) {
       rows.push(`${name},${String(value)}`);
     }
   }
 
-  return `${rows.join('\n')}\n`;
+  return `${rows.join("\n")}\n`;
 }
 
 /**
@@ -147,11 +161,11 @@ export function exportDiagnosticsCounters(
   assertValidCounterSnapshot(snapshot);
 
   switch (options.format) {
-    case 'json':
+    case "json":
       return exportToJson(snapshot, options);
-    case 'prometheus':
+    case "prometheus":
       return exportToPrometheus(snapshot, options);
-    case 'csv':
+    case "csv":
       return exportToCsv(snapshot, options);
   }
 }

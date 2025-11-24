@@ -8,8 +8,9 @@
  * - Registered into the global error registry as the `backing.*` domain.
  */
 
-import type { BufferDetails } from '../details';
-import type { ErrorDetails, ErrorMeta } from '../registry';
+import type { AssertTrue, IsExact } from "../../internal/type-assert";
+import type { BufferDetails } from "../details";
+import type { ErrorDetails, ErrorMeta } from "../registry";
 
 export interface BackingPlaneDetails extends ErrorDetails {
   readonly plane: string;
@@ -18,7 +19,7 @@ export interface BackingPlaneDetails extends ErrorDetails {
 }
 
 export interface BackingWasmMemoryDetails extends ErrorDetails {
-  readonly plane: 'wasm';
+  readonly plane: "wasm";
   readonly shared: boolean;
   readonly detail?: string;
 }
@@ -26,18 +27,18 @@ export interface BackingWasmMemoryDetails extends ErrorDetails {
 export type BackingIntoDetails = BufferDetails;
 
 export type BackingErrorCode =
-  | 'backing.allocFailed'
-  | 'backing.allocUndersized'
-  | 'backing.wasmMemoryNotShared'
-  | 'backing.intoTypeMismatch'
-  | 'backing.intoLengthMismatch';
+  | "backing.allocFailed"
+  | "backing.allocUndersized"
+  | "backing.wasmMemoryNotShared"
+  | "backing.intoTypeMismatch"
+  | "backing.intoLengthMismatch";
 
 export type BackingErrorKey =
-  | 'allocFailed'
-  | 'allocUndersized'
-  | 'wasmMemoryNotShared'
-  | 'intoTypeMismatch'
-  | 'intoLengthMismatch';
+  | "allocFailed"
+  | "allocUndersized"
+  | "wasmMemoryNotShared"
+  | "intoTypeMismatch"
+  | "intoLengthMismatch";
 
 export interface ErrorDescriptor<C extends BackingErrorCode> {
   readonly code: C;
@@ -46,11 +47,11 @@ export interface ErrorDescriptor<C extends BackingErrorCode> {
 }
 
 interface BackingErrorsMap {
-  allocFailed: ErrorDescriptor<'backing.allocFailed'>;
-  allocUndersized: ErrorDescriptor<'backing.allocUndersized'>;
-  wasmMemoryNotShared: ErrorDescriptor<'backing.wasmMemoryNotShared'>;
-  intoTypeMismatch: ErrorDescriptor<'backing.intoTypeMismatch'>;
-  intoLengthMismatch: ErrorDescriptor<'backing.intoLengthMismatch'>;
+  allocFailed: ErrorDescriptor<"backing.allocFailed">;
+  allocUndersized: ErrorDescriptor<"backing.allocUndersized">;
+  wasmMemoryNotShared: ErrorDescriptor<"backing.wasmMemoryNotShared">;
+  intoTypeMismatch: ErrorDescriptor<"backing.intoTypeMismatch">;
+  intoLengthMismatch: ErrorDescriptor<"backing.intoLengthMismatch">;
 }
 
 /**
@@ -59,60 +60,54 @@ interface BackingErrorsMap {
  */
 export const BACKING_ERRORS: BackingErrorsMap = {
   allocFailed: {
-    code: 'backing.allocFailed',
-    message: 'Backing allocation failed',
+    code: "backing.allocFailed",
+    message: "Backing allocation failed",
     meta: {
-      severity: 'fatal',
+      severity: "fatal",
       recoverable: true,
       boundarySafe: true,
     },
   },
   allocUndersized: {
-    code: 'backing.allocUndersized',
-    message: 'Backing undersized for requested plan',
+    code: "backing.allocUndersized",
+    message: "Backing undersized for requested plan",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
   },
   wasmMemoryNotShared: {
-    code: 'backing.wasmMemoryNotShared',
-    message: 'WebAssembly.Memory is not shared',
+    code: "backing.wasmMemoryNotShared",
+    message: "WebAssembly.Memory is not shared",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
   },
   intoTypeMismatch: {
-    code: 'backing.intoTypeMismatch',
-    message: 'Into buffer typed array constructor mismatch',
+    code: "backing.intoTypeMismatch",
+    message: "Into buffer typed array constructor mismatch",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
   },
   intoLengthMismatch: {
-    code: 'backing.intoLengthMismatch',
-    message: 'Into buffer length mismatch',
+    code: "backing.intoLengthMismatch",
+    message: "Into buffer length mismatch",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: true,
       boundarySafe: true,
     },
   },
 } as const;
 
-type _CodesFromDescriptors = BackingErrorsMap[BackingErrorKey]['code'];
-type _CodesExact = BackingErrorCode;
+type BackingCodesFromDescriptors = BackingErrorsMap[BackingErrorKey]["code"];
+type BackingCodesEqual = IsExact<BackingErrorCode, BackingCodesFromDescriptors>;
 
-export type _BackingCodesMatch = _CodesFromDescriptors extends _CodesExact
-  ? _CodesExact extends _CodesFromDescriptors
-    ? true
-    : never
-  : never;
-
-const _backingCodesMatch: _BackingCodesMatch = true;
-void _backingCodesMatch;
+/** @internal */
+export type _BackingCodesMatch = AssertTrue<BackingCodesEqual>;

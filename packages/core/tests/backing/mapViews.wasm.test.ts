@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { mapViews } from '../../src/backing/map-views';
-import { planLayout } from '../../src/plan/layout';
-import { specFromPlaneBytes } from '../helpers/spec-from-bytes';
+import { mapViews } from "../../src/backing/map-views";
+import { planLayout } from "../../src/plan/layout";
+import { specFromPlaneBytes } from "../helpers/spec-from-bytes";
 
-import type { WasmSharedBacking } from '../../src/backing/types';
-import type { PlaneByteLengths } from '../../src/plan/types';
+import type { WasmSharedBacking } from "../../src/backing/types";
+import type { PlaneByteLengths } from "../../src/plan/types";
 
 const BYTES_F32 = 4;
 const BYTES_F64 = 8;
@@ -19,8 +19,8 @@ function pagesForBytes(bytes: number): number {
   return Math.ceil(bytes / WASM_PAGE_SIZE);
 }
 
-describe('Map Views: WebAssembly Shared Memory', () => {
-  it('correctly maps views from WebAssembly shared memory according to planned byte lengths', () => {
+describe("Map Views: WebAssembly Shared Memory", () => {
+  it("correctly maps views from WebAssembly shared memory according to planned byte lengths", () => {
     // Define specific byte requirements for various planes to verify mapping precision
     const req: PlaneByteLengths = {
       PF32: 8 * BYTES_F32,
@@ -42,7 +42,7 @@ describe('Map Views: WebAssembly Shared Memory', () => {
       maximum: pagesForBytes(plan.bytesTotal),
     });
 
-    const backing: WasmSharedBacking = { kind: 'wasm-shared', memory };
+    const backing: WasmSharedBacking = { kind: "wasm-shared", memory };
     const v = mapViews(plan, backing);
 
     // Verify that the mapped view lengths match the plan exactly

@@ -8,31 +8,31 @@
  * - Provides clear, readable representations of memory planes.
  */
 
-import { BACKING_PLANE_PACK_ORDER_V1 } from '../backing/map-views';
+import { BACKING_PLANE_PACK_ORDER_V1 } from "../backing/map-views";
 
-import type { Plan } from '../plan/types';
-import type { SpecInput } from '../spec/types';
+import type { Plan } from "../plan/types";
+import type { SpecInput } from "../spec/types";
 
 type PlaneKey = (typeof BACKING_PLANE_PACK_ORDER_V1)[number];
 
 function label(key: PlaneKey): string {
   switch (key) {
-    case 'PU':
-      return 'Param seqlock';
-    case 'PF32':
-      return 'Param f32';
-    case 'PI32':
-      return 'Param i32/enum';
-    case 'PB':
-      return 'Param bool (u8)';
-    case 'MF32':
-      return 'Meter f32';
-    case 'MU32':
-      return 'Meter u32';
-    case 'MF64':
-      return 'Meter f64';
-    case 'MU':
-      return 'Meter seqlock';
+    case "PU":
+      return "Param seqlock";
+    case "PF32":
+      return "Param f32";
+    case "PI32":
+      return "Param i32/enum";
+    case "PB":
+      return "Param bool (u8)";
+    case "MF32":
+      return "Meter f32";
+    case "MU32":
+      return "Meter u32";
+    case "MF64":
+      return "Meter f64";
+    case "MU":
+      return "Meter seqlock";
   }
 }
 
@@ -59,8 +59,8 @@ export function describeViews<S extends SpecInput>(plan: Plan<S>): string[] {
   const { planes } = plan;
 
   const lines: string[] = [];
-  lines.push('Plane  Kind              Present  Length(B)  Offset');
-  lines.push('-----  ----------------  -------  ---------  ------');
+  lines.push("Plane  Kind              Present  Length(B)  Offset");
+  lines.push("-----  ----------------  -------  ---------  ------");
 
   let totalBytes = 0;
   let offset = 0;
@@ -76,13 +76,13 @@ export function describeViews<S extends SpecInput>(plan: Plan<S>): string[] {
     lines.push(
       `${padRight(key, 5)}  ` +
         `${padRight(label(key), 16)}  ` +
-        `${present ? '   ✔' : '   ·'}   ` +
+        `${present ? "   ✔" : "   ·"}   ` +
         `${padLeft(String(byteLength), 9)}  ` +
-        padLeft(byteOffset !== undefined ? String(byteOffset) : '-', 6),
+        padLeft(byteOffset !== undefined ? String(byteOffset) : "-", 6),
     );
   }
 
-  lines.push('');
+  lines.push("");
   lines.push(`Total backing bytes: ${String(totalBytes)}`);
 
   return lines;

@@ -1,17 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { mapViews } from '../../src/backing/map-views';
-import { planLayout } from '../../src/plan/layout';
-import { specFromPlaneBytes } from '../helpers/spec-from-bytes';
+import { mapViews } from "../../src/backing/map-views";
+import { planLayout } from "../../src/plan/layout";
+import { specFromPlaneBytes } from "../helpers/spec-from-bytes";
 
-import type { SharedBacking, WasmSharedBacking } from '../../src/backing/types';
-import type { PlaneByteLengths } from '../../src/plan/types';
+import type { SharedBacking, WasmSharedBacking } from "../../src/backing/types";
+import type { PlaneByteLengths } from "../../src/plan/types";
 
 const BYTES_F32 = 4;
 const WASM_PAGE_SIZE = 64 * 1024;
 
-describe('Map Views: Buffer Identity & Shared Memory Wiring', () => {
-  it('ensures all mapped views share the same underlying SharedArrayBuffer in contiguous mode', () => {
+describe("Map Views: Buffer Identity & Shared Memory Wiring", () => {
+  it("ensures all mapped views share the same underlying SharedArrayBuffer in contiguous mode", () => {
     // Define a minimal layout with gaps (zero-length planes) to verify robust plumbing
     const bytes: PlaneByteLengths = {
       PF32: 8 * BYTES_F32,
@@ -26,7 +26,7 @@ describe('Map Views: Buffer Identity & Shared Memory Wiring', () => {
 
     const plan = planLayout(specFromPlaneBytes(bytes));
     const sab = new SharedArrayBuffer(plan.bytesTotal);
-    const backing: SharedBacking = { kind: 'shared', sab };
+    const backing: SharedBacking = { kind: "shared", sab };
 
     const v = mapViews(plan, backing);
 
@@ -36,7 +36,7 @@ describe('Map Views: Buffer Identity & Shared Memory Wiring', () => {
     expect(v.locks.MU.buffer).toBe(sab);
   });
 
-  it('ensures WebAssembly shared memory views are correctly mapped and backed by the Wasm buffer', () => {
+  it("ensures WebAssembly shared memory views are correctly mapped and backed by the Wasm buffer", () => {
     const bytes: PlaneByteLengths = {
       PF32: 8 * BYTES_F32,
       PI32: 4 * BYTES_F32,
@@ -56,7 +56,7 @@ describe('Map Views: Buffer Identity & Shared Memory Wiring', () => {
       initial: pages,
       maximum: pages,
     });
-    const wasm: WasmSharedBacking = { kind: 'wasm-shared', memory };
+    const wasm: WasmSharedBacking = { kind: "wasm-shared", memory };
 
     const v = mapViews(plan, wasm);
 

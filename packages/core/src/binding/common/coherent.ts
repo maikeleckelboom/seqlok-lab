@@ -10,12 +10,15 @@
  * @internal
  */
 
-import { incrementCounter } from '../../diagnostics/counters';
-import { createError } from '../../errors/error';
-import { tryRead, type SeqPair } from '../../primitives/seqlock';
+import { incrementCounter } from "../../diagnostics/counters";
+import { createError } from "../../errors/error";
+import { tryRead, type SeqPair } from "../../primitives/seqlock";
 
-import type { MeterDegradePolicy } from './types';
-import type { CoherentDetails, SnapshotRetryDetails } from '../../errors/details';
+import type { MeterDegradePolicy } from "./types";
+import type {
+  CoherentDetails,
+  SnapshotRetryDetails,
+} from "../../errors/details";
 
 /**
  * Configuration for a seqlock-protected read.
@@ -30,7 +33,7 @@ export interface CoherentReadOptions {
  * Extended options for snapshots (adds degradation policy).
  */
 export interface SnapshotPolicyOptions extends CoherentReadOptions {
-  readonly section: 'params' | 'meters';
+  readonly section: "params" | "meters";
   readonly degrade?: MeterDegradePolicy;
 }
 
@@ -65,23 +68,27 @@ export function snapshotWithPolicy<T>(
   const status: SnapshotStatus = result.status;
 
   if (status.spins >= spinBudget) {
-    incrementCounter('spinBudgetExhausted');
+    incrementCounter("spinBudgetExhausted");
   }
   if (status.retries >= retryBudget) {
-    incrementCounter('retryBudgetExhausted');
+    incrementCounter("retryBudgetExhausted");
   }
 
-  if (degrade === 'returnLatest') {
-    incrementCounter('degradedSnapshots');
+  if (degrade === "returnLatest") {
+    incrementCounter("degradedSnapshots");
     return degradedReader();
   }
 
-  throw createError('binding.snapshotRetryExhausted', 'Snapshot retries exhausted', {
-    where,
-    section,
-    spins: status.spins,
-    retries: status.retries,
-  } satisfies SnapshotRetryDetails);
+  throw createError(
+    "binding.snapshotRetryExhausted",
+    "Snapshot retries exhausted",
+    {
+      where,
+      section,
+      spins: status.spins,
+      retries: status.retries,
+    } satisfies SnapshotRetryDetails,
+  );
 }
 
 /**
@@ -105,10 +112,10 @@ export function makeWithin<T>(
       const { spins, retries } = result.status;
 
       if (spins >= spinBudget) {
-        incrementCounter('spinBudgetExhausted');
+        incrementCounter("spinBudgetExhausted");
       }
       if (retries >= retryBudget) {
-        incrementCounter('retryBudgetExhausted');
+        incrementCounter("retryBudgetExhausted");
       }
 
       const details: CoherentDetails = {
@@ -118,8 +125,8 @@ export function makeWithin<T>(
       };
 
       throw createError(
-        'binding.coherentRetryExhausted',
-        'Coherent read retries exhausted',
+        "binding.coherentRetryExhausted",
+        "Coherent read retries exhausted",
         details,
       );
     }

@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { defineSpec } from '../../src';
-import { bindingsFromSpec } from '../helpers/binding';
+import { defineSpec } from "../../src";
+import { bindingsFromSpec } from "../helpers/binding";
 
-describe('Array Offsets: Type-Level Regression Contracts', () => {
-  it('correctly reads multiple array params with non-zero offsets', () => {
+describe("Array Offsets: Type-Level Regression Contracts", () => {
+  it("correctly reads multiple array params with non-zero offsets", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'multi-array-offset',
+      id: "multi-array-offset",
       params: {
         a: param.f32({ min: 0, max: 1 }), // 1 elem @ offset 0
         b: param.f32.array(4), // 4 elems @ offset 4
@@ -18,14 +18,14 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     const { ctl, proc } = bindingsFromSpec(spec);
 
     // Write distinct values.
-    ctl.params.set('a', 0.1);
-    ctl.params.stage('b', (v) => {
+    ctl.params.set("a", 0.1);
+    ctl.params.stage("b", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = 0.2 + i * 0.01;
       }
     });
-    ctl.params.set('c', 0.3);
-    ctl.params.stage('d', (v) => {
+    ctl.params.set("c", 0.3);
+    ctl.params.stage("d", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = 0.4 + i * 0.01;
       }
@@ -56,9 +56,9 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     expect(snap.d[7]).toBeCloseTo(0.47);
   });
 
-  it('correctly reads i32 and bool arrays with non-zero offsets', () => {
+  it("correctly reads i32 and bool arrays with non-zero offsets", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'mixed-array-offset',
+      id: "mixed-array-offset",
       params: {
         gain: param.f32({ min: 0, max: 1 }), // f32 scalar @ PF32 offset 0
         indices: param.i32.array(6), // i32 array @ PI32 offset 0
@@ -69,14 +69,14 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
 
     const { ctl, proc } = bindingsFromSpec(spec);
 
-    ctl.params.set('gain', 0.5);
-    ctl.params.set('mode', 7);
-    ctl.params.stage('indices', (v) => {
+    ctl.params.set("gain", 0.5);
+    ctl.params.set("mode", 7);
+    ctl.params.stage("indices", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i * 10;
       }
     });
-    ctl.params.stage('flags', (v) => {
+    ctl.params.stage("flags", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i % 2;
       }
@@ -96,9 +96,9 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     });
   });
 
-  it('correctly publishes and reads meter arrays with non-zero offsets', () => {
+  it("correctly publishes and reads meter arrays with non-zero offsets", () => {
     const spec = defineSpec(({ param, meter }) => ({
-      id: 'meter-array-offset',
+      id: "meter-array-offset",
       params: {
         gain: param.f32({ min: 0, max: 1 }),
       },
@@ -114,13 +114,13 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
 
     proc.meters.publish((writer) => {
       writer.rms(0.5);
-      writer.stage('spectrum', (v) => {
+      writer.stage("spectrum", (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = i / 16;
         }
       });
       writer.peak(0.9);
-      writer.stage('histogram', (v) => {
+      writer.stage("histogram", (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = (i + 1) * 0.1;
         }
@@ -138,9 +138,9 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     expect(snap.histogram[7]).toBeCloseTo(0.8);
   });
 
-  it('fills into buffers correctly for arrays with non-zero offsets', () => {
+  it("fills into buffers correctly for arrays with non-zero offsets", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'into-buffer-offset',
+      id: "into-buffer-offset",
       params: {
         scalar: param.f32({ min: 0, max: 1 }),
         arr1: param.f32.array(4),
@@ -150,10 +150,10 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
 
     const { ctl } = bindingsFromSpec(spec);
 
-    ctl.params.stage('arr1', (v) => {
+    ctl.params.stage("arr1", (v) => {
       v.fill(1.0);
     });
-    ctl.params.stage('arr2', (v) => {
+    ctl.params.stage("arr2", (v) => {
       v.fill(2.0);
     });
 
@@ -162,7 +162,7 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
       arr2: new Float32Array(8),
     };
 
-    const snap = ctl.params.snapshot({ keys: ['arr1', 'arr2'], into });
+    const snap = ctl.params.snapshot({ keys: ["arr1", "arr2"], into });
 
     // Verify identity (into buffers are returned).
     expect(snap.arr1).toBe(into.arr1);
@@ -177,9 +177,9 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     expect(snap.arr2.every((v) => v === 2.0)).toBe(true);
   });
 
-  it('handles arrays with large byte offsets correctly', () => {
+  it("handles arrays with large byte offsets correctly", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'large-offset',
+      id: "large-offset",
       params: {
         // Create many params to push "late" to a high offset.
         early1: param.f32.array(100),
@@ -191,7 +191,7 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
 
     const { ctl, proc } = bindingsFromSpec(spec);
 
-    ctl.params.stage('late', (v) => {
+    ctl.params.stage("late", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i;
       }
@@ -203,19 +203,19 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
       expect(view.late[49]).toBe(49);
     });
 
-    const snap = ctl.params.snapshot({ keys: ['late'] });
+    const snap = ctl.params.snapshot({ keys: ["late"] });
     expect(snap.late.length).toBe(50);
     expect(snap.late[0]).toBe(0);
     expect(snap.late[49]).toBe(49);
   });
 
-  it('correctly handles enum arrays with non-zero offsets', () => {
+  it("correctly handles enum arrays with non-zero offsets", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'enum-array-offset',
+      id: "enum-array-offset",
       params: {
         mode: param.f32({ min: 0, max: 1 }), // push enum array to non-zero offset
         waveforms: param.enum.array({
-          values: ['sine', 'square', 'saw', 'triangle'],
+          values: ["sine", "square", "saw", "triangle"],
           length: 8,
         }),
       },
@@ -224,7 +224,7 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     const { ctl, proc } = bindingsFromSpec(spec);
 
     // Stage enum array via controller (indices).
-    ctl.params.stage('waveforms', (v) => {
+    ctl.params.stage("waveforms", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i % 4; // cycle through enum indices
       }
@@ -244,9 +244,9 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     expect(snap.waveforms[3]).toBe(3);
   });
 
-  it('correctly handles f64 meter arrays with non-zero offsets', () => {
+  it("correctly handles f64 meter arrays with non-zero offsets", () => {
     const spec = defineSpec(({ meter }) => ({
-      id: 'f64-array-offset',
+      id: "f64-array-offset",
       meters: {
         counter: meter.u32(), // MU32 scalar, pushes MF64 to offset 0
         rms: meter.f32(), // MF32 scalar @ offset 0
@@ -262,12 +262,12 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
       writer.counter(42);
       writer.rms(0.5);
       writer.peak(0.9);
-      writer.stage('precise', (v) => {
+      writer.stage("precise", (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = i / 10;
         }
       });
-      writer.stage('spectrum', (v) => {
+      writer.stage("spectrum", (v) => {
         for (let i = 0; i < v.length; i++) {
           v[i] = Math.sin(i);
         }
@@ -286,9 +286,9 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     expect(snap.spectrum[15]).toBeCloseTo(Math.sin(15));
   });
 
-  it('preserves array values across multiple write/read cycles', () => {
+  it("preserves array values across multiple write/read cycles", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'multi-cycle',
+      id: "multi-cycle",
       params: {
         a: param.f32({ min: 0, max: 1 }),
         b: param.f32.array(6),
@@ -300,10 +300,10 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     const { ctl, proc } = bindingsFromSpec(spec);
 
     // Cycle 1.
-    ctl.params.stage('b', (v) => {
+    ctl.params.stage("b", (v) => {
       v.fill(1.0);
     });
-    ctl.params.stage('d', (v) => {
+    ctl.params.stage("d", (v) => {
       v.fill(2.0);
     });
 
@@ -315,12 +315,12 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     });
 
     // Cycle 2 - different values.
-    ctl.params.stage('b', (v) => {
+    ctl.params.stage("b", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i * 0.1;
       }
     });
-    ctl.params.stage('d', (v) => {
+    ctl.params.stage("d", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = (i + 1) * 0.2;
       }
@@ -336,9 +336,9 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     });
   });
 
-  it('handles partial snapshot with into for non-zero offset arrays', () => {
+  it("handles partial snapshot with into for non-zero offset arrays", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'partial-into',
+      id: "partial-into",
       params: {
         x: param.f32({ min: 0, max: 1 }),
         arr1: param.f32.array(8),
@@ -349,12 +349,12 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
 
     const { ctl } = bindingsFromSpec(spec);
 
-    ctl.params.stage('arr1', (v) => {
+    ctl.params.stage("arr1", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i;
       }
     });
-    ctl.params.stage('arr2', (v) => {
+    ctl.params.stage("arr2", (v) => {
       for (let i = 0; i < v.length; i++) {
         v[i] = i * 2;
       }
@@ -364,7 +364,7 @@ describe('Array Offsets: Type-Level Regression Contracts', () => {
     const buffer2 = new Float32Array(12);
 
     const snap = ctl.params.snapshot({
-      keys: ['arr1', 'arr2'],
+      keys: ["arr1", "arr2"],
       into: { arr1: buffer1, arr2: buffer2 },
     });
 

@@ -8,17 +8,17 @@
  * - Offers UI-friendly helpers for dropdowns, cycling, and palette generation.
  */
 
-import { createError } from '../errors/error';
+import { createError } from "../errors/error";
 
-import type { SpecInput } from './types';
-import type { SpecEnumDetails } from '../errors/codes/spec';
+import type { SpecInput } from "./types";
+import type { SpecEnumDetails } from "../errors/codes/spec";
 
 /**
  * Keys that can meaningfully refer to params or meters.
  */
 export type EnumKeyOf<S extends SpecInput> =
-  | Extract<keyof S['params'], string>
-  | Extract<keyof S['meters'], string>;
+  | Extract<keyof S["params"], string>
+  | Extract<keyof S["meters"], string>;
 
 /**
  * Infer the enum label union for a given spec + key.
@@ -30,16 +30,16 @@ export type EnumKeyOf<S extends SpecInput> =
 export type EnumLabel<
   S extends SpecInput,
   K extends EnumKeyOf<S>,
-> = K extends keyof S['params']
-  ? S['params'][K] extends {
+> = K extends keyof S["params"]
+  ? S["params"][K] extends {
       values: readonly (infer L)[];
     }
     ? L extends string
       ? L
       : never
     : never
-  : K extends keyof S['meters']
-    ? S['meters'][K] extends {
+  : K extends keyof S["meters"]
+    ? S["meters"][K] extends {
         values: readonly (infer L)[];
       }
       ? L extends string
@@ -162,7 +162,7 @@ export function enumArrayToLabels<S extends SpecInput, K extends EnumKeyOf<S>>(
     if (label === undefined) {
       // Detail type matches SpecEnumDetails (alias of EnumDetails):
       // { key, values, invalidIndex?: number, received?: string|number, duplicate?: string }
-      throw createError('spec.enumInvalid', `Enum index invalid for "${key}"`, {
+      throw createError("spec.enumInvalid", `Enum index invalid for "${key}"`, {
         key,
         values,
         invalidIndex: idx,
@@ -193,7 +193,7 @@ export function enumLabelsToArray<S extends SpecInput, K extends EnumKeyOf<S>>(
   labels.forEach((label, i) => {
     const idx = values.indexOf(label);
     if (idx === -1) {
-      throw createError('spec.enumInvalid', `Enum label invalid for "${key}"`, {
+      throw createError("spec.enumInvalid", `Enum label invalid for "${key}"`, {
         key,
         values,
         received: label,
@@ -265,7 +265,8 @@ export function enumGuardFor<S extends SpecInput, K extends EnumKeyOf<S>>(
   key: K,
 ): (raw: string) => raw is EnumLabel<S, K> {
   const valuesSet = new Set(enumValues<S, K>(spec, key));
-  return (raw: string): raw is EnumLabel<S, K> => (valuesSet as Set<string>).has(raw);
+  return (raw: string): raw is EnumLabel<S, K> =>
+    (valuesSet as Set<string>).has(raw);
 }
 
 /**

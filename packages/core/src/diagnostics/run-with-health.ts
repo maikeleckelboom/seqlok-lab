@@ -16,18 +16,21 @@
  * Core primitives/bindings/backing do not depend on this module.
  */
 
-import { resetCounters, snapshotCounters } from './counters';
-import { exportDiagnosticsCounters } from './export';
-import { endDiagnosticsSession, startDiagnosticsSession } from './session';
-import { isSeqlokError } from '../errors/error';
-import { getDocsUrl, interpretHealth, isBoundarySafe } from '../errors/health';
-import { getErrorMeta } from '../errors/registry';
+import { resetCounters, snapshotCounters } from "./counters";
+import { exportDiagnosticsCounters } from "./export";
+import { endDiagnosticsSession, startDiagnosticsSession } from "./session";
+import { isSeqlokError } from "../errors/error";
+import { getDocsUrl, interpretHealth, isBoundarySafe } from "../errors/health";
+import { getErrorMeta } from "../errors/registry";
 
-import type { DiagnosticsCounterName, DiagnosticsCountersSnapshot } from './counters';
-import type { DiagnosticsSession } from './session';
-import type { SeqlokError } from '../errors/error';
-import type { HealthInterpretation } from '../errors/health';
-import type { ErrorMeta } from '../errors/registry';
+import type {
+  DiagnosticsCounterName,
+  DiagnosticsCountersSnapshot,
+} from "./counters";
+import type { DiagnosticsSession } from "./session";
+import type { SeqlokError } from "../errors/error";
+import type { HealthInterpretation } from "../errors/health";
+import type { ErrorMeta } from "../errors/registry";
 
 /**
  * Declarative thresholds for diagnostics counters.
@@ -184,7 +187,7 @@ export function checkDiagnosticsThresholds(
     counters.degradedSnapshots > thresholds.degradedSnapshots
   ) {
     violations.push({
-      metric: 'degradedSnapshots',
+      metric: "degradedSnapshots",
       actual: counters.degradedSnapshots,
       threshold: thresholds.degradedSnapshots,
     });
@@ -195,7 +198,7 @@ export function checkDiagnosticsThresholds(
     counters.spinBudgetExhausted > thresholds.spinBudgetExhausted
   ) {
     violations.push({
-      metric: 'spinBudgetExhausted',
+      metric: "spinBudgetExhausted",
       actual: counters.spinBudgetExhausted,
       threshold: thresholds.spinBudgetExhausted,
     });
@@ -206,7 +209,7 @@ export function checkDiagnosticsThresholds(
     counters.retryBudgetExhausted > thresholds.retryBudgetExhausted
   ) {
     violations.push({
-      metric: 'retryBudgetExhausted',
+      metric: "retryBudgetExhausted",
       actual: counters.retryBudgetExhausted,
       threshold: thresholds.retryBudgetExhausted,
     });
@@ -244,8 +247,8 @@ interface ErrorState {
 function handleCaughtError(
   caught: unknown,
   errorState: ErrorState,
-  onSeqlokError: RunWithDiagnosticsOptions['onSeqlokError'],
-  onUnknownError: RunWithDiagnosticsOptions['onUnknownError'],
+  onSeqlokError: RunWithDiagnosticsOptions["onSeqlokError"],
+  onUnknownError: RunWithDiagnosticsOptions["onUnknownError"],
 ): void {
   if (isSeqlokError(caught)) {
     const error = caught;
@@ -284,7 +287,9 @@ interface BuildResultArgs<T> {
 /**
  * Shared tail for async/sync variants.
  */
-function buildRunResult<T>(args: BuildResultArgs<T>): RunWithDiagnosticsResult<T> {
+function buildRunResult<T>(
+  args: BuildResultArgs<T>,
+): RunWithDiagnosticsResult<T> {
   const {
     scenarioId,
     metadata,
@@ -299,12 +304,15 @@ function buildRunResult<T>(args: BuildResultArgs<T>): RunWithDiagnosticsResult<T
 
   const diagnosticsCounters = snapshotCounters();
   const diagnosticsExportJson = exportDiagnosticsCounters(diagnosticsCounters, {
-    format: 'json',
+    format: "json",
     includeTimestamp: true,
   });
 
   const diagnosticsSession = completedSession ?? startedSession;
-  const thresholdViolations = checkDiagnosticsThresholds(diagnosticsCounters, thresholds);
+  const thresholdViolations = checkDiagnosticsThresholds(
+    diagnosticsCounters,
+    thresholds,
+  );
 
   return {
     scenarioId,

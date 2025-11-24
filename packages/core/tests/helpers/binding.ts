@@ -9,13 +9,16 @@ import {
   receiveHandoff,
   type ControllerBinding,
   type ProcessorBinding,
-} from '../../src';
+} from "../../src";
 
-import type { SharedBacking } from '../../src/backing/types';
-import type { ControllerOptions, ProcessorOptions } from '../../src/binding/common/types';
-import type { Handoff, ReceivedHandoff } from '../../src/handoff/types';
-import type { Plan } from '../../src/plan/types';
-import type { SpecInput } from '../../src/spec/types';
+import type { SharedBacking } from "../../src/backing/types";
+import type {
+  ControllerOptions,
+  ProcessorOptions,
+} from "../../src/binding/common/types";
+import type { Handoff, ReceivedHandoff } from "../../src/handoff/types";
+import type { Plan } from "../../src/plan/types";
+import type { SpecInput } from "../../src/spec/types";
 
 export interface BoundPair<S extends SpecInput> {
   readonly spec: S;

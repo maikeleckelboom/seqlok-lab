@@ -68,4 +68,4 @@ So when reviewers see "32-bit counter" and immediately suspect an ABA bug, they'
 problem is real and subtle – but in Seqlok's concrete deployment model, the wraparound path to ABA is effectively
 unreachable.
 
-[1]: https://en.wikipedia.org/wiki/ABA_problem?utm_source=chatgpt.com 'ABA problem'
+[1]: https://en.wikipedia.org/wiki/ABA_problem?utm_source=chatgpt.com "ABA problem"

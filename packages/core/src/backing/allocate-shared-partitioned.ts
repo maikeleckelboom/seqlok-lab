@@ -10,13 +10,13 @@
  * @internal
  */
 
-import { createError } from '../errors/error';
-import { throwEnvUnsupported } from '../errors/helpers';
-import { ALL_PLANES, type PlaneKey } from '../primitives/planes';
+import { createError } from "../errors/error";
+import { throwEnvUnsupported } from "../errors/helpers";
+import { ALL_PLANES, type PlaneKey } from "../primitives/planes";
 
-import type { SharedPartitionedBacking } from './types';
-import type { Plan } from '../plan/types';
-import type { SpecInput } from '../spec/types';
+import type { SharedPartitionedBacking } from "./types";
+import type { Plan } from "../plan/types";
+import type { SpecInput } from "../spec/types";
 
 /**
  * Allocates separate SharedArrayBuffers for each plane in the layout.
@@ -38,10 +38,10 @@ import type { SpecInput } from '../spec/types';
 export function allocateSharedPartitioned<S extends SpecInput>(
   plan: Plan<S>,
 ): SharedPartitionedBacking {
-  if (typeof SharedArrayBuffer === 'undefined') {
+  if (typeof SharedArrayBuffer === "undefined") {
     throwEnvUnsupported(
-      'SharedArrayBuffer',
-      'missing SharedArrayBuffer (check COOP/COEP for browsers)',
+      "SharedArrayBuffer",
+      "missing SharedArrayBuffer (check COOP/COEP for browsers)",
     );
   }
 
@@ -57,13 +57,13 @@ export function allocateSharedPartitioned<S extends SpecInput>(
     } catch (cause) {
       // On failure, include which plane failed and its requested size
       throw createError(
-        'backing.allocFailed',
+        "backing.allocFailed",
         `Failed to allocate ${String(bytes)} bytes for plane ${plane}`,
         {
           plane,
           requestedBytes: bytes,
           allocatedBytes: 0,
-          where: 'allocateSharedPartitioned',
+          where: "allocateSharedPartitioned",
         },
         cause,
       );
@@ -71,7 +71,7 @@ export function allocateSharedPartitioned<S extends SpecInput>(
   }
 
   return {
-    kind: 'shared-partitioned',
+    kind: "shared-partitioned",
     planes: sabByPlane,
   };
 }

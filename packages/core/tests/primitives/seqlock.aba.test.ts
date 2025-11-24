@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 /**
  * Represents the atomic state of the seqlock mechanism.
@@ -49,8 +49,8 @@ function hasWrap(pre: SeqState, post: SeqState): boolean {
   return lockWrapped || seqWrapped;
 }
 
-describe('Seqlock Invariants (ABA Properties)', () => {
-  it('rejects reads when writes occur without integer overflow', () => {
+describe("Seqlock Invariants (ABA Properties)", () => {
+  it("rejects reads when writes occur without integer overflow", () => {
     const pre: SeqState = { lock: 0, seq: 0 };
     const MAX_WRITES = 10_000;
 
@@ -73,7 +73,7 @@ describe('Seqlock Invariants (ABA Properties)', () => {
     }
   });
 
-  it('guarantees that acceptance of a modified state implies integer overflow', () => {
+  it("guarantees that acceptance of a modified state implies integer overflow", () => {
     const startStates: SeqState[] = [
       { lock: 0, seq: 0 },
       { lock: 0, seq: 0xffff_fff0 },

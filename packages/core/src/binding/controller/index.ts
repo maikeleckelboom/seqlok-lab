@@ -1,98 +1,3 @@
-// // packages/core/src/binding/controller/index.ts
-//
-// /**
-//  * @fileoverview
-//  * Public controller binding factories.
-//  *
-//  * @remarks
-//  * - `bindControllerWithPlan` is the canonical, plan-aware entry point that
-//  *   matches the explicit golden flow.
-//  * - `bindController` is a convenience wrapper that re-derives the layout
-//  *   from the provided `spec` and expects the `backing` to have been
-//  *   allocated from that same layout.
-//  */
-//
-// import { controllerImpl } from './impl';
-// import { planLayout } from '../../plan/layout';
-//
-// import type { Backing } from '../../backing/types';
-// import type { Plan } from '../../plan/types';
-// import type { ParamDef, SpecInput } from '../../spec/types';
-// import type { ControllerBinding, ControllerOptions } from '../common/types';
-//
-// /**
-//  * Bind a controller to a backing using an explicit Plan.
-//  *
-//  * @typeParam S - Spec type (inferred from `spec`)
-//  *
-//  * @param spec - Spec definition created by `defineSpec(...)`.
-//  * @param plan - Layout plan produced by {@link planLayout} for this spec.
-//  * @param backing - Memory backing allocated from the same plan.
-//  * @param options - Optional controller configuration.
-//  *
-//  * @returns A typed controller binding for the given spec/plan/backing triple.
-//  *
-//  * @remarks
-//  * - This matches the explicit golden flow:
-//  *
-//  *   `defineSpec → planLayout → allocateShared → buildHandoff →
-//  *    receiveHandoff → bindControllerWithPlan / bindProcessor`
-//  *
-//  * - Use this when you already have `Plan<S>` and want explicit control
-//  *   over planning and allocation (e.g. polyglot hosts, plan reuse,
-//  *   diagnostics).
-//  */
-// function bindControllerWithPlan<const S extends SpecInput>(
-//   spec: S,
-//   plan: Plan<S>,
-//   backing: Backing,
-//   options: ControllerOptions = {},
-// ): ControllerBinding<S> {
-//   const defs: Readonly<Record<string, ParamDef>> = spec.params ?? {};
-//   return controllerImpl(plan, backing, defs, options);
-// }
-//
-// /**
-//  * Convenience controller binding for a spec/backing pair.
-//  *
-//  * @typeParam S - Spec type (inferred from `spec`)
-//  *
-//  * @param spec - Spec definition created by `defineSpec(...)`.
-//  * @param backing - Memory backing that was allocated for this spec's layout
-//  *   (for example, via `allocateShared(planLayout(spec))`).
-//  * @param options - Optional controller configuration.
-//  *
-//  * @returns A typed controller binding for the given spec/backing pair.
-//  *
-//  * @remarks
-//  * - This is a convenience wrapper over {@link bindControllerWithPlan}:
-//  *
-//  *   ```ts
-//  *   const plan = planLayout(spec);
-//  *   const controller = bindControllerWithPlan(spec, plan, backing, options);
-//  *   ```
-//  *
-//  * - It re-derives the layout from `spec` using {@link planLayout} and
-//  *   assumes that `backing` was allocated from the same plan. Passing a
-//  *   backing derived from a different spec/plan is a contract violation.
-//  *
-//  * - For protocol-aware code paths that already thread `Plan<S>` explicitly,
-//  *   prefer {@link bindControllerWithPlan} so the golden flow remains fully
-//  *   explicit:
-//  *
-//  *   `defineSpec → planLayout → allocateShared → buildHandoff →
-//  *    receiveHandoff → bindControllerWithPlan / bindProcessor`.
-//  */
-// export function bindController<const S extends SpecInput>(
-//   spec: S,
-//   backing: Backing,
-//   options: ControllerOptions = {},
-// ): ControllerBinding<S> {
-//   const plan = planLayout(spec);
-//   return bindControllerWithPlan(spec, plan, backing, options);
-// }
-// File: packages/core/src/binding/controller/index.ts
-
 /**
  * @fileoverview
  * Public controller binding factory.
@@ -109,21 +14,23 @@
  *   from that Plan.
  */
 
-import { controllerImpl } from './impl';
+import { controllerImpl } from "./impl";
+import { isSharedContext } from "../../context/guard";
 
-import type { Backing } from '../../backing/types';
-import type { Plan } from '../../plan/types';
-import type { ParamDef, SpecInput } from '../../spec/types';
-import type { ControllerBinding, ControllerOptions } from '../common/types';
+export type { SharedContext } from "../../context/types";
+
+import type { Backing } from "../../backing/types";
+import type { SharedContext } from "../../context/types";
+import type { Plan } from "../../plan/types";
+import type { SpecInput } from "../../spec/types";
+import type { ControllerBinding, ControllerOptions } from "../common/types";
 
 /**
  * Bind a controller to a backing using an explicit Plan.
  *
  * @typeParam S - Spec type (inferred from `spec`)
  *
- * @param spec - Spec definition created by `defineSpec(...)`.
- * @param plan - Layout plan produced by `planLayout(spec)` for this spec.
- * @param backing - Memory backing allocated from the same plan.
+ * @param context
  * @param options - Optional controller configuration.
  *
  * @returns A typed controller binding for the given spec/plan/backing triple.
@@ -138,12 +45,40 @@ import type { ControllerBinding, ControllerOptions } from '../common/types';
  * - The binding layer does not re-derive layouts; mismatched
  *   spec/plan/backing triples are a contract violation.
  */
+// 1) Host ergonomic: SharedContext
+export function bindController<const S extends SpecInput>(
+  context: SharedContext<S>,
+  options?: ControllerOptions,
+): ControllerBinding<S>;
+
+// 2) Host low-level: explicit triple (existing public surface)
 export function bindController<const S extends SpecInput>(
   spec: S,
   plan: Plan<S>,
   backing: Backing,
-  options: ControllerOptions = {},
+  options?: ControllerOptions,
+): ControllerBinding<S>;
+
+// 3) Implementation
+export function bindController<const S extends SpecInput>(
+  arg1: SharedContext<S> | S,
+  arg2?: ControllerOptions | Plan<S>,
+  arg3?: Backing,
+  arg4?: ControllerOptions,
 ): ControllerBinding<S> {
-  const defs: Readonly<Record<string, ParamDef>> = spec.params ?? {};
-  return controllerImpl(plan, backing, defs, options);
+  if (isSharedContext<S>(arg1)) {
+    const ctx = arg1;
+    const options = arg2 as ControllerOptions | undefined;
+    const params = ctx.spec.params ?? {};
+    return controllerImpl(ctx.plan, ctx.backing, params, options);
+  }
+
+  const spec = arg1;
+  const plan = arg2 as Plan<S>;
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const backing = arg3!;
+  const options = arg4;
+  const params = spec.params ?? {};
+
+  return controllerImpl(plan, backing, params, options);
 }

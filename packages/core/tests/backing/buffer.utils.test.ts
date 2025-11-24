@@ -1,17 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { getSharedBuffer } from '../../src/backing/buffers';
-import { planLayout } from '../../src/plan/layout';
-import { specFromPlaneBytes } from '../helpers/spec-from-bytes';
+import { getBackingBuffer } from "../../src/backing/buffers";
+import { planLayout } from "../../src/plan/layout";
+import { specFromPlaneBytes } from "../helpers/spec-from-bytes";
 
 import type {
   Backing,
   SharedBacking,
   SharedPartitionedBacking,
   WasmSharedBacking,
-} from '../../src/backing/types';
-import type { PlaneByteLengths } from '../../src/plan/types';
-import type { PlaneKey } from '../../src/primitives/planes';
+} from "../../src/backing/types";
+import type { PlaneByteLengths } from "../../src/plan/types";
+import type { PlaneKey } from "../../src/primitives/planes";
 
 const WASM_PAGE_SIZE = 64 * 1024;
 
@@ -20,14 +20,17 @@ const WASM_PAGE_SIZE = 64 * 1024;
  * Handles polymorphism between partitioned backings (where planes have distinct buffers)
  * and contiguous backings (where all planes share one buffer).
  */
-export function getBufferForPlane(backing: Backing, plane: PlaneKey): SharedArrayBuffer {
-  if (backing.kind === 'shared-partitioned') {
+export function getBufferForPlane(
+  backing: Backing,
+  plane: PlaneKey,
+): SharedArrayBuffer {
+  if (backing.kind === "shared-partitioned") {
     return backing.planes[plane];
   }
-  return getSharedBuffer(backing);
+  return getBackingBuffer(backing);
 }
 
-describe('Backing Buffer Utilities: Retrieval Strategies', () => {
+describe("Backing Buffer Utilities: Retrieval Strategies", () => {
   // Define a representative layout to ensure valid backing structures
   const bytes: PlaneByteLengths = {
     PF32: 8 * 4,
@@ -41,12 +44,12 @@ describe('Backing Buffer Utilities: Retrieval Strategies', () => {
   };
   const plan = planLayout(specFromPlaneBytes(bytes));
 
-  it('retrieves the underlying SharedArrayBuffer for contiguous and WebAssembly backings', () => {
+  it("retrieves the underlying SharedArrayBuffer for contiguous and WebAssembly backings", () => {
     // Case 1: Standard Contiguous Shared Backing
     const sab = new SharedArrayBuffer(plan.bytesTotal);
-    const cont: SharedBacking = { kind: 'shared', sab };
+    const cont: SharedBacking = { kind: "shared", sab };
 
-    expect(getSharedBuffer(cont)).toBe(sab);
+    expect(getBackingBuffer(cont)).toBe(sab);
 
     // Case 2: WebAssembly Shared Backing
     const pages = Math.ceil(plan.bytesTotal / WASM_PAGE_SIZE);
@@ -55,15 +58,15 @@ describe('Backing Buffer Utilities: Retrieval Strategies', () => {
       initial: pages,
       maximum: pages,
     });
-    const wasm: WasmSharedBacking = { kind: 'wasm-shared', memory };
+    const wasm: WasmSharedBacking = { kind: "wasm-shared", memory };
 
-    expect(getSharedBuffer(wasm)).toBe(memory.buffer);
+    expect(getBackingBuffer(wasm)).toBe(memory.buffer);
   });
 
-  it('throws on partitioned backings when accessing a single buffer, requiring plane-specific retrieval', () => {
+  it("throws on partitioned backings when accessing a single buffer, requiring plane-specific retrieval", () => {
     // Construct a partitioned backing where every plane has its own isolated buffer
     const split: SharedPartitionedBacking = {
-      kind: 'shared-partitioned',
+      kind: "shared-partitioned",
       planes: {
         PF32: new SharedArrayBuffer(plan.planes.PF32),
         PI32: new SharedArrayBuffer(plan.planes.PI32),
@@ -76,13 +79,13 @@ describe('Backing Buffer Utilities: Retrieval Strategies', () => {
       },
     };
 
-    // getSharedBuffer must fail because there is no single "shared buffer" for the whole backing
-    expect(() => getSharedBuffer(split)).toThrow(
+    // getBackingBuffer must fail because there is no single "shared buffer" for the whole backing
+    expect(() => getBackingBuffer(split)).toThrow(
       /partitioned.*no single SharedArrayBuffer/i,
     );
 
     // Helper should correctly resolve specific plane buffers
-    expect(getBufferForPlane(split, 'PF32')).toBe(split.planes.PF32);
-    expect(getBufferForPlane(split, 'MU')).toBe(split.planes.MU);
+    expect(getBufferForPlane(split, "PF32")).toBe(split.planes.PF32);
+    expect(getBufferForPlane(split, "MU")).toBe(split.planes.MU);
   });
 });

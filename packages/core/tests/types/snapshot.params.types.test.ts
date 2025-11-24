@@ -1,31 +1,31 @@
-import { describe, it, expectTypeOf } from 'vitest';
+import { describe, it, expectTypeOf } from "vitest";
 
 import type {
   IntoForParams,
   ParamsSnapshot,
   SnapshotParamsObject,
-} from '../../src/binding/common/types';
-import type { SpecInput } from '../../src/spec/types';
+} from "../../src/binding/common/types";
+import type { SpecInput } from "../../src/spec/types";
 
 interface S extends SpecInput {
-  readonly id: 'snap-params';
+  readonly id: "snap-params";
   readonly params: {
-    readonly gain: { readonly kind: 'f32' };
+    readonly gain: { readonly kind: "f32" };
     readonly mode: {
-      readonly kind: 'enum';
-      readonly values: readonly ['normal', 'granular'];
+      readonly kind: "enum";
+      readonly values: readonly ["normal", "granular"];
     };
-    readonly curve: { readonly kind: 'f32.array'; readonly length: 8 };
-    readonly states: { readonly kind: 'bool.array'; readonly length: 4 };
+    readonly curve: { readonly kind: "f32.array"; readonly length: 8 };
+    readonly states: { readonly kind: "bool.array"; readonly length: 4 };
   };
 }
 
-describe('ControllerParams.snapshot typing', () => {
-  it('mapping: all params via ParamsSnapshot', () => {
+describe("ControllerParams.snapshot typing", () => {
+  it("mapping: all params via ParamsSnapshot", () => {
     type R = ParamsSnapshot<S>;
     type Expected = Readonly<{
       readonly gain: number;
-      readonly mode: 'normal' | 'granular';
+      readonly mode: "normal" | "granular";
       readonly curve: Readonly<Float32Array>;
       readonly states: Readonly<Uint8Array>;
     }>;
@@ -34,11 +34,14 @@ describe('ControllerParams.snapshot typing', () => {
     expectTypeOf<Expected>().toExtend<R>();
   });
 
-  it('mapping: all params via SnapshotParamsObject with full key set', () => {
-    type R = SnapshotParamsObject<S, readonly ['gain', 'mode', 'curve', 'states']>;
+  it("mapping: all params via SnapshotParamsObject with full key set", () => {
+    type R = SnapshotParamsObject<
+      S,
+      readonly ["gain", "mode", "curve", "states"]
+    >;
     type Expected = Readonly<{
       readonly gain: number;
-      readonly mode: 'normal' | 'granular';
+      readonly mode: "normal" | "granular";
       readonly curve: Readonly<Float32Array>;
       readonly states: Readonly<Uint8Array>;
     }>;
@@ -47,8 +50,8 @@ describe('ControllerParams.snapshot typing', () => {
     expectTypeOf<Expected>().toExtend<R>();
   });
 
-  it('mapping: single-key subset stays scalar', () => {
-    type R = SnapshotParamsObject<S, readonly ['gain']>;
+  it("mapping: single-key subset stays scalar", () => {
+    type R = SnapshotParamsObject<S, readonly ["gain"]>;
     type Expected = Readonly<{
       readonly gain: number;
     }>;
@@ -57,10 +60,10 @@ describe('ControllerParams.snapshot typing', () => {
     expectTypeOf<Expected>().toExtend<R>();
   });
 
-  it('mapping: mixed subset stays precise per property', () => {
-    type R = SnapshotParamsObject<S, readonly ['mode', 'curve']>;
+  it("mapping: mixed subset stays precise per property", () => {
+    type R = SnapshotParamsObject<S, readonly ["mode", "curve"]>;
     type Expected = Readonly<{
-      readonly mode: 'normal' | 'granular';
+      readonly mode: "normal" | "granular";
       readonly curve: Readonly<Float32Array>;
     }>;
 
@@ -68,8 +71,8 @@ describe('ControllerParams.snapshot typing', () => {
     expectTypeOf<Expected>().toExtend<R>();
   });
 
-  it('into typing only allows array keys and enforces constructors', () => {
-    type Good = IntoForParams<S, readonly ['curve', 'states']>;
+  it("into typing only allows array keys and enforces constructors", () => {
+    type Good = IntoForParams<S, readonly ["curve", "states"]>;
     type GoodExpected = Readonly<{
       curve?: Float32Array;
       states?: Uint8Array;
@@ -78,7 +81,7 @@ describe('ControllerParams.snapshot typing', () => {
     expectTypeOf<Good>().toExtend<GoodExpected>();
     expectTypeOf<GoodExpected>().toExtend<Good>();
 
-    type BadScalar = IntoForParams<S, readonly ['gain']>;
+    type BadScalar = IntoForParams<S, readonly ["gain"]>;
     type Empty = Readonly<Record<never, never>>;
 
     expectTypeOf<BadScalar>().toExtend<Empty>();

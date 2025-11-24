@@ -1,24 +1,24 @@
-import { describe, it, expectTypeOf } from 'vitest';
+import { describe, it, expectTypeOf } from "vitest";
 
 import {
   isSharedBacking,
   isSharedPartitionedBacking,
   isWasmSharedBacking,
-} from '../../src/backing/types';
+} from "../../src/backing/types";
 
 import type {
   Backing,
   SharedBacking,
   SharedPartitionedBacking,
   WasmSharedBacking,
-} from '../../src/backing/types';
+} from "../../src/backing/types";
 
-describe('Backing Types (Compile-Time Contracts)', () => {
-  it('discriminated union and guards narrow precisely', () => {
+describe("Backing Types (Compile-Time Contracts)", () => {
+  it("discriminated union and guards narrow precisely", () => {
     const cases: Backing[] = [
-      { kind: 'shared', sab: new SharedArrayBuffer(8) },
+      { kind: "shared", sab: new SharedArrayBuffer(8) },
       {
-        kind: 'shared-partitioned',
+        kind: "shared-partitioned",
         planes: {
           PF32: new SharedArrayBuffer(0),
           PI32: new SharedArrayBuffer(0),
@@ -31,8 +31,12 @@ describe('Backing Types (Compile-Time Contracts)', () => {
         },
       },
       {
-        kind: 'wasm-shared',
-        memory: new WebAssembly.Memory({ initial: 1, maximum: 1, shared: true }),
+        kind: "wasm-shared",
+        memory: new WebAssembly.Memory({
+          initial: 1,
+          maximum: 1,
+          shared: true,
+        }),
       },
     ];
 

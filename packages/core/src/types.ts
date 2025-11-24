@@ -3,8 +3,8 @@ import type {
   MeterValueFor,
   ParamShape,
   ParamValueFor,
-} from './binding/common/types';
-import type { MeterKeys, ParamKeys, SpecInput } from './spec/types';
+} from "./binding/common/types";
+import type { MeterKeys, ParamKeys, SpecInput } from "./spec/types";
 
 /**
  * All controller-visible param values for a spec.

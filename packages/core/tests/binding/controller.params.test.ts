@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   allocateShared,
@@ -9,7 +9,7 @@ import {
   defineSpec,
   planLayout,
   receiveHandoff,
-} from '../../src';
+} from "../../src";
 
 /**
  * Defines a comprehensive test specification covering all supported parameter types.
@@ -17,10 +17,10 @@ import {
  */
 function makeSpec() {
   return defineSpec(({ param, meter }) => ({
-    id: 'controller-binding-tests',
+    id: "controller-binding-tests",
     params: {
       rate: param.f32({ min: 0.5, max: 2.0 }),
-      mode: param.enum(['a', 'b', 'c']),
+      mode: param.enum(["a", "b", "c"]),
       enabled: param.bool(),
       coeffs: param.f32.array({ length: 8 }),
     },
@@ -37,7 +37,7 @@ function makeSpec() {
  * Establishes the Controller <-> Processor link via a local handoff.
  */
 function setupController(
-  options: ControllerOptions = { params: { rangePolicy: 'reject' } },
+  options: ControllerOptions = { params: { rangePolicy: "reject" } },
 ) {
   const spec = makeSpec();
   const plan = planLayout(spec);
@@ -52,21 +52,21 @@ function setupController(
   return { spec, plan, backing, handoff, received, ctl, proc };
 }
 
-describe('Controller Parameters: Versioning & Atomicity', () => {
-  it('increments version exactly once for a single scalar set()', () => {
+describe("Controller Parameters: Versioning & Atomicity", () => {
+  it("increments version exactly once for a single scalar set()", () => {
     const { ctl } = setupController();
     const initialVersion = ctl.params.version();
 
-    ctl.params.set('rate', 1.25);
+    ctl.params.set("rate", 1.25);
 
     const updatedVersion = ctl.params.version();
     expect(updatedVersion).toBe(initialVersion + 1);
 
-    const snap = ctl.params.snapshot({ keys: ['rate'] });
+    const snap = ctl.params.snapshot({ keys: ["rate"] });
     expect(snap.rate).toBeCloseTo(1.25, 6);
   });
 
-  it('increments version exactly once for a multi-parameter update()', () => {
+  it("increments version exactly once for a multi-parameter update()", () => {
     const { ctl } = setupController();
     const initialVersion = ctl.params.version();
 
@@ -74,23 +74,23 @@ describe('Controller Parameters: Versioning & Atomicity', () => {
     ctl.params.update({
       rate: 1.5,
       enabled: true,
-      mode: 'b',
+      mode: "b",
     });
 
     const updatedVersion = ctl.params.version();
     expect(updatedVersion).toBe(initialVersion + 1);
 
-    const snap = ctl.params.snapshot({ keys: ['rate', 'enabled', 'mode'] });
+    const snap = ctl.params.snapshot({ keys: ["rate", "enabled", "mode"] });
     expect(snap.rate).toBeCloseTo(1.5, 6);
     expect(snap.enabled).toBe(true);
-    expect(snap.mode).toBe('b');
+    expect(snap.mode).toBe("b");
   });
 
-  it('increments version exactly once for an array stage() operation', () => {
+  it("increments version exactly once for an array stage() operation", () => {
     const { ctl } = setupController();
     const initialVersion = ctl.params.version();
 
-    ctl.params.stage('coeffs', (view) => {
+    ctl.params.stage("coeffs", (view) => {
       view.fill(0);
       view[2] = 0.75;
       view[7] = 0.33;
@@ -99,20 +99,20 @@ describe('Controller Parameters: Versioning & Atomicity', () => {
     const updatedVersion = ctl.params.version();
     expect(updatedVersion).toBe(initialVersion + 1);
 
-    const snap = ctl.params.snapshot({ keys: ['coeffs'] });
+    const snap = ctl.params.snapshot({ keys: ["coeffs"] });
     expect(snap.coeffs).toBeInstanceOf(Float32Array);
     expect((snap.coeffs as Float32Array)[2]).toBeCloseTo(0.75, 6);
     expect((snap.coeffs as Float32Array)[7]).toBeCloseTo(0.33, 6);
   });
 });
 
-describe('Controller Parameters: Range Policy Behavior', () => {
+describe("Controller Parameters: Range Policy Behavior", () => {
   it('throws on out-of-range values when policy is "reject" (default) and preserves version', () => {
     const { ctl } = setupController(); // defaults to reject
     const initialVersion = ctl.params.version();
 
     expect(() => {
-      ctl.params.set('rate', 999); // Exceeds max=2.0
+      ctl.params.set("rate", 999); // Exceeds max=2.0
     }).toThrow();
 
     // Version must not change if the write was rejected
@@ -121,25 +121,25 @@ describe('Controller Parameters: Range Policy Behavior', () => {
   });
 
   it('clamps out-of-range values when policy is "clamp" and commits the change', () => {
-    const { ctl } = setupController({ params: { rangePolicy: 'clamp' } });
+    const { ctl } = setupController({ params: { rangePolicy: "clamp" } });
     const initialVersion = ctl.params.version();
 
-    ctl.params.set('rate', -10); // Below min=0.5, should clamp
+    ctl.params.set("rate", -10); // Below min=0.5, should clamp
 
     const updatedVersion = ctl.params.version();
     expect(updatedVersion).toBe(initialVersion + 1);
 
-    const snap = ctl.params.snapshot({ keys: ['rate'] });
+    const snap = ctl.params.snapshot({ keys: ["rate"] });
     expect(snap.rate).toBeCloseTo(0.5, 6);
   });
 });
 
-describe('Controller Parameters: Snapshot Identity & Validation', () => {
+describe("Controller Parameters: Snapshot Identity & Validation", () => {
   it('reuses the provided "into" buffer (identity preserved)', () => {
     const { ctl } = setupController();
 
     // Pre-fill some data
-    ctl.params.stage('coeffs', (view) => {
+    ctl.params.stage("coeffs", (view) => {
       view.fill(0);
       view[2] = 0.3;
       view[7] = 0.8;
@@ -148,7 +148,7 @@ describe('Controller Parameters: Snapshot Identity & Validation', () => {
     const targetBuffer = new Float32Array(8);
     const into = { coeffs: targetBuffer };
 
-    const snap = ctl.params.snapshot({ keys: ['coeffs'], into });
+    const snap = ctl.params.snapshot({ keys: ["coeffs"], into });
 
     // Verify the returned object is strictly the one we provided
     expect(snap.coeffs).toBe(targetBuffer);
@@ -158,11 +158,11 @@ describe('Controller Parameters: Snapshot Identity & Validation', () => {
     expect(snap.coeffs[7]).toBeCloseTo(0.8, 6);
   });
 
-  it('throws when snapshotting a non-existent parameter key', () => {
+  it("throws when snapshotting a non-existent parameter key", () => {
     const { ctl } = setupController();
     expect(() => {
       // @ts-expect-error Intentional invalid key access for runtime test
-      ctl.params.snapshot({ keys: ['doesNotExist'] });
+      ctl.params.snapshot({ keys: ["doesNotExist"] });
     }).toThrow();
   });
 });

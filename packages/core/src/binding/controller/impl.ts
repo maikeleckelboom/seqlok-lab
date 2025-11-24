@@ -9,33 +9,34 @@
  * - Provides snapshot helpers for params and meters, including zero-alloc `into`.
  */
 
-import { createMeterSnapshot, createParamSnapshot } from './snapshot';
+import { createMeterSnapshot, createParamSnapshot } from "./snapshot";
 import {
   type MappedViews,
   mapViews,
-  type MeterPlaneViews,
   type ParamPlaneViews,
-} from '../../backing/map-views';
-import { invariant } from '../../errors/invariant';
-import { publish } from '../../primitives/seqlock';
-import { claimBinding, noteBinding, releaseBinding } from '../common/registry';
+} from "../../backing/map-views";
+import { invariant } from "../../errors/invariant";
+import { isObject } from "../../internal/is-object";
+import { publish } from "../../primitives/seqlock";
+import { isEnumDef } from "../common/enum-utils";
+import { claimBinding, releaseBinding } from "../common/registry";
 import {
   throwInvalidParamValue,
   throwParamRange,
   throwUnknownKey,
-  type MeterPlane,
-  type ParamPlane,
-} from '../common/validate';
+  validateMeterSlots,
+  validateParamSlots,
+} from "../common/validate";
 
-import type { Backing } from '../../backing/types';
-import type { Plan } from '../../plan/types';
+import type { Backing } from "../../backing/types";
+import type { Plan } from "../../plan/types";
 import type {
   ArrayParamKeys,
   ParamDef,
   ParamKeys,
   ScalarParamKeys,
   SpecInput,
-} from '../../spec/types';
+} from "../../spec/types";
 import type {
   ArrayParamView,
   ControllerBinding,
@@ -50,60 +51,12 @@ import type {
   PUSeq,
   RangePolicy,
   ScalarParamPatch,
-} from '../common/types';
-
-/**
- * Base layout information for a param/meter slot in a plane.
- */
-interface SlotBase {
-  readonly offset: number;
-  readonly length: number;
-  readonly bytesPerElement: number;
-}
-
-/**
- * Param slot descriptor as produced by the planner.
- *
- * @remarks
- * - `plane` may refer to a logical param plane or the PU lock plane.
- */
-interface ParamSlot extends SlotBase {
-  readonly plane: ParamPlane | 'PU';
-}
-
-/**
- * Meter slot descriptor as produced by the planner.
- *
- * @remarks
- * - `plane` may refer to a logical meter plane or the MU lock plane.
- */
-interface MeterSlot extends SlotBase {
-  readonly plane: MeterPlane | 'MU';
-}
-
-/**
- * Validated fast-path param slot (precomputed element index).
- *
- * @remarks
- * - Plane is guaranteed to be a param data plane (not PU).
- * - `index` is `offset / bytesPerElement` and bounds-checked.
- */
-interface ValidatedParamSlot extends SlotBase {
-  readonly plane: ParamPlane;
-  readonly index: number;
-}
-
-/**
- * Validated fast-path meter slot (precomputed element index).
- *
- * @remarks
- * - Plane is guaranteed to be a meter data plane (not MU).
- * - `index` is `offset / bytesPerElement` and bounds-checked.
- */
-interface ValidatedMeterSlot extends SlotBase {
-  readonly plane: MeterPlane;
-  readonly index: number;
-}
+} from "../common/types";
+import type {
+  MeterSlot,
+  ParamSlot,
+  ValidatedParamSlot,
+} from "../common/validate";
 
 /**
  * Internal helper for bulk array copies in `hydrate()`.
@@ -114,34 +67,25 @@ interface ValidatedMeterSlot extends SlotBase {
  */
 type ArrayOp =
   | {
-      readonly plane: 'PF32';
+      readonly plane: "PF32";
       readonly slot: ValidatedParamSlot;
       readonly src: Float32Array;
     }
   | {
-      readonly plane: 'PI32';
+      readonly plane: "PI32";
       readonly slot: ValidatedParamSlot;
       readonly src: Int32Array;
     }
   | {
-      readonly plane: 'PB';
+      readonly plane: "PB";
       readonly slot: ValidatedParamSlot;
       readonly src: Uint8Array;
     };
 
 /**
- * Structural object check used by type guards.
- *
- * @remarks
- * - Avoids unsafe casts by working on `Record<string, unknown>`.
- */
-const isObject = (x: unknown): x is Record<string, unknown> =>
-  x !== null && typeof x === 'object';
-
-/**
  * Range-bearing f32 scalar definition.
  */
-type F32RangeDef = Extract<ParamDef, { kind: 'f32' }> & {
+type F32RangeDef = Extract<ParamDef, { kind: "f32" }> & {
   readonly min: number;
   readonly max: number;
 };
@@ -149,42 +93,40 @@ type F32RangeDef = Extract<ParamDef, { kind: 'f32' }> & {
 /**
  * Range-bearing i32 scalar definition.
  */
-type I32RangeDef = Extract<ParamDef, { kind: 'i32' }> & {
+type I32RangeDef = Extract<ParamDef, { kind: "i32" }> & {
   readonly min: number;
   readonly max: number;
 };
 
-type BoolDef = Extract<ParamDef, { kind: 'bool' }>;
-type EnumDef = Extract<ParamDef, { kind: 'enum' }>;
+type BoolDef = Extract<ParamDef, { kind: "bool" }>;
 
 /**
  * Type guard for f32 scalar definitions with explicit range.
  */
 const isF32RangeDef = (d: unknown): d is F32RangeDef =>
   isObject(d) &&
-  d.kind === 'f32' &&
-  typeof d.min === 'number' &&
-  typeof d.max === 'number';
+  d.kind === "f32" &&
+  typeof d.min === "number" &&
+  typeof d.max === "number" &&
+  Number.isFinite(d.min) &&
+  Number.isFinite(d.max);
 
 /**
  * Type guard for i32 scalar definitions with explicit range.
  */
 const isI32RangeDef = (d: unknown): d is I32RangeDef =>
   isObject(d) &&
-  d.kind === 'i32' &&
-  typeof d.min === 'number' &&
-  typeof d.max === 'number';
+  d.kind === "i32" &&
+  typeof d.min === "number" &&
+  typeof d.max === "number" &&
+  Number.isInteger(d.min) &&
+  Number.isInteger(d.max);
 
 /**
  * Type guard for boolean param definitions.
  */
-const isBoolDef = (d: unknown): d is BoolDef => isObject(d) && d.kind === 'bool';
-
-/**
- * Type guard for enum param definitions.
- */
-const isEnumDef = (d: unknown): d is EnumDef =>
-  isObject(d) && d.kind === 'enum' && Array.isArray(d.values);
+const isBoolDef = (d: unknown): d is BoolDef =>
+  isObject(d) && d.kind === "bool";
 
 /**
  * Clamp helper for range policy `'clamp'`.
@@ -200,10 +142,13 @@ const clamp = (v: number, min: number, max: number): number =>
  * - Enums use `[0, values.length - 1]` (or `[0, 0]` when empty).
  * - Returns `undefined` when the def has no numeric range.
  */
-function scalarRangeFor(def: unknown): { min: number; max: number } | undefined {
+function scalarRangeFor(
+  def: unknown,
+): { min: number; max: number } | undefined {
   if (isF32RangeDef(def) || isI32RangeDef(def)) {
     return { min: def.min, max: def.max };
   }
+
   if (isEnumDef(def)) {
     const n = def.values.length;
     if (n <= 0) {
@@ -211,145 +156,8 @@ function scalarRangeFor(def: unknown): { min: number; max: number } | undefined 
     }
     return { min: 0, max: n - 1 };
   }
+
   return undefined;
-}
-
-/**
- * Validate param slots against the mapped param plane views.
- *
- * @remarks
- * - Filters out non-data-plane entries (e.g. PU).
- * - Computes and validates element indices for scalars and arrays.
- * - Throws `internal.assertionFailed` if any slot is out of bounds.
- */
-function validateParamSlots(
-  slots: Record<string, ParamSlot>,
-  views: ParamPlaneViews,
-): Record<string, ValidatedParamSlot> {
-  const validated: Record<string, ValidatedParamSlot> = {};
-
-  for (const [key, slot] of Object.entries(slots)) {
-    if (slot.plane !== 'PF32' && slot.plane !== 'PI32' && slot.plane !== 'PB') {
-      continue;
-    }
-
-    const index = (slot.offset / slot.bytesPerElement) | 0;
-    const length = slot.length;
-
-    if (length === 1) {
-      let ok = false;
-      if (slot.plane === 'PF32') {
-        ok = index >= 0 && index < views.PF32.length;
-      } else if (slot.plane === 'PI32') {
-        ok = index >= 0 && index < views.PI32.length;
-      } else {
-        ok = index >= 0 && index < views.PB.length;
-      }
-
-      invariant(
-        ok,
-        'internal.assertionFailed',
-        `Param scalar "${key}" offset out of bounds`,
-        { detail: `param.scalar:${key}` },
-      );
-    } else {
-      const end = index + length;
-      let ok = false;
-      if (slot.plane === 'PF32') {
-        ok = index >= 0 && end <= views.PF32.length;
-      } else if (slot.plane === 'PI32') {
-        ok = index >= 0 && end <= views.PI32.length;
-      } else {
-        ok = index >= 0 && end <= views.PB.length;
-      }
-
-      invariant(
-        ok,
-        'internal.assertionFailed',
-        `Param array "${key}" range out of bounds`,
-        { detail: `param.array:${key}` },
-      );
-    }
-
-    validated[key] = {
-      plane: slot.plane,
-      offset: slot.offset,
-      length: slot.length,
-      bytesPerElement: slot.bytesPerElement,
-      index,
-    };
-  }
-
-  return validated;
-}
-
-/**
- * Validate meter slots against the mapped meter plane views.
- *
- * @remarks
- * - Filters out non-data-plane entries (e.g. MU).
- * - Computes and validates element indices for scalars and arrays.
- * - Throws `internal.assertionFailed` if any slot is out of bounds.
- */
-function validateMeterSlots(
-  slots: Record<string, MeterSlot>,
-  views: MeterPlaneViews,
-): Record<string, ValidatedMeterSlot> {
-  const validated: Record<string, ValidatedMeterSlot> = {};
-
-  for (const [key, slot] of Object.entries(slots)) {
-    if (slot.plane !== 'MF32' && slot.plane !== 'MF64' && slot.plane !== 'MU32') {
-      continue;
-    }
-
-    const index = (slot.offset / slot.bytesPerElement) | 0;
-    const length = slot.length;
-
-    if (length === 1) {
-      let ok = false;
-      if (slot.plane === 'MF32') {
-        ok = index >= 0 && index < views.MF32.length;
-      } else if (slot.plane === 'MF64') {
-        ok = index >= 0 && index < views.MF64.length;
-      } else {
-        ok = index >= 0 && index < views.MU32.length;
-      }
-
-      invariant(
-        ok,
-        'internal.assertionFailed',
-        `Meter scalar "${key}" offset out of bounds`,
-        { detail: `meter.scalar:${key}` },
-      );
-    } else {
-      const end = index + length;
-      let ok = false;
-      if (slot.plane === 'MF32') {
-        ok = index >= 0 && end <= views.MF32.length;
-      } else if (slot.plane === 'MF64') {
-        ok = index >= 0 && end <= views.MF64.length;
-      } else {
-        ok = index >= 0 && end <= views.MU32.length;
-      }
-
-      invariant(
-        ok,
-        'internal.assertionFailed',
-        `Meter array "${key}" range out of bounds`,
-        { detail: `meter.array:${key}` },
-      );
-    }
-
-    validated[key] = {
-      plane: slot.plane,
-      offset: slot.offset,
-      length: slot.length,
-      bytesPerElement: slot.bytesPerElement,
-      index,
-    };
-  }
-
-  return validated;
 }
 
 /**
@@ -367,7 +175,7 @@ function assertScalarParamSlot(
   length: 1;
 } {
   if (slot?.length !== 1) {
-    throwUnknownKey('params', key, known);
+    throwUnknownKey("params", key, known);
   }
 }
 
@@ -393,38 +201,38 @@ function normalizeScalarValue(
   key: string,
 ): number | boolean {
   if (isEnumDef(def)) {
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       return value;
     }
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const idx = def.values.indexOf(value);
       if (idx < 0) {
-        throwInvalidParamValue(key, `oneOf(${def.values.join(',')})`, value);
+        throwInvalidParamValue(key, `oneOf(${def.values.join(",")})`, value);
       }
       return idx;
     }
-    throwInvalidParamValue(key, 'enum index|string', value);
+    throwInvalidParamValue(key, "enum index|string", value);
   }
 
   if (isBoolDef(def)) {
-    if (typeof value === 'boolean') {
+    if (typeof value === "boolean") {
       return value;
     }
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       return value !== 0;
     }
-    throwInvalidParamValue(key, 'boolean|0|1', value);
+    throwInvalidParamValue(key, "boolean|0|1", value);
   }
 
   if (isF32RangeDef(def) || isI32RangeDef(def)) {
-    if (typeof value !== 'number') {
-      throwInvalidParamValue(key, 'number', value);
+    if (typeof value !== "number") {
+      throwInvalidParamValue(key, "number", value);
     }
     return value;
   }
 
-  if (!(typeof value === 'number' || typeof value === 'boolean')) {
-    throwInvalidParamValue(key, 'number|boolean', value);
+  if (!(typeof value === "number" || typeof value === "boolean")) {
+    throwInvalidParamValue(key, "number|boolean", value);
   }
 
   return value;
@@ -446,16 +254,20 @@ function writeScalarUnchecked(
   normalized: number | boolean,
 ): void {
   const i = slot.index;
+
   switch (slot.plane) {
-    case 'PF32':
-      views.PF32[i] = typeof normalized === 'boolean' ? (normalized ? 1 : 0) : normalized;
+    case "PF32":
+      views.PF32[i] =
+        typeof normalized === "boolean" ? (normalized ? 1 : 0) : normalized;
       return;
-    case 'PI32':
+
+    case "PI32":
       views.PI32[i] = Math.trunc(
-        typeof normalized === 'boolean' ? (normalized ? 1 : 0) : normalized,
+        typeof normalized === "boolean" ? (normalized ? 1 : 0) : normalized,
       );
       return;
-    case 'PB':
+
+    case "PB":
       views.PB[i] = normalized ? 1 : 0;
       return;
   }
@@ -474,16 +286,16 @@ function assertBackingCapacity<S extends SpecInput>(
   plan: Plan<S>,
   backing: Backing,
 ): void {
-  if (backing.kind === 'shared') {
+  if (backing.kind === "shared") {
     const required = plan.bytesTotal >>> 0;
     const actual = backing.sab.byteLength >>> 0;
 
     invariant(
       actual >= required,
-      'internal.assertionFailed',
-      'Shared backing byteLength smaller than plan.bytesTotal',
+      "internal.assertionFailed",
+      "Shared backing byteLength smaller than plan.bytesTotal",
       {
-        where: 'binding.controller.backing',
+        where: "binding.controller.backing",
         detail: `required=${String(required)}, actual=${String(actual)}`,
       },
     );
@@ -507,16 +319,11 @@ export function controllerImpl<const S extends SpecInput>(
   paramDefs: Readonly<Record<string, ParamDef>>,
   options: ControllerOptions = {},
 ): ControllerBinding<S> {
-  const policy: RangePolicy = options.params?.rangePolicy ?? 'reject';
-  const exclusive = options.exclusive ?? true;
+  const policy: RangePolicy = options.params?.rangePolicy ?? "reject";
 
   assertBackingCapacity(plan, backing);
+  claimBinding(backing, "controller");
 
-  if (exclusive) {
-    claimBinding(backing, 'controller');
-  } else {
-    noteBinding(backing, 'controller');
-  }
   try {
     const mapped: MappedViews = mapViews(plan, backing);
 
@@ -565,19 +372,22 @@ export function controllerImpl<const S extends SpecInput>(
       const def: ParamDef | undefined = paramDefs[key];
       const normalized = normalizeScalarValue(def, value, key);
 
-      const numeric = typeof normalized === 'boolean' ? (normalized ? 1 : 0) : normalized;
+      const numeric =
+        typeof normalized === "boolean" ? (normalized ? 1 : 0) : normalized;
       const range = scalarRangeFor(def);
 
       if (range) {
         if (numeric < range.min || numeric > range.max) {
-          if (policy === 'reject') {
+          if (policy === "reject") {
             throwParamRange(key, range.min, range.max, numeric);
           }
+
           return {
             slot: scalarSlot,
             toWrite: clamp(numeric, range.min, range.max),
           };
         }
+
         return { slot: scalarSlot, toWrite: numeric };
       }
 
@@ -589,11 +399,18 @@ export function controllerImpl<const S extends SpecInput>(
       validatedParams,
       mapped.params,
     );
-    const metersSnapshot = createMeterSnapshot<S>(validatedMeters, mapped.meters);
+    const metersSnapshot = createMeterSnapshot<S>(
+      validatedMeters,
+      mapped.meters,
+    );
 
     const params: ControllerParams<S> = {
-      set<K extends ScalarParamKeys<S>>(key: K, value: ParamValueFor<S, K>): void {
+      set<K extends ScalarParamKeys<S>>(
+        key: K,
+        value: ParamValueFor<S, K>,
+      ): void {
         const { slot, toWrite } = prepareScalarWrite(key, value);
+
         publish(pu, () => {
           writeScalarUnchecked(mapped.params, slot, toWrite);
         });
@@ -641,7 +458,7 @@ export function controllerImpl<const S extends SpecInput>(
 
           const slot = validatedParams[key];
           if (!slot) {
-            throwUnknownKey('params', key, knownParamKeys);
+            throwUnknownKey("params", key, knownParamKeys);
           }
 
           if (slot.length === 1) {
@@ -657,9 +474,9 @@ export function controllerImpl<const S extends SpecInput>(
           const v = value as unknown;
 
           switch (slot.plane) {
-            case 'PF32': {
+            case "PF32": {
               if (!(v instanceof Float32Array)) {
-                throwInvalidParamValue(key, 'Float32Array', v);
+                throwInvalidParamValue(key, "Float32Array", v);
               }
               const src = v;
               if (src.length !== expectedLength) {
@@ -669,13 +486,13 @@ export function controllerImpl<const S extends SpecInput>(
                   src.length,
                 );
               }
-              arrayOps.push({ plane: 'PF32', slot, src });
+              arrayOps.push({ plane: "PF32", slot, src });
               break;
             }
 
-            case 'PI32': {
+            case "PI32": {
               if (!(v instanceof Int32Array)) {
-                throwInvalidParamValue(key, 'Int32Array', v);
+                throwInvalidParamValue(key, "Int32Array", v);
               }
               const src = v;
               if (src.length !== expectedLength) {
@@ -685,13 +502,13 @@ export function controllerImpl<const S extends SpecInput>(
                   src.length,
                 );
               }
-              arrayOps.push({ plane: 'PI32', slot, src });
+              arrayOps.push({ plane: "PI32", slot, src });
               break;
             }
 
-            case 'PB': {
+            case "PB": {
               if (!(v instanceof Uint8Array)) {
-                throwInvalidParamValue(key, 'Uint8Array', v);
+                throwInvalidParamValue(key, "Uint8Array", v);
               }
               const src = v;
               if (src.length !== expectedLength) {
@@ -701,13 +518,13 @@ export function controllerImpl<const S extends SpecInput>(
                   src.length,
                 );
               }
-              arrayOps.push({ plane: 'PB', slot, src });
+              arrayOps.push({ plane: "PB", slot, src });
               break;
             }
 
             default: {
-              const _plane: never = slot.plane;
-              void _plane;
+              const _exhaustive: never = slot.plane;
+              void _exhaustive;
             }
           }
         }
@@ -726,15 +543,15 @@ export function controllerImpl<const S extends SpecInput>(
             const start = op.slot.index;
 
             switch (op.plane) {
-              case 'PF32': {
+              case "PF32": {
                 mapped.params.PF32.set(op.src, start);
                 break;
               }
-              case 'PI32': {
+              case "PI32": {
                 mapped.params.PI32.set(op.src, start);
                 break;
               }
-              case 'PB': {
+              case "PB": {
                 mapped.params.PB.set(op.src, start);
                 break;
               }
@@ -745,9 +562,9 @@ export function controllerImpl<const S extends SpecInput>(
 
                 invariant(
                   false,
-                  'internal.assertionFailed',
-                  'Param hydrate() reached unsupported plane',
-                  { detail: 'param.hydrate:unknownPlane' },
+                  "internal.assertionFailed",
+                  "Param hydrate() reached unsupported plane",
+                  { detail: "param.hydrate:unknownPlane" },
                 );
               }
             }
@@ -761,16 +578,16 @@ export function controllerImpl<const S extends SpecInput>(
       ): void {
         const slot = validatedParams[key];
         if (!slot || slot.length <= 1) {
-          throwUnknownKey('params', key, knownParamKeys);
+          throwUnknownKey("params", key, knownParamKeys);
         }
 
         publish(pu, () => {
           const start = slot.index;
           const end = start + slot.length;
           let view: EphemeralTypedArray;
-          if (slot.plane === 'PF32') {
+          if (slot.plane === "PF32") {
             view = mapped.params.PF32.subarray(start, end);
-          } else if (slot.plane === 'PI32') {
+          } else if (slot.plane === "PI32") {
             view = mapped.params.PI32.subarray(start, end);
           } else {
             view = mapped.params.PB.subarray(start, end);
@@ -817,7 +634,7 @@ export function controllerImpl<const S extends SpecInput>(
         return;
       }
       disposed = true;
-      releaseBinding(backing, 'controller');
+      releaseBinding(backing, "controller");
     };
 
     return {
@@ -826,7 +643,7 @@ export function controllerImpl<const S extends SpecInput>(
       dispose,
     };
   } catch (error) {
-    releaseBinding(backing, 'controller');
+    releaseBinding(backing, "controller");
     throw error;
   }
 }

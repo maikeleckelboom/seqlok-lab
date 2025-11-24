@@ -11,8 +11,8 @@
  *   runtime error reporting and compile-time type checking.
  */
 
-import type { ErrorDetails } from './registry';
-import type { TypedArrayName } from './types';
+import type { ErrorDetails } from "./registry";
+import type { TypedArrayName } from "./types";
 
 /**
  * Shared shape for numeric range validations.
@@ -57,7 +57,7 @@ export interface EnumDetails extends ErrorDetails {
  * Unknown key in a given logical scope (params/meters/etc).
  */
 export interface UnknownKeyDetails extends ErrorDetails {
-  readonly scope: 'params' | 'meters';
+  readonly scope: "params" | "meters";
   readonly key: string;
   readonly known?: readonly string[];
 }
@@ -89,5 +89,5 @@ export interface CoherentDetails extends ErrorDetails {
  * Coherent snapshot retry details.
  */
 export interface SnapshotRetryDetails extends CoherentDetails {
-  readonly section: 'params' | 'meters';
+  readonly section: "params" | "meters";
 }

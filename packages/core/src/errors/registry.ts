@@ -16,7 +16,7 @@ import {
   type BackingIntoDetails,
   type BackingPlaneDetails,
   type BackingWasmMemoryDetails,
-} from './codes/backing';
+} from "./codes/backing";
 import {
   BINDING_ERRORS,
   type BindingErrorCode,
@@ -26,19 +26,19 @@ import {
   type BindingSnapshotIntoLengthMismatchDetails,
   type BindingSnapshotIntoTypeMismatchDetails,
   type BindingUnknownKeyDetails,
-} from './codes/binding';
+} from "./codes/binding";
 import {
   DIAGNOSTICS_ERRORS,
   type DiagnosticsCounterDetails,
   type DiagnosticsErrorCode,
   type DiagnosticsFeatureDetails,
-} from './codes/diagnostics';
+} from "./codes/diagnostics";
 import {
   ENV_ERRORS,
   type EnvErrorCode,
   type EnvCoopCoepDetails,
   type EnvUnsupportedDetails,
-} from './codes/env';
+} from "./codes/env";
 import {
   HANDOFF_ERRORS,
   type HandoffBackingMismatchDetails,
@@ -46,24 +46,24 @@ import {
   type HandoffInvalidArtifactDetails,
   type HandoffSpecHashMismatchDetails,
   type HandoffVersionMismatchDetails,
-} from './codes/handoff';
+} from "./codes/handoff";
 import {
   INTERNAL_ERRORS,
   type InternalAssertionDetails,
   type InternalErrorCode,
-} from './codes/internal';
+} from "./codes/internal";
 import {
   PLAN_ERRORS,
   type PlanErrorCode,
   type PlanFailedDetails,
   type PlanOverflowRiskDetails,
-} from './codes/plan';
+} from "./codes/plan";
 import {
   PRIMITIVES_ERRORS,
   type PrimitivesErrorCode,
   type PrimitivesSeqlockTimeoutDetails,
   type PrimitivesSwsrRingInvalidLayoutDetails,
-} from './codes/primitives';
+} from "./codes/primitives";
 import {
   SPEC_ERRORS,
   type SpecErrorCode,
@@ -72,9 +72,9 @@ import {
   type SpecDuplicateKeyDetails,
   type SpecEnumDetails,
   type SpecRangeDetails,
-} from './codes/spec';
+} from "./codes/spec";
 
-import type { CoherentDetails, SnapshotRetryDetails } from './details';
+import type { CoherentDetails, SnapshotRetryDetails } from "./details";
 
 /**
  * Base details common to all errors.
@@ -92,17 +92,17 @@ export interface ErrorDetails {
  * error details.
  */
 export type TypedArrayName =
-  | 'Float32Array'
-  | 'Float64Array'
-  | 'Uint32Array'
-  | 'Int32Array'
-  | 'Uint8Array';
+  | "Float32Array"
+  | "Float64Array"
+  | "Uint32Array"
+  | "Int32Array"
+  | "Uint8Array";
 
 /**
  * Error metadata used for governance / health interpretation.
  */
 export interface ErrorMeta {
-  readonly severity: 'fatal' | 'error' | 'warning';
+  readonly severity: "fatal" | "error" | "warning";
   readonly recoverable: boolean;
   readonly boundarySafe: boolean;
   readonly deprecated?: { readonly useInstead: string };
@@ -130,58 +130,58 @@ export type ErrorCode =
  */
 export interface CodeToPayload {
   // primitives.*
-  'primitives.seqlockTimeout': PrimitivesSeqlockTimeoutDetails;
-  'primitives.planeUnaligned': ErrorDetails;
-  'primitives.atomicsFailed': ErrorDetails;
-  'primitives.invalidSpinBudget': ErrorDetails;
-  'primitives.swsrRingInvalidLayout': PrimitivesSwsrRingInvalidLayoutDetails;
+  "primitives.seqlockTimeout": PrimitivesSeqlockTimeoutDetails;
+  "primitives.planeUnaligned": ErrorDetails;
+  "primitives.atomicsFailed": ErrorDetails;
+  "primitives.invalidSpinBudget": ErrorDetails;
+  "primitives.swsrRingInvalidLayout": PrimitivesSwsrRingInvalidLayoutDetails;
 
   // internal.*
-  'internal.assertionFailed': InternalAssertionDetails;
-  'internal.unreachable': ErrorDetails;
-  'internal.exhaustiveness': ErrorDetails;
+  "internal.assertionFailed": InternalAssertionDetails;
+  "internal.unreachable": ErrorDetails;
+  "internal.exhaustiveness": ErrorDetails;
 
   // backing.*
-  'backing.allocFailed': BackingPlaneDetails;
-  'backing.allocUndersized': BackingPlaneDetails;
-  'backing.wasmMemoryNotShared': BackingWasmMemoryDetails;
-  'backing.intoTypeMismatch': BackingIntoDetails;
-  'backing.intoLengthMismatch': BackingIntoDetails;
+  "backing.allocFailed": BackingPlaneDetails;
+  "backing.allocUndersized": BackingPlaneDetails;
+  "backing.wasmMemoryNotShared": BackingWasmMemoryDetails;
+  "backing.intoTypeMismatch": BackingIntoDetails;
+  "backing.intoLengthMismatch": BackingIntoDetails;
 
   // spec.*
-  'spec.rangeInvalid': SpecRangeDetails;
-  'spec.enumInvalid': SpecEnumDetails;
-  'spec.arrayInvalid': SpecArrayDetails;
-  'spec.duplicateKey': SpecDuplicateKeyDetails;
-  'spec.builderInvalid': SpecBuilderDetails;
+  "spec.rangeInvalid": SpecRangeDetails;
+  "spec.enumInvalid": SpecEnumDetails;
+  "spec.arrayInvalid": SpecArrayDetails;
+  "spec.duplicateKey": SpecDuplicateKeyDetails;
+  "spec.builderInvalid": SpecBuilderDetails;
 
   // env.*
-  'env.unsupported': EnvUnsupportedDetails;
-  'env.coopCoepRequired': EnvCoopCoepDetails;
+  "env.unsupported": EnvUnsupportedDetails;
+  "env.coopCoepRequired": EnvCoopCoepDetails;
 
   // binding.*
-  'binding.unknownKey': BindingUnknownKeyDetails;
-  'binding.paramRange': BindingParamRangeDetails;
-  'binding.paramInvalidValue': BindingInvalidValueDetails;
-  'binding.shapeInvalid': BindingShapeDetails;
-  'binding.snapshotIntoTypeMismatch': BindingSnapshotIntoTypeMismatchDetails;
-  'binding.snapshotIntoLengthMismatch': BindingSnapshotIntoLengthMismatchDetails;
-  'binding.snapshotRetryExhausted': SnapshotRetryDetails;
-  'binding.coherentRetryExhausted': CoherentDetails;
+  "binding.unknownKey": BindingUnknownKeyDetails;
+  "binding.paramRange": BindingParamRangeDetails;
+  "binding.paramInvalidValue": BindingInvalidValueDetails;
+  "binding.shapeInvalid": BindingShapeDetails;
+  "binding.snapshotIntoTypeMismatch": BindingSnapshotIntoTypeMismatchDetails;
+  "binding.snapshotIntoLengthMismatch": BindingSnapshotIntoLengthMismatchDetails;
+  "binding.snapshotRetryExhausted": SnapshotRetryDetails;
+  "binding.coherentRetryExhausted": CoherentDetails;
 
   // handoff.*
-  'handoff.versionMismatch': HandoffVersionMismatchDetails;
-  'handoff.invalidArtifact': HandoffInvalidArtifactDetails;
-  'handoff.specHashMismatch': HandoffSpecHashMismatchDetails;
-  'handoff.backingMismatch': HandoffBackingMismatchDetails;
+  "handoff.versionMismatch": HandoffVersionMismatchDetails;
+  "handoff.invalidArtifact": HandoffInvalidArtifactDetails;
+  "handoff.specHashMismatch": HandoffSpecHashMismatchDetails;
+  "handoff.backingMismatch": HandoffBackingMismatchDetails;
 
   // plan.*
-  'plan.failed': PlanFailedDetails;
-  'plan.overflowRisk': PlanOverflowRiskDetails;
+  "plan.failed": PlanFailedDetails;
+  "plan.overflowRisk": PlanOverflowRiskDetails;
 
   // diagnostics.*
-  'diagnostics.counterInvalid': DiagnosticsCounterDetails;
-  'diagnostics.featureInvalid': DiagnosticsFeatureDetails;
+  "diagnostics.counterInvalid": DiagnosticsCounterDetails;
+  "diagnostics.featureInvalid": DiagnosticsFeatureDetails;
 }
 
 /**
@@ -200,19 +200,24 @@ const RAW_META = {
   [INTERNAL_ERRORS.exhaustiveness.code]: INTERNAL_ERRORS.exhaustiveness.meta,
 
   // primitive.*
-  [PRIMITIVES_ERRORS.seqlockTimeout.code]: PRIMITIVES_ERRORS.seqlockTimeout.meta,
-  [PRIMITIVES_ERRORS.planeUnaligned.code]: PRIMITIVES_ERRORS.planeUnaligned.meta,
+  [PRIMITIVES_ERRORS.seqlockTimeout.code]:
+    PRIMITIVES_ERRORS.seqlockTimeout.meta,
+  [PRIMITIVES_ERRORS.planeUnaligned.code]:
+    PRIMITIVES_ERRORS.planeUnaligned.meta,
   [PRIMITIVES_ERRORS.atomicsFailed.code]: PRIMITIVES_ERRORS.atomicsFailed.meta,
-  [PRIMITIVES_ERRORS.invalidSpinBudget.code]: PRIMITIVES_ERRORS.invalidSpinBudget.meta,
+  [PRIMITIVES_ERRORS.invalidSpinBudget.code]:
+    PRIMITIVES_ERRORS.invalidSpinBudget.meta,
   [PRIMITIVES_ERRORS.swsrRingInvalidLayout.code]:
     PRIMITIVES_ERRORS.swsrRingInvalidLayout.meta,
 
   // backing.*
   [BACKING_ERRORS.allocFailed.code]: BACKING_ERRORS.allocFailed.meta,
   [BACKING_ERRORS.allocUndersized.code]: BACKING_ERRORS.allocUndersized.meta,
-  [BACKING_ERRORS.wasmMemoryNotShared.code]: BACKING_ERRORS.wasmMemoryNotShared.meta,
+  [BACKING_ERRORS.wasmMemoryNotShared.code]:
+    BACKING_ERRORS.wasmMemoryNotShared.meta,
   [BACKING_ERRORS.intoTypeMismatch.code]: BACKING_ERRORS.intoTypeMismatch.meta,
-  [BACKING_ERRORS.intoLengthMismatch.code]: BACKING_ERRORS.intoLengthMismatch.meta,
+  [BACKING_ERRORS.intoLengthMismatch.code]:
+    BACKING_ERRORS.intoLengthMismatch.meta,
 
   // spec.*
   [SPEC_ERRORS.rangeInvalid.code]: SPEC_ERRORS.rangeInvalid.meta,
@@ -228,7 +233,8 @@ const RAW_META = {
   // binding.*
   [BINDING_ERRORS.unknownKey.code]: BINDING_ERRORS.unknownKey.meta,
   [BINDING_ERRORS.paramRange.code]: BINDING_ERRORS.paramRange.meta,
-  [BINDING_ERRORS.paramInvalidValue.code]: BINDING_ERRORS.paramInvalidValue.meta,
+  [BINDING_ERRORS.paramInvalidValue.code]:
+    BINDING_ERRORS.paramInvalidValue.meta,
   [BINDING_ERRORS.shapeInvalid.code]: BINDING_ERRORS.shapeInvalid.meta,
   [BINDING_ERRORS.snapshotIntoTypeMismatch.code]:
     BINDING_ERRORS.snapshotIntoTypeMismatch.meta,
@@ -250,8 +256,10 @@ const RAW_META = {
   [PLAN_ERRORS.overflowRisk.code]: PLAN_ERRORS.overflowRisk.meta,
 
   // diagnostics.*
-  [DIAGNOSTICS_ERRORS.counterInvalid.code]: DIAGNOSTICS_ERRORS.counterInvalid.meta,
-  [DIAGNOSTICS_ERRORS.featureInvalid.code]: DIAGNOSTICS_ERRORS.featureInvalid.meta,
+  [DIAGNOSTICS_ERRORS.counterInvalid.code]:
+    DIAGNOSTICS_ERRORS.counterInvalid.meta,
+  [DIAGNOSTICS_ERRORS.featureInvalid.code]:
+    DIAGNOSTICS_ERRORS.featureInvalid.meta,
 } as const;
 
 /**
@@ -259,24 +267,32 @@ const RAW_META = {
  */
 const RAW_MESSAGES = {
   // internal.*
-  [INTERNAL_ERRORS.assertionFailed.code]: INTERNAL_ERRORS.assertionFailed.message,
+  [INTERNAL_ERRORS.assertionFailed.code]:
+    INTERNAL_ERRORS.assertionFailed.message,
   [INTERNAL_ERRORS.unreachable.code]: INTERNAL_ERRORS.unreachable.message,
   [INTERNAL_ERRORS.exhaustiveness.code]: INTERNAL_ERRORS.exhaustiveness.message,
 
   // primitives.*
-  [PRIMITIVES_ERRORS.seqlockTimeout.code]: PRIMITIVES_ERRORS.seqlockTimeout.message,
-  [PRIMITIVES_ERRORS.planeUnaligned.code]: PRIMITIVES_ERRORS.planeUnaligned.message,
-  [PRIMITIVES_ERRORS.atomicsFailed.code]: PRIMITIVES_ERRORS.atomicsFailed.message,
-  [PRIMITIVES_ERRORS.invalidSpinBudget.code]: PRIMITIVES_ERRORS.invalidSpinBudget.message,
+  [PRIMITIVES_ERRORS.seqlockTimeout.code]:
+    PRIMITIVES_ERRORS.seqlockTimeout.message,
+  [PRIMITIVES_ERRORS.planeUnaligned.code]:
+    PRIMITIVES_ERRORS.planeUnaligned.message,
+  [PRIMITIVES_ERRORS.atomicsFailed.code]:
+    PRIMITIVES_ERRORS.atomicsFailed.message,
+  [PRIMITIVES_ERRORS.invalidSpinBudget.code]:
+    PRIMITIVES_ERRORS.invalidSpinBudget.message,
   [PRIMITIVES_ERRORS.swsrRingInvalidLayout.code]:
     PRIMITIVES_ERRORS.swsrRingInvalidLayout.message,
 
   // backing.*
   [BACKING_ERRORS.allocFailed.code]: BACKING_ERRORS.allocFailed.message,
   [BACKING_ERRORS.allocUndersized.code]: BACKING_ERRORS.allocUndersized.message,
-  [BACKING_ERRORS.wasmMemoryNotShared.code]: BACKING_ERRORS.wasmMemoryNotShared.message,
-  [BACKING_ERRORS.intoTypeMismatch.code]: BACKING_ERRORS.intoTypeMismatch.message,
-  [BACKING_ERRORS.intoLengthMismatch.code]: BACKING_ERRORS.intoLengthMismatch.message,
+  [BACKING_ERRORS.wasmMemoryNotShared.code]:
+    BACKING_ERRORS.wasmMemoryNotShared.message,
+  [BACKING_ERRORS.intoTypeMismatch.code]:
+    BACKING_ERRORS.intoTypeMismatch.message,
+  [BACKING_ERRORS.intoLengthMismatch.code]:
+    BACKING_ERRORS.intoLengthMismatch.message,
 
   // spec.*
   [SPEC_ERRORS.rangeInvalid.code]: SPEC_ERRORS.rangeInvalid.message,
@@ -292,7 +308,8 @@ const RAW_MESSAGES = {
   // binding.*
   [BINDING_ERRORS.unknownKey.code]: BINDING_ERRORS.unknownKey.message,
   [BINDING_ERRORS.paramRange.code]: BINDING_ERRORS.paramRange.message,
-  [BINDING_ERRORS.paramInvalidValue.code]: BINDING_ERRORS.paramInvalidValue.message,
+  [BINDING_ERRORS.paramInvalidValue.code]:
+    BINDING_ERRORS.paramInvalidValue.message,
   [BINDING_ERRORS.shapeInvalid.code]: BINDING_ERRORS.shapeInvalid.message,
   [BINDING_ERRORS.snapshotIntoTypeMismatch.code]:
     BINDING_ERRORS.snapshotIntoTypeMismatch.message,
@@ -305,7 +322,8 @@ const RAW_MESSAGES = {
   // handoff.*
   [HANDOFF_ERRORS.invalidArtifact.code]: HANDOFF_ERRORS.invalidArtifact.message,
   [HANDOFF_ERRORS.versionMismatch.code]: HANDOFF_ERRORS.versionMismatch.message,
-  [HANDOFF_ERRORS.specHashMismatch.code]: HANDOFF_ERRORS.specHashMismatch.message,
+  [HANDOFF_ERRORS.specHashMismatch.code]:
+    HANDOFF_ERRORS.specHashMismatch.message,
   [HANDOFF_ERRORS.backingMismatch.code]: HANDOFF_ERRORS.backingMismatch.message,
 
   // plan.*
@@ -313,8 +331,10 @@ const RAW_MESSAGES = {
   [PLAN_ERRORS.overflowRisk.code]: PLAN_ERRORS.overflowRisk.message,
 
   // diagnostics.*
-  [DIAGNOSTICS_ERRORS.counterInvalid.code]: DIAGNOSTICS_ERRORS.counterInvalid.message,
-  [DIAGNOSTICS_ERRORS.featureInvalid.code]: DIAGNOSTICS_ERRORS.featureInvalid.message,
+  [DIAGNOSTICS_ERRORS.counterInvalid.code]:
+    DIAGNOSTICS_ERRORS.counterInvalid.message,
+  [DIAGNOSTICS_ERRORS.featureInvalid.code]:
+    DIAGNOSTICS_ERRORS.featureInvalid.message,
 } as const;
 
 /**

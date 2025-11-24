@@ -22,11 +22,11 @@
  * supported bindings surface and may change without notice.
  */
 
-import { addU32, loadU32, spinUntilEven } from './atomics';
-import { createError } from '../errors/error';
-import { invariant } from '../errors/invariant';
+import { addU32, loadU32, spinUntilEven } from "./atomics";
+import { createError } from "../errors/error";
+import { invariant } from "../errors/invariant";
 
-import type { PrimitivesSeqlockTimeoutDetails } from '../errors/codes/primitives';
+import type { PrimitivesSeqlockTimeoutDetails } from "../errors/codes/primitives";
 
 /**
  * Pair of indices into a `Uint32Array` forming a seqlock.
@@ -62,14 +62,14 @@ export function createSeqPair(
 
   invariant(
     lockIndex >= 0 && lockIndex < len && seqIndex >= 0 && seqIndex < len,
-    'internal.assertionFailed',
-    'SeqPair indices must be within bounds of the backing Uint32Array',
+    "internal.assertionFailed",
+    "SeqPair indices must be within bounds of the backing Uint32Array",
   );
 
   invariant(
     lockIndex !== seqIndex,
-    'internal.assertionFailed',
-    'SeqPair lockIndex and seqIndex must be distinct',
+    "internal.assertionFailed",
+    "SeqPair lockIndex and seqIndex must be distinct",
   );
 
   return { u32, lockIndex, seqIndex };
@@ -117,7 +117,7 @@ export interface ReadStatus {
    * - `'writerActive'`   → writer never quiesced on this attempt
    * - `'budgetExhausted'`→ exceeded spin/retry budgets
    */
-  readonly kind: 'ok' | 'writerActive' | 'budgetExhausted';
+  readonly kind: "ok" | "writerActive" | "budgetExhausted";
 }
 
 /**
@@ -218,10 +218,10 @@ export function tryRead<T>(
 
   invariant(
     budgetsAreValid,
-    'primitives.invalidSpinBudget',
-    'Spin budget must be non-negative integer',
+    "primitives.invalidSpinBudget",
+    "Spin budget must be non-negative integer",
     {
-      where: 'primitives.seqlock.tryRead',
+      where: "primitives.seqlock.tryRead",
       detail: `spinBudget=${String(
         spinBudgetOption,
       )}, retryBudget=${String(retryBudgetOption)}`,
@@ -243,7 +243,7 @@ export function tryRead<T>(
       const status: ReadStatus = {
         spins: totalSpins,
         retries: retriesUsed,
-        kind: 'writerActive',
+        kind: "writerActive",
       };
       // Degraded snapshot: reader() is called exactly once in this branch.
       return { ok: false, value: reader(), status };
@@ -260,7 +260,7 @@ export function tryRead<T>(
       const status: ReadStatus = {
         spins: totalSpins,
         retries: retriesUsed,
-        kind: 'ok',
+        kind: "ok",
       };
       return { ok: true, value, status };
     }
@@ -271,7 +271,7 @@ export function tryRead<T>(
   // Budgets exhausted (spins or retries). This is considered a timeout in
   // the sense of the primitives domain; we surface it as a structured error.
   const details = {
-    where: 'primitives.seqlock.tryRead',
+    where: "primitives.seqlock.tryRead",
     detail: `spinBudget=${String(spinBudget)}, retryBudget=${String(
       retryBudget,
     )}, spins=${String(totalSpins)}, retriesUsed=${String(retriesUsed)}`,
@@ -279,5 +279,9 @@ export function tryRead<T>(
     actualSpins: totalSpins,
   } as const satisfies PrimitivesSeqlockTimeoutDetails;
 
-  throw createError('primitives.seqlockTimeout', 'Seqlock acquisition timeout', details);
+  throw createError(
+    "primitives.seqlockTimeout",
+    "Seqlock acquisition timeout",
+    details,
+  );
 }

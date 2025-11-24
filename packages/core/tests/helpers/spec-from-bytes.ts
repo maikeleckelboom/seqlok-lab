@@ -1,6 +1,6 @@
-import { defineSpec } from '../../src';
+import { defineSpec } from "../../src";
 
-import type { PlaneByteLengths } from '../../src/plan/types';
+import type { PlaneByteLengths } from "../../src/plan/types";
 
 /**
  * Build a minimal spec from desired plane byte counts.
@@ -20,7 +20,7 @@ export function specFromPlaneBytes(bytes: PlaneByteLengths) {
   const hasAnyMeter = mf32N > 0 || mf64N > 0;
 
   return defineSpec(({ param, meter }) => ({
-    id: 'from-bytes',
+    id: "from-bytes",
     params: hasAnyParam
       ? {
           ...(pf32N > 0 ? { p_f32: param.f32.array(pf32N) } : {}),

@@ -3,7 +3,7 @@
 When you define an enum array like this:
 
 ```ts
-enumArray: param.enum.array({ values: ['a', 'b', 'c'], length: 10 });
+enumArray: param.enum.array({ values: ["a", "b", "c"], length: 10 });
 ```
 
 this **does not** allocate an array of repeated strings.
@@ -24,8 +24,8 @@ Enum arrays are **schema-first**: a small palette of labels + a length, mapped t
 
 ```ts
 const schema = {
-  kind: 'enum.array',
-  values: ['a', 'b', 'c'], // ← the "vocabulary" or palette
+  kind: "enum.array",
+  values: ["a", "b", "c"], // ← the "vocabulary" or palette
   length: 10, // ← number of elements
 };
 ```
@@ -88,7 +88,7 @@ Bindings translate between **user-facing labels** and **internal indices**.
 ### Example runtime state
 
 ```ts
-const values = ['a', 'b', 'c']; // from the schema
+const values = ["a", "b", "c"]; // from the schema
 
 // backing in PI32:
 const backing = Int32Array.of(0, 2, 1, 0, 1, 2, 0, 1, 2, 1);
@@ -111,10 +111,10 @@ const value2 = values[index]; // 'a'
 
 ```ts
 // controller side: labels
-enumArray[5] = 'b';
+enumArray[5] = "b";
 
 // internal:
-const index = values.indexOf('b'); // 1
+const index = values.indexOf("b"); // 1
 backing[5] = index;
 ```
 
@@ -141,11 +141,11 @@ On the controller (UI / host), the API is ergonomic and type-safe:
 Conceptual controller-side type:
 
 ```ts
-type EnumLabel = 'a' | 'b' | 'c';
+type EnumLabel = "a" | "b" | "c";
 type EnumArrayLabels = readonly EnumLabel[]; // length fixed by spec
 
 ctl.params.update({
-  enumArray: ['a', 'c', 'b', 'b', 'a', 'a', 'c', 'c', 'b', 'a'],
+  enumArray: ["a", "c", "b", "b", "a", "a", "c", "c", "b", "a"],
 });
 ```
 
@@ -236,7 +236,7 @@ If something corrupts the backing (e.g. rogue writes) and injects an out-of-rang
 
 ```ts
 // There is no array of strings in shared memory:
-['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c', 'a'];
+["a", "b", "c", "a", "b", "c", "a", "b", "c", "a"];
 ```
 
 ### ✅ What it actually is
@@ -244,8 +244,8 @@ If something corrupts the backing (e.g. rogue writes) and injects an out-of-rang
 ```ts
 // Schema (metadata)
 const schema = {
-  kind: 'enum.array',
-  values: ['a', 'b', 'c'],
+  kind: "enum.array",
+  values: ["a", "b", "c"],
   length: 10,
 };
 
@@ -272,10 +272,10 @@ Model that as a single enum-array param:
 ```ts
 // spec.ts
 export const spec = defineSpec(({ param, meter }) => ({
-  id: 'midi-led-bank',
+  id: "midi-led-bank",
   params: {
     padStates: param.enum.array({
-      values: ['off', 'dim', 'full'],
+      values: ["off", "dim", "full"],
       length: 64, // 8x8 grid
     }),
   },
@@ -294,12 +294,12 @@ On the controller, you work in labels:
 const padCount = 64;
 
 // local copy used for UI logic / diffs
-let currentStates: ('off' | 'dim' | 'full')[] = Array.from(
+let currentStates: ("off" | "dim" | "full")[] = Array.from(
   { length: padCount },
-  () => 'off',
+  () => "off",
 );
 
-function setPadState(index: number, next: 'off' | 'dim' | 'full') {
+function setPadState(index: number, next: "off" | "dim" | "full") {
   currentStates[index] = next;
 
   ctl.params.update({
@@ -310,7 +310,7 @@ function setPadState(index: number, next: 'off' | 'dim' | 'full') {
 // simple toggle: 'off' ↔ 'full'
 function togglePad(index: number) {
   const prev = currentStates[index];
-  const next = prev === 'off' ? 'full' : 'off';
+  const next = prev === "off" ? "full" : "off";
   setPadState(index, next);
 }
 ```

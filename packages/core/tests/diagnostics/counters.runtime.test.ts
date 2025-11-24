@@ -1,21 +1,21 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   incrementCounter,
   resetCounters,
   setCounter,
   snapshotCounters,
-} from '../../src/diagnostics/counters';
-import { isSeqlokError, type SeqlokError } from '../../src/errors/error';
+} from "../../src/diagnostics/counters";
+import { isSeqlokError, type SeqlokError } from "../../src/errors/error";
 
-describe('Diagnostics Counters: Runtime State & Validation', () => {
+describe("Diagnostics Counters: Runtime State & Validation", () => {
   beforeEach(() => {
     resetCounters();
   });
 
-  it('increments counters correctly and returns independent snapshot copies', () => {
-    incrementCounter('degradedSnapshots');
-    incrementCounter('spinBudgetExhausted', 2);
+  it("increments counters correctly and returns independent snapshot copies", () => {
+    incrementCounter("degradedSnapshots");
+    incrementCounter("spinBudgetExhausted", 2);
 
     const snapshot1 = snapshotCounters();
 
@@ -36,8 +36,8 @@ describe('Diagnostics Counters: Runtime State & Validation', () => {
     expect(snapshot2).not.toEqual(distinctState);
   });
 
-  it('sets specific counter values explicitly via setCounter', () => {
-    setCounter('retryBudgetExhausted', 10);
+  it("sets specific counter values explicitly via setCounter", () => {
+    setCounter("retryBudgetExhausted", 10);
 
     const snapshot = snapshotCounters();
     expect(snapshot.retryBudgetExhausted).toBe(10);
@@ -45,9 +45,9 @@ describe('Diagnostics Counters: Runtime State & Validation', () => {
     expect(snapshot.spinBudgetExhausted).toBe(0);
   });
 
-  it('resets all counters to zero via counters.reset()', () => {
-    incrementCounter('degradedSnapshots', 3);
-    setCounter('spinBudgetExhausted', 5);
+  it("resets all counters to zero via counters.reset()", () => {
+    incrementCounter("degradedSnapshots", 3);
+    setCounter("spinBudgetExhausted", 5);
 
     const snapshotBefore = snapshotCounters();
     expect(snapshotBefore.degradedSnapshots).toBe(3);
@@ -61,48 +61,50 @@ describe('Diagnostics Counters: Runtime State & Validation', () => {
     expect(snapshotAfter.retryBudgetExhausted).toBe(0);
   });
 
-  it('throws diagnostics.counterInvalid when incrementing beyond the safe integer limit', () => {
+  it("throws diagnostics.counterInvalid when incrementing beyond the safe integer limit", () => {
     // Initialize to the maximum allowed safe integer to force an immediate overflow
     const maxSafe = Number.MAX_SAFE_INTEGER;
-    setCounter('degradedSnapshots', maxSafe);
+    setCounter("degradedSnapshots", maxSafe);
 
     let thrown: unknown;
 
     try {
-      incrementCounter('degradedSnapshots', 1);
+      incrementCounter("degradedSnapshots", 1);
     } catch (error) {
       thrown = error;
     }
 
     if (!isSeqlokError(thrown)) {
-      throw new Error('Expected a SeqlokError from incrementCounter overflow');
+      throw new Error("Expected a SeqlokError from incrementCounter overflow");
     }
 
-    const err = thrown as SeqlokError<'diagnostics.counterInvalid'>;
+    const err = thrown as SeqlokError<"diagnostics.counterInvalid">;
 
-    expect(err.code).toBe('diagnostics.counterInvalid');
-    expect(err.details.name).toBe('degradedSnapshots');
+    expect(err.code).toBe("diagnostics.counterInvalid");
+    expect(err.details.name).toBe("degradedSnapshots");
     expect(err.details.value).toBe(maxSafe + 1);
   });
 
-  it('throws diagnostics.counterInvalid when attempting to set a negative value', () => {
+  it("throws diagnostics.counterInvalid when attempting to set a negative value", () => {
     let thrown: unknown;
 
     try {
       // Counters are strictly non-negative
-      setCounter('spinBudgetExhausted', -1);
+      setCounter("spinBudgetExhausted", -1);
     } catch (error) {
       thrown = error;
     }
 
     if (!isSeqlokError(thrown)) {
-      throw new Error('Expected a SeqlokError from setCounter with negative value');
+      throw new Error(
+        "Expected a SeqlokError from setCounter with negative value",
+      );
     }
 
-    const err = thrown as SeqlokError<'diagnostics.counterInvalid'>;
+    const err = thrown as SeqlokError<"diagnostics.counterInvalid">;
 
-    expect(err.code).toBe('diagnostics.counterInvalid');
-    expect(err.details.name).toBe('spinBudgetExhausted');
+    expect(err.code).toBe("diagnostics.counterInvalid");
+    expect(err.details.name).toBe("spinBudgetExhausted");
     expect(err.details.value).toBe(-1);
   });
 });

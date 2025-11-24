@@ -19,24 +19,26 @@ import {
   receiveHandoff,
   bindController,
   bindProcessor,
-} from '@seqlok/core';
+} from "@seqlok/core";
+import type { Handoff } from "@seqlok/core";
 
-// owner / controller side
-const spec = defineSpec(/* … */);
+// Owner / controller side
+const spec = defineSpec(/* ... */);
 const plan = planLayout(spec);
 const backing = allocateShared(plan);
-
 const controller = bindController(spec, plan, backing);
 const handoff = buildHandoff(plan, backing);
 
-worker.postMessage({ type: 'HANDOFF', handoff });
+// Processor / worker side
+let processor: ReturnType<typeof bindProcessor> | undefined;
 
-// processor / engine side
-self.onmessage = (ev) => {
-  if (ev.data?.type !== 'HANDOFF') return;
+self.onmessage = (
+  ev: MessageEvent<{ type: "HANDOFF"; handoff: Handoff<typeof spec> }>,
+) => {
+  if (ev.data?.type !== "HANDOFF") return;
 
   const received = receiveHandoff(ev.data.handoff); // reconstructs a safe view
-  const processor = bindProcessor(received);        // typed by generic if you want: bindProcessor<MySpec>(received)
+  const processor = bindProcessor(received); // typed by generic if you want: bindProcessor<MySpec>(received)
 };
 ```
 
@@ -57,43 +59,70 @@ Each verb reflects a distinct domain with its own invariants and error codes.
 
 ### `spec`
 
-* Parameter and meter names
-* Types (`f32`, `i32`, `bool`, `enum`, arrays)
-* Ranges, lengths, enum codec
-* Drives TypeScript types for controller/processor binding APIs
-* Has identity (structure + hash) used for compatibility checks
+- Parameter and meter names
+- Types (`f32`, `i32`, `bool`, `enum`, arrays)
+- Ranges, lengths, enum codec
+- Drives TypeScript-level typing
+
+`spec` is a **semantic description** of the contract between controller and processor.
+It says _what_ the participants agree to, not _how_ it will be implemented in memory.
 
 ### `plan`
 
-* Plane byte lengths (PF32, PI32, PB, PU, MF32, MF64, MU32, MU, …)
-* Slot tables: which key lives in which plane at which offset
-* Lock placement and stride
-* Layout hash and meta used for validation
+- Pure, deterministic mapping from `spec` to byte layout
+- Assigns planes, offsets, lengths, alignment
+- Computes byte lengths by plane
+- Computes plane packing and order
+
+`plan` is a **blueprint**: a pure, serializable description of how the contract is projected into bytes.
+
+Requirements on `plan`:
+
+- Deterministic given a `spec`.
+- Independent of any actual memory resources.
+- Stable across processes, as long as versions match.
+
+The plan is the bridge between semantic types and raw memory.
 
 ### `backing`
 
-* Actual `SharedArrayBuffer` (contiguous SAB in the golden path) or other shared memory in advanced setups
-* Typed plane views and offsets mapped according to a given plan
-* No semantics: it is "just memory arranged like that plan"
+- Concrete memory (e.g. `SharedArrayBuffer`) sliced into typed planes
+- Implements the layout described by `plan`
+- Owns the actual `TypedArray` views
+
+`backing` is where the bytes live.
+
+Key properties:
+
+- Stays deliberately **dumb**: it does not know about `spec` or logical roles.
+- Only knows "planes", "offsets", and "lengths".
+- Agnostic to how those planes will be used (params vs meters).
 
 ### `handoff`
 
-* Version, hash, total bytes
-* Plane byte lengths
-* References to shared memory (e.g. a SAB)
-* Purely structured data suitable for `postMessage` / structured clone
-* Enough information for another agent to safely reconstruct binding views without having the original `spec`
+- Version, hash, total bytes
+- Plane byte lengths
+- References to shared memory (e.g. a SAB)
+- Purely structured data suitable for `postMessage` / structured clone
+- Enough information for another agent to safely reconstruct binding views without having the original `spec`
 
 ### `binding`
 
-* **Controller binding**
+- **Controller binding**
 
-  * Writer for Params; reader for Meters
-  * Enforces param range policies and SWMR on the controller side
-* **Processor binding**
+  - Writer for Params; reader for Meters.
+  - Enforces param range policies and SWMR on the controller side.
 
-  * Reader for Params; writer for Meters
-  * Enforces seqlock coherence and SWMR on the processor side
+- **Processor binding**
+
+  - Reader for Params; writer for Meters.
+  - Enforces seqlock coherence and SWMR on the processor side.
+
+- **Observer binding (v0.2.0+)**
+
+  - Reader for Params; reader for Meters.
+  - Read-only role for HUDs, inspectors, logging, and telemetry.
+  - Uses the same seqlock protocol and coherence policies, but exposes only snapshot/within-style APIs.
 
 Binding objects are the only sanctioned way to touch shared memory in normal code.
 
@@ -108,28 +137,79 @@ const controller = bindController(spec, plan, backing);
 const handoff = buildHandoff(plan, backing);
 ```
 
-In both cases the **pairing** is the point.
+In both cases the **pairing** is the same: _"this plan is implemented by this backing"_.
 
-### 2.1 `bindController(spec, plan, backing)` — lie detector
+### 2.1 `bindController(spec, plan, backing)` — trusted assembly
 
-This is where Seqlok can prove that the `spec` driving UI and code generation matches the memory actually allocated
-according to a specific `plan`.
+Controller binding is the point where the owner side (usually main thread) _proves_ that `spec`, `plan`, and `backing`
+are coherent.
 
-It can check, for example:
+`bindController`:
 
-* Does the spec hash match what the plan/backing claim to implement?
-* Do plane byte lengths match expectations for this spec + plan?
-* Are control planes present and correctly sized?
+- Verifies that `plan` matches `spec`:
 
-Design invariant: **`spec` is the canonical semantic contract**.
-`bindController(spec, plan, backing)` is allowed to distrust everything else and verify compatibility before it hands out
-a controller binding.
+  - same param/meter keys,
+  - types match,
+  - array dimensions match,
+  - enums match.
 
-If this check fails, you get a typed `SeqlokError` instead of:
+- Verifies that `backing` has enough capacity to hold all planes for the plan.
 
-* Writing into the wrong offsets
-* Reading "valid-looking" junk from a mismatched layout
-* Debugging ghost bugs at 03:00 because spec, plan, and backing silently drifted
+- Produces typed facades for params/meters.
+
+`bindController` is a **trusted operation**, usually happening in the "owner" domain:
+
+- If this check fails, it's a clear bug in wiring.
+- It's okay to throw loudly; the owner can crash early.
+- Errors here are categorized under `binding.*` and do not involve cross-origin concerns.
+
+Once `controller` exists, downstream code does not need to care about memory layout details.
+
+#### Why not let `bindController` allocate memory?
+
+A tempting alternative signature:
+
+```ts
+// REJECTED: hides memory responsibility
+const controller = bindController(spec, plan);
+```
+
+This blurs responsibilities:
+
+- Is `bindController` now responsible for **allocating** shared memory?
+- How does the caller get access to the backing for handoff?
+- What if we want _different_ allocation strategies (contiguous SAB vs partitioned per-plane SABs vs WASM memory)?
+
+By forcing the caller to provide `backing` explicitly, we ensure:
+
+- Memory allocation stays in the **backing** domain, decoupled from binding.
+- It's trivial to swap allocation strategies while keeping the binding protocol stable.
+- We avoid an overpowered verb that both allocates and validates.
+
+If ergonomics are needed, they should be layered above, in simple helpers that call the explicit building blocks.
+
+#### Why not feed `spec` directly into `buildHandoff`?
+
+Another tempting shortcut:
+
+```ts
+// REJECTED: collapses the plan domain
+const handoff = buildHandoff(spec, backing);
+```
+
+Reasons this is rejected:
+
+- It conflates `spec` (semantic contract) with `plan` (byte layout).
+- It requires `buildHandoff` to re-run planning or have hidden knowledge of the plan.
+- It undermines the goal that `plan` is the **only** record of the layout.
+
+Instead:
+
+- The owner is expected to call `planLayout(spec)` once, and hold onto the result.
+- `buildHandoff(plan, backing)` has everything it needs:
+
+  - the blueprint (`plan`),
+  - the actual memory (`backing`).
 
 ### 2.2 `buildHandoff(plan, backing)` — plan vs resource
 
@@ -139,244 +219,300 @@ The handoff literally states:
 
 Keeping them separate:
 
-* Preserves **auditability**:
+- Preserves **auditability**:
 
-  * You can inspect "what was promised" (plan) vs "what was allocated" (backing).
-* Makes the envelope **portable**:
+  - You can log a handoff, inspect sizes, and assert invariants without reconstructing the plan.
 
-  * Another agent can receive just the handoff and still reconstruct a safe view (via `receiveHandoff`).
-* Keeps error domains clean:
+- Respects **versioning**:
 
-  * Plan errors belong to the plan layer; resource errors belong to backing; handoff errors belong to handoff.
+  - Older processors can reject mismatched versions/hashes.
+  - Newer processors can choose to accept or reject depending on backward compatibility policy.
 
-`buildHandoff(plan, backing)` is not "just serialization". It's the canonical point where plan and concrete memory are
-paired and stamped for export.
+- Keeps **consumer-side** logic simple:
+
+  - `receiveHandoff` doesn't need to know about `spec`.
+  - It just validates the plan/backing pair and produces a `ReceivedHandoff<S>`.
+
+Handoff is intentionally focused on the _artifact pair_ (plan+backing).
+Semantic meaning (param names, meter purposes) is carried only via the spec hash and type-level information, not dynamic
+runtime data.
 
 ---
 
-## 3. Processor never sees `plan` or raw `backing`
+## 3. Why `spec → plan → backing` explicitly, not `spec → binding` directly
 
-In the golden flow, the processor side **never** deals with plans or backings directly:
+From a UX perspective, it's tempting to want:
 
 ```ts
-const received = receiveHandoff(handoffFromMain);
-const processor = bindProcessor(received);
+// Magical: give me everything in one call
+const { controller, processorHandles } = seqlokWire({
+  spec,
+  ownerRole: "controller",
+});
 ```
 
-Rationale:
+Seqlok deliberately resists this pattern in its **kernel** API.
 
-* Processor shouldn't be responsible for planning or memory plumbing.
-* Processor should only see a well-typed binding (params/meters) and not worry about planes/offsets.
-* The only cross-agent artifact is the `handoff`; that’s the contract between owner and engine.
+### 3.1 Explicit domains → explicit invariants
 
-This keeps the responsibility split sharp:
+Each domain has its own invariants and error codes:
 
-* Owner: `defineSpec` → `planLayout` → `allocateShared` → `buildHandoff` → `bindController`
-* Engine: `receiveHandoff` → `bindProcessor`
+- **spec domain**:
 
-Nothing else sneaks across the boundary.
+  - shape of params/meters,
+  - valid ranges and lengths,
+  - enum codecs.
+
+- **plan domain**:
+
+  - deterministic mapping from spec to byte layout,
+  - stability guarantees across builds,
+  - versioning and hashing.
+
+- **backing domain**:
+
+  - allocation strategies (SAB vs WASM vs other),
+  - bounds and alignment checks,
+  - ownership semantics.
+
+- **handoff domain**:
+
+  - decoupled serialization,
+  - validation at trust boundaries,
+  - compatibility checks.
+
+- **binding domain**:
+
+  - R/W protocols,
+  - seqlock handling,
+  - convenience surface for users.
+
+By keeping calls explicit, Seqlok makes it clear:
+
+- where each error can originate,
+- which module is responsible for which invariant,
+- what needs to be tested independently.
+
+### 3.2 Multiple bindings from a single plan/backing
+
+Another reason for explicit `plan` and `backing` is **multiple roles** over the same memory.
+
+Examples:
+
+- A single `plan` / `backing` pair can underpin:
+
+  - one controller binding (owner),
+  - one processor binding (DSP loop),
+  - several observer bindings (HUD, telemetry, debugging workers).
+
+- Partitioned allocation strategies (`allocateSharedPartitioned`) normalize to the same logical plan.
+
+If the kernel API jumped directly from `spec → binding`, reusing the same memory across roles becomes opaque:
+
+- You would risk hidden allocations per binding.
+- You would complicate any debugging of memory usage.
+- You would make it harder to reason about lifetimes and ownership, especially in multi-agent scenarios.
+
+### 3.3 Independent evolution of domains
+
+Keeping `spec`, `plan`, `backing`, and `handoff` separate allows:
+
+- Evolving **plan** algorithms (alignment strategies, per-plane packing) without touching:
+
+  - allocation code,
+  - binding code.
+
+- Evolving **backing** strategies (SAB vs WASM vs hybrid) without changing:
+
+  - how plans are generated,
+  - how handoffs are constructed.
+
+- Evolving **handoff** structure, e.g.:
+
+  - adding new hashes / signatures,
+  - supporting different transport layers.
+
+Each domain can be improved or optimized in isolation, as long as its interface remains stable.
 
 ---
 
-## 4. Why we don't "enrich backing" in core
+## 4. Lessons from Typebits and early iterations
 
-It's tempting to define an enriched backing type that bundles plan metadata:
+Seqlok's shape is heavily informed by prior work on the Typebits plan library and early iterations of Seqlok itself.
+
+### 4.1 Typebits: pure planning as a first-class citizen
+
+Typebits was designed as a **pure planning** library:
+
+- Accepts a semantic description of buffers and views.
+- Produces deterministic layouts (planes, offsets, lengths).
+- Has no knowledge of real memory – it only talks about _spaces_.
+
+Experience from Typebits reinforced:
+
+- Plans should be free of side-effects.
+- Planning is a separate concern from binding and from allocation.
+
+Seqlok adopts the same philosophy:
+
+- `planLayout` can be used in test harnesses, design tools, or static analysis without any actual memory.
+- Plans can be cached, diffed, and versioned independently of runtime objects.
+
+### 4.2 Early Seqlok iterations: enriched backings and the "god object" problem
+
+Early versions of Seqlok experimented with "enriched backings":
 
 ```ts
-// ❌ this is what we *don’t* do in the kernel
-type RichBacking<S> = Backing & {
+interface EnrichedBacking<S> {
   plan: Plan<S>;
-  specHash: string;
-  /* maybe more stuff */
-};
+  sab: SharedArrayBuffer;
+  // ...plus extra helper methods
+}
 ```
 
-and then let call sites collapse to:
+This "god object" caused several issues:
+
+1. **Testing complexity**:
+
+- Plan tests had to work through enriched backings.
+- Backing tests had blurred responsibilities (planning + allocation + binding knowledge).
+
+2. **Layer violations**:
+
+- Backing code started to know too much about:
+
+  - spec shape,
+  - semantic meaning of planes,
+  - binding behavior.
+
+3. **Ecosystem rigidity**:
+
+- Integrating with other memory managers (e.g., engine-level pools) became difficult.
+- Backings carried assumptions that didn't hold in all contexts.
+
+The backlash from these experiments led to a hard rule:
+
+> Backing stays dumb; planning stays pure; binding is the only place that understands both.
+
+### 4.3 Why `plan` is a first-class value, not an implementation detail
+
+It might be tempting to treat `plan` as an internal detail of `allocateShared`:
 
 ```ts
-// ❌ hypothetical enriched style
-const backing = allocateSharedRich(spec);
-const controller = bindControllerFromBacking(backing);
-const handoff = buildHandoffFromBacking(backing);
+// REJECTED: hides plan as an implementation detail
+const { backing, controller } = seqlokMakeAll(spec);
 ```
 
-This looks ergonomic, but it breaks several of the core design constraints that make Seqlok portable and analyzable.
+This hides important details:
 
-### 4.1 Fuses domains and muddies error boundaries
+- The plan – layout, alignment, and sizes – is a **contract**, not an implementation leak.
+- Post-mortem debugging often needs the plan:
 
-A `RichBacking` fuses:
+  - "Why is this meter misaligned?"
+  - "Why does this consumer think the buffer length is N?"
 
-* the **plan domain** (layout, hashes, slot tables),
-* the **backing domain** (actual shared memory),
-* and often a bit of **binding context** (who created this, which spec did it belong to).
+By making `plan` explicit:
 
-That has bad knock-on effects:
+- You can log it, snapshot it, and add it to bug reports.
+- You can assert version compatibility independently of memory allocation.
 
-* You no longer know whether a failure is:
+It also supports the case where planning is done **offline**:
 
-  * "plan is invalid",
-  * "SAB allocation failed",
-  * or "this backing is being bound to the wrong spec".
-* Error codes and logs start to come from a pseudo-layer ("rich backing") that doesn't appear anywhere else in the
-  mental model or docs.
-* Kernel signatures stop being honest about what depends on what; "just pass a backing around" suddenly carries hidden
-  plan semantics.
+- Pre-compute plans for all engine presets.
+- Store them in a manifest.
+- Allocate backings lazily at runtime.
 
-Seqlok's current layering is:
+### 4.4 Why `handoff` is decoupled from `spec`
 
-```txt
-spec → plan → backing → handoff → binding
-```
+`handoff` carries:
 
-Enriching backings collapses this into an implicit mega-object and makes it much harder to reason about where a bug lives.
+- plan identity and versioning (hash),
+- backing identity and sizes,
+- enough metadata to validate and reconstruct bindings on the consumer side.
 
-### 4.2 Locks you into "JS is the planner" world
+It intentionally does **not** carry the full `spec` value.
 
-A `RichBacking` assumes:
+Reasons:
 
-* the code that allocated the backing also had the plan locally,
-* and that you can always re-attach the plan to the backing object.
+- Specs can be large (especially with complex enum codecs and large array params).
+- Spec values often live in bundles that shouldn't be rehydrated in all consumers.
+- Different agents may carry different versions of the same spec type.
 
-That's not always true:
+Instead:
 
-* A Rust/C++ engine might:
+- The spec hash is the syncing primitive at the semantic level.
+- Type-level generics (`Handoff<MySpec>`) enforce coherence in TypeScript at the call site.
+- Runtime validation focuses on plan/backing consistency.
 
-  * receive a spec hash + layout description via FFI,
-  * allocate shared memory on its side,
-  * and only hand a raw SAB (or shared `WebAssembly.Memory`) back to JS.
-* A server process could pre-compute plans and write them into a file or database separate from allocation.
+If a consumer needs the actual `spec`, it's expected to import it from its own bundle or manifest.
 
-In those scenarios, JS is **not** the canonical place where `plan` and `backing` are paired. The canonical pairing happens
-at the protocol level (`handoff`), not inside a JS object.
+### 4.5 Observer roles (v0.2.0+) and the N×B₂ use-case
 
-By keeping `Backing` dumb and separate:
+With v0.2.0, Seqlok surfaces a concrete `bindObserver` binding.
 
-* JS can participate in flows where it only sees `Handoff<S>` and never touches an enriched backing.
-* Foreign runtimes can implement `Plan` + `Backing` semantics without being forced into a JS object shape.
+Key lessons folded into this:
 
-### 4.3 Encourages context-shaped backings and method creep
+- There can be multiple read-only consumers over the same plan/backing:
 
-As soon as `Backing` “knows” its plan, the next ergonomic temptation is:
+  - HUDs, meters, performance dashboards, logging workers.
 
-```ts
-// ❌ hypothetical rich API
-const backing = allocateSharedRich(spec);
-const controller = backing.bindController();
-const handoff = backing.buildHandoff();
-```
+- Readers must see coherent snapshots but must not interfere with:
 
-which quietly turns `Backing` into a quasi-context object:
+  - controller param writes,
+  - processor meter publishes.
 
-* it now imports and depends on:
+`bindObserver`:
 
-  * binding,
-  * handoff,
-  * and often bits of diagnostics/contracts.
-* it becomes a natural place for people to hang:
+- Uses the same underlying plan/backing pair.
+- Shares seqlock semantics with processor for read coherence.
+- Exposes a reduced, read-only API:
 
-  * debug helpers,
-  * re-planning hooks,
-  * direct read/write escape hatches.
+  - `params.snapshot(...)`, `params.within(...)`,
+  - `meters.snapshot(...)`, `meters.within(...)`.
 
-You've effectively re-invented the "big context object" we just banned in the object-model rationale, but under the name
-“backing”.
+Observer roles are a first-class part of the N×B₂ story:
 
-Keeping `Backing` as "just memory arranged like this plan" avoids that gravity well. All behavior remains in:
+- Many independent observer agents can be wired to the same backing.
+- Each has its own budget/degrade policy, independent of processor/controller.
 
-* `allocateShared`
-* `buildHandoff`
-* `bindController`
-* `bindProcessor`
-* orchestration helpers that **compose** those functions rather than hiding them.
+### 4.6 Partitioned backings (v0.2.0+) and allocation flexibility
 
-### 4.4 Lifetime and ownership get tangled
+In addition to the golden path `allocateShared(plan)` (one SAB, contiguous planes), v0.2.0 introduces
+`allocateSharedPartitioned(plan)`:
 
-`Plan` and `Backing` do not always have the same lifetime:
+- Splits each plane into its own `SharedArrayBuffer`.
+- Keeps the same logical plan.
+- Reflects back to the same binding semantics.
 
-* A single `spec`/`plan` can be used to allocate multiple backings over time (for different decks, scenes, tests).
-* A long-lived backing might be associated with multiple specs/plans across a migration, if you deliberately do a
-  phased roll-out.
+Lessons:
 
-If you enrich the backing:
+- Allocation strategies differ across environments:
 
-* you either:
+  - Some prefer a single large SAB.
+  - Others prefer smaller per-plane SABs for operational reasons (e.g. sandboxing, external ownership).
 
-  * mutate the `plan` property on the same backing object over time, or
-  * throw the object away and re-allocate all higher-level structures.
-* you lose the ability to say "this backing conforms to this plan **for now**, but will be reused later” without
-  smuggling more state into the object.
+- The plan must not depend on allocation specifics:
 
-The current model is simpler:
+  - `plan` remains a pure description.
+  - Backing only cares about "does this bundle of buffers respect the plan?".
 
-* `Plan<S>`: immutable layout description.
-* `Backing`: raw shared memory that happens to currently implement a given plan.
-* `buildHandoff(plan, backing)`: the **only** place we assert "this backing implements this plan" and stamp it.
-
-Everything else reads that truth *from* the handoff, not from a mutable property on an object.
-
-### 4.5 Makes advanced allocators and WASM more fragile
-
-For partitioned or WASM-backed layouts, a "rich backing" quickly becomes a union of weird shapes:
-
-```ts
-type RichBacking<S> =
-  | { kind: 'contiguous'; sab: SharedArrayBuffer; plan: Plan<S>; /* ... */ }
-  | { kind: 'partitioned'; sabs: SharedArrayBuffer[]; plan: Plan<S>; /* ... */ }
-  | { kind: 'wasm'; memory: WebAssembly.Memory; plan: Plan<S>; /* ... */ };
-```
-
-At that point:
-
-* every consumer of `Backing` has to know about all allocation strategies,
-* or you hide the differences entirely and end up with a lot of "this field is only valid when kind === X" semantics.
-
-In contrast, the `Plan`/`Backing`/`Handoff` split lets us:
-
-* keep the canonical **layout contract** in `Plan`, independent of allocation strategy,
-* keep the raw allocation strategy behind `allocateShared*` variants and backings,
-* surface one normalized cross-agent story via `buildHandoff` / `receiveHandoff`.
-
-You can still add advanced allocators, but they don't infect every `Backing` consumer with new cases.
-
-### 4.6 Diagnostics and introspection stay off the hot path
-
-Enriched backings are a very natural place to hang diagnostics:
-
-```ts
-// ❌ tempting but wrong-layered
-backing.diagnostics = { allocations, lastBind, counters };
-```
-
-That couples:
-
-* hot-path objects (backings used by bindings),
-* with introspection structures that are:
-
-  * larger,
-  * often mutated from non-RT code,
-  * and sometimes only present in dev builds.
-
-Seqlok's diagnostics live in a separate domain (`diagnostics.*`) specifically so they cannot bleed into the core types.
-
-By keeping `Backing` minimal, we ensure:
-
-* no one accidentally pays for diagnostics in the RT hot path,
-* and no one starts keying logic on "rich backing fields" that dev builds have and prod builds don't.
+Both contiguous and partitioned backings are normalized by the plan and exposed via the same binding APIs.
 
 ### 4.7 Summary: why enrichment is banned in the kernel
 
 Kernel-level `Backing` is deliberately boring:
 
-* no attached `plan`,
-* no attached `spec`,
-* no behavior beyond "typed views over shared memory".
+- no attached `plan`,
+- no attached `spec`,
+- no behavior beyond "typed views over shared memory".
 
 The **pairings** live in verbs:
 
-* `allocateShared(plan)` – “give me a backing for this plan”.
-* `buildHandoff(plan, backing)` – “stamp this backing as implementing this plan”.
-* `bindController(spec, plan, backing)` – “prove this spec matches this plan+backing.”
-* `bindProcessor(received)` – “adopt the plan+backing pair referenced by this received handoff.”
+- `allocateShared(plan)` / `allocateSharedPartitioned(plan)` → “give me a backing for this plan (contiguous or per-plane SABs).”
+- `buildHandoff(plan, backing)` → “stamp this backing as implementing this plan.”
+- `bindController(spec, plan, backing)` → “prove this spec matches this plan+backing.”
+- `bindProcessor(received)` → “adopt the plan+backing pair referenced by this received handoff.”
+- `bindObserver(received)` (v0.2.0+) → “attach a read-only observer role to this received plan+backing.”
 
 Enriched backings are allowed, but only in orchestration layers that wrap these verbs. The kernel stays flat.
 
@@ -386,30 +522,32 @@ Enriched backings are allowed, but only in orchestration layers that wrap these 
 
 All explicitness lives in **setup**:
 
-* `planLayout(spec)`
-* `allocateShared(plan)`
-* `bindController(spec, plan, backing)`
-* `buildHandoff(plan, backing)`
-* `receiveHandoff(handoff)`
-* `bindProcessor(received)`
+- `planLayout(spec)`
+- `allocateShared(plan)` / `allocateSharedPartitioned(plan)`
+- `bindController(spec, plan, backing)`
+- `buildHandoff(plan, backing)`
+- `receiveHandoff(handoff)`
+- `bindProcessor(received)` / `bindObserver(received)`
 
 The hot paths:
 
-* `processor.params.within(...)`
-* `processor.meters.publish(...)`
-* `controller.meters.snapshot(...)` (especially with `into` buffers)
+- `processor.params.within(...)`
+- `processor.meters.publish(...)`
+- `controller.meters.snapshot(...)` (especially with `into` buffers)
+- `observer.params.within(...)` / `observer.params.snapshot(...)`
+- `observer.meters.within(...)` / `observer.meters.snapshot(...)`
 
 …do:
 
-* zero dynamic planning,
-* zero memory re-interpretation,
-* no per-access validation beyond the seqlock/Atomics protocol.
+- zero dynamic planning,
+- zero memory re-interpretation,
+- no per-access validation beyond the seqlock/Atomics protocol.
 
 We trade a handful of explicit arguments in setup for:
 
-* cleaner layering,
-* stronger runtime checks at the edges,
-* zero penalty where it actually hurts (RT loops).
+- cleaner layering,
+- stronger runtime checks at the edges,
+- zero penalty where it actually hurts (RT loops).
 
 ---
 
@@ -419,11 +557,11 @@ Ergonomics should be built **on top of** the golden pipeline, not inside it.
 
 A good pattern for higher-level helpers is:
 
-* close over `spec` and `plan`,
-* keep `plan` and `backing` visible in the return type,
-* but hide the boilerplate of "plan + allocate + bind + buildHandoff".
+- Receive `spec` as input.
+- Hide `plan` and `backing` where possible.
+- Still call the explicit verbs under the hood.
 
-Example: a small "wire constructor" that sets up a domain in one call:
+### 6.1 Example: `createSharedWire` helper
 
 ```ts
 import {
@@ -433,33 +571,28 @@ import {
   planLayout,
   receiveHandoff,
   bindProcessor,
-} from '@seqlok/core';
+} from "@seqlok/core";
 import type {
   SpecInput,
   ControllerBinding,
   ProcessorBinding,
   Handoff,
-} from '@seqlok/core';
+} from "@seqlok/core";
 
 export interface SharedWire<S extends SpecInput> {
-  readonly spec: S;
-  readonly plan: ReturnType<typeof planLayout<S>>;
-  readonly backing: ReturnType<typeof allocateShared>;
-  readonly controller: ControllerBinding<S>;
-  readonly handoff: Handoff<S>;
+  spec: S;
+  plan: ReturnType<typeof planLayout<S>>;
+  backing: ReturnType<typeof allocateShared<S>>; // or allocateSharedPartitioned<S>
+  controller: ControllerBinding<S>;
+  handoff: Handoff<S>;
 }
 
-/**
- * One-shot helper: spec → plan → backing → controller + handoff.
- *
- * Lives *above* @seqlok/core; it just composes the core verbs.
- */
-export function createSharedWire<S extends SpecInput>(
+function createSharedWire<S extends SpecInput>(
   spec: S,
   controllerOptions?: Parameters<typeof bindController<S>>[3],
 ): SharedWire<S> {
   const plan = planLayout(spec);
-  const backing = allocateShared(plan);
+  const backing = allocateShared(plan); // or allocateSharedPartitioned(plan) in advanced setups
   const controller = bindController(spec, plan, backing, controllerOptions);
   const handoff = buildHandoff(plan, backing);
 
@@ -481,38 +614,38 @@ Usage:
 
 ```ts
 // main / controller side
-import { spec } from './my-spec';
+import { spec } from "./my-spec";
 
 const wire = createSharedWire(spec, {
-  params: { rangePolicy: 'clamp' },
+  params: { rangePolicy: "clamp" },
 });
 
-// wire.controller → hot-path control API
-// wire.handoff   → send to worker / AudioWorklet
+// controllers writes params & snapshots meters
+wire.controller.params.set("gain", 0.8);
 
-worker.postMessage({ type: 'INIT', handoff: wire.handoff });
-
-// worker / processor side
-self.onmessage = (ev) => {
-  if (ev.data?.type !== 'INIT') return;
-
-  const processor = bindProcessorFromHandoff(ev.data.handoff);
-  // processor.params.within(...)
-  // processor.meters.publish(...)
-};
+// processor side: just attach from the handoff bundle
+const processor = bindProcessorFromHandoff(wire.handoff);
 ```
 
-This style hits the sweet spot:
+This helper:
 
-* Core API remains explicit: `spec`, `plan`, `backing`, `handoff`, `binding` are all visible in signatures.
-* Sugar functions:
+- Keeps the kernel API shape intact.
+- Is trivial to test separately.
+- Can evolve independently (e.g., to choose different allocation strategies).
 
-  * don't invent new kernel verbs,
-  * don't enrich backings,
-  * simply compose the canonical pipeline in convenient bundles.
+### 6.2 Why ergonomics don't belong in `planLayout` or `allocateShared`
 
-If you want `DeckSession`, `EngineKit`, or orchestration layers that also manage workers, audio nodes, or registries,
-those live beside this helper, not inside `@seqlok/core`.
+Putting ergonomics into these core verbs would:
+
+- Obscure the domain boundaries.
+- Make it harder to provide alternative strategies.
+- Force advanced users to work "against" the abstraction rather than with it.
+
+By keeping the kernel API intentionally low-level and explicit:
+
+- Advanced users can build their own orchestration layers.
+- Frameworks can wrap Seqlok in whichever higher-level abstractions they prefer.
+- The core stays small and verifiable.
 
 ---
 
@@ -526,116 +659,54 @@ We compared three slogans:
 
 Why `allocateShared`:
 
-* it's precise and truthful about the golden path: **contiguous shared memory**,
-* it leaves room for advanced allocation strategies behind separate APIs or integration layers.
+- it's precise and truthful about the golden path: **contiguous shared memory**,
+- `allocateSharedPartitioned` is the first-class variant for per-plane SABs when that layout is operationally nicer,
+- more exotic allocation strategies (WASM memory, external backings) live behind separate helpers or integration layers.
 
 Why not `defineLayout`:
 
-* that verb belongs to a *raw* plan library,
-* Seqlok has a **semantic** DSL (`defineSpec`) followed by **byte planning** (`planLayout`); the layout is derived, we
+- that verb belongs to a _raw_ plan library,
+- Seqlok has a **semantic** DSL (`defineSpec`) followed by **byte planning** (`planLayout`); the layout is derived, we
   don't "define" it by hand.
 
-Why keep `buildHandoff` / `receiveHandoff` as explicit verbs:
+Why keep `buildHandoff` / `receiveHandoff` instead of something shorter like `encodeHandoff` / `decodeHandoff`:
 
-* they mark the **agent boundary**: “this is where we get ready to cross into another thread/runtime,”
-* they carry their own error domain (handoff corruption / incompatibility) instead of burying that inside binds.
+- `buildHandoff` implies:
 
-### 7.1 Why `handoff` (and not `transfer` or `shared`)
+  - validation of plan/backing coherence,
+  - embedding of necessary metadata (hash, lengths, etc.).
 
-The word **`handoff`** is doing deliberate work in the API. It names a **protocol event** between agents, not just a
-container type.
+- `receiveHandoff` implies:
 
-A handoff is the moment where the owner says:
+  - decoding,
+  - validation at the trust boundary,
+  - production of a `ReceivedHandoff<S>` typed artefact.
 
-> “This **plan** is implemented by this **backing**, and I am now giving you everything you need to bind to it safely.”
-
-The object produced by `buildHandoff(plan, backing)` is the concrete representation of that event:
-
-* it carries **layout identity** (plan hash, plane byte lengths, version),
-* it carries **resource identity** (which shared memory object this plan is implemented on),
-* it is **self-contained** enough for `receiveHandoff` to reconstruct a safe `ReceivedHandoff` without the original
-  `spec` or `plan` in the receiving agent.
-
-`handoff` also avoids clashes with two heavily-loaded terms in the JS ecosystem.
-
-#### Why not `transfer`?
-
-In the platform APIs, **“transfer” has a precise meaning**:
-
-* `postMessage(value, { transfer: [...] })` moves `Transferable` objects to another agent,
-* after transfer, the sender **loses access**: the buffer becomes “neutered” / detached on the sending side.
-
-Seqlok's golden path is the opposite:
-
-* the backing is a `SharedArrayBuffer` or shared `WebAssembly.Memory`,
-* **both** controller and processor must retain access to the same memory region,
-* the handoff value itself is cloned structurally; the underlying memory is *shared*, not moved.
-
-Using "transfer" in this context would strongly suggest that the owner relinquishes access to the memory, which is
-incorrect and actively misleading for anyone familiar with workers and `Transferable`s.
-
-#### Why not `shared*`?
-
-The word **“shared”** already names the underlying primitives:
-
-* `SharedArrayBuffer`,
-* shared `WebAssembly.Memory`.
-
-Re-using "shared" for the cross-agent envelope ("sharedConfig", "sharedState", …) blurs the line between:
-
-* the **memory** that is physically shared, and
-* the **description** of how that memory is laid out and can be safely bound.
-
-The handoff is not "more shared memory"; it is the *contract* for how a particular shared memory region implements a
-particular plan.
-
-By avoiding "shared" in the type name, the docs can say precise things like:
-
-* “The backing is shared memory.”
-* “The handoff is the description you send across agents.”
-
-without overloading the same term for two different layers.
-
-#### What `handoff` implies
-
-`handoff` sits in the middle and captures exactly what Seqlok needs:
-
-* it **acknowledges motion** (one agent builds, another receives),
-* it is **neutral** about the underlying primitive (SAB today, shared Wasm or something else tomorrow),
-* it gives the handoff layer a clean **error domain** for "this plan/backing pair cannot be trusted" without implying
-  ownership transfer or re-defining what "shared" means.
-
-The verbs `buildHandoff` and `receiveHandoff` then read naturally as protocol steps:
-
-```ts
-const handoff = buildHandoff(plan, backing); // owner prepares the package
-const received = receiveHandoff(handoff);    // engine validates + reconstructs view
-```
-
-They describe *what* is happening at the agent boundary without colliding with the platform's existing meanings of
-"transfer" and "shared".
+The names are longer but intentionally descriptive; these are not hot-path calls.
 
 ---
 
-## 8. Allocation variants and the contiguous handoff
+## 8. Summary
 
-The core design assumes a **contiguous backing** as the golden path:
+The explicit API shape – `spec → plan → backing → handoff → binding` – is not accidental ceremony:
 
-* `allocateShared(plan)` → returns a backing built on a single SAB (or equivalent) that matches `plan`,
-* `buildHandoff(plan, backing)` → produces a handoff representing exactly this contiguous layout.
+- Each object (`spec`, `plan`, `backing`, `handoff`, `binding`) lives in a separate domain.
+- Each domain has its own invariants and error codes.
+- The **only** places where domains meet are the explicit verbs:
 
-Advanced allocation strategies (e.g., per-plane SABs, shared `WebAssembly.Memory`, external allocators) are:
+  - `planLayout`,
+  - `allocateShared` / `allocateSharedPartitioned`,
+  - `buildHandoff` / `receiveHandoff`,
+  - `bindController` / `bindProcessor` / `bindObserver`.
 
-* supported via **separate helpers / integration packages**, not additional overloads on the core verbs,
-* free to implement the same `Backing` interface internally and then still call `buildHandoff(plan, backing)` if they
-  can present a contiguous view,
-* considered orchestration choices, not changes to the public handshake.
+This structure enables:
 
-This keeps the canonical story simple:
+- Clear responsibility boundaries.
+- Independent evolution of planning, allocation, and binding logic.
+- Powerful yet predictable ergonomics in higher-level orchestration code.
 
-> There is one blessed way to get a handoff: `allocateShared(plan)` → `buildHandoff(plan, backing)`.
-
-Everything else is "advanced plumbing" that adapts to that contract.
+The cost is a slightly longer setup pipeline.
+The payoff is a system that remains debuggable, testable, and adaptable under real operational pressure.
 
 ---
 
@@ -644,86 +715,55 @@ Everything else is "advanced plumbing" that adapts to that contract.
 ```mermaid
 flowchart LR
   A[spec] -->|planLayout| B[plan]
-  B -->|allocateShared| C[backing]
+  B -->|"allocateShared / allocateSharedPartitioned"| C[backing]
   B --- D[plan hash/meta]
-  C --- E[shared memory]
+  C --- E["shared memory (SABs / planes)"]
   B --> F[handoff]
   C --> F
   F -->|postMessage| G[received]
   A & C --> H[bindController]
   G --> I[bindProcessor]
+  G --> J[bindObserver]
 ```
 
 Boundaries:
 
-* **spec domain**: `defineSpec`
-* **plan domain**: `planLayout`
-* **backing domain**: `allocateShared`
-* **handoff domain**: `buildHandoff` / `receiveHandoff`
-* **binding domain**: `bindController` / `bindProcessor`
+- **spec domain** – `defineSpec`
+- **plan domain** – `planLayout`
+- **backing domain** – `allocateShared` / `allocateSharedPartitioned` / (advanced) `allocateWasmShared`
+- **handoff domain** – `buildHandoff` / `receiveHandoff` / `verifyHandoff`
+- **binding domain** – `bindController` / `bindProcessor` / `bindObserver`
 
-Each box has its own error codes and invariants.
-
----
+Everything else (diagnostics, orchestration, registries, workers, engine kits) lives _around_ this diagram, not inside it.
 
 ## 10. Reviewer checklist
 
-When reviewing API changes or helper layers, ask:
+When reviewing changes to Seqlok's API shape, ask:
 
-* **Does this merge responsibilities across domains?**
+1. **Does this introduce a new object that crosses domains?**
 
-  * If yes, it probably belongs in sugar / orchestration, not kernel.
-* **Does this reduce runtime cross-checks at bind time?**
+- If yes, which domain should own it?
+- Does it belong in the kernel or in a higher-level layer?
 
-  * If yes, you're trading safety for convenience. Be very sure.
-* **Does this assume JS always owns `plan`/`backing`?**
+2. **Does this new helper respect the `spec → plan → backing → handoff → binding` pipeline?**
 
-  * Keep the core open to "plan from elsewhere, JS just receives a handoff."
-* **Is the gain purely ergonomic?**
+- Or does it try to "shortcut" by hiding these steps?
 
-  * Prefer helpers that *use* the core verbs rather than new core verbs that hide them.
-* **Does this change the golden pipeline?**
+3. **Does this change couple previously independent domains?**
 
-  * If it introduces a new "shortcut", make sure it doesn't undermine spec/plan/backing separation.
-* **Does it try to enrich `Backing` instead of composing verbs?**
+- E.g. does backing suddenly need to know about spec?
+- Does planning suddenly depend on allocation?
 
-  * If yes, push that logic up into orchestration; keep kernel `Backing` dumb.
+4. **Is the proposed naming clear about which domain it lives in?**
 
----
+- Verbs should reflect their responsibilities.
+- Beware of verbs that do "too much".
 
-## 11. Summary
+5. **Can we test this change in isolation?**
 
-* The API is deliberately verbose about responsibilities: **spec**, **plan**, **backing**, **handoff**, **binding**.
+- Plan changes should be testable without real memory.
+- Backing changes should be testable with synthetic plans.
+- Binding changes should be testable with fake specs/plans/backings.
 
-* The "extra" arguments are guardrails, not noise.
-
-* The golden pipeline is:
-
-  ```ts
-  const spec = defineSpec(/* ... */);
-  const plan = planLayout(spec);
-  const backing = allocateShared(plan);
-
-  const controller = bindController(spec, plan, backing);
-  const handoff = buildHandoff(plan, backing);
-
-  // elsewhere
-  const received = receiveHandoff(handoff);
-  const processor = bindProcessor(received);
-  ```
-
-* Naming favors clarity over minimalism.
-
-* Enriched backings are explicitly banned in the kernel:
-
-  * plans stay pure,
-  * backings stay dumb,
-  * pairings happen in verbs (`allocateShared`, `buildHandoff`, `bind*`),
-  * ergonomics live one layer up in helpers that simply compose the golden flow.
-
-* Lessons from Typebits and early iterations all point the same way:
-
-  * pure plans,
-  * dumb memory,
-  * checks at the edges,
-  * zero-cost hot paths where the real-time work happens.
+Changes that keep domains separate, preserve explicit verbs, and avoid enriched god-objects are aligned with Seqlok's
+design philosophy.

@@ -31,7 +31,7 @@ This document captures:
 For reference, this is the final decision matrix for the primitives under discussion:
 
 | Symbol                | Action               | Rationale                                              |
-|-----------------------|----------------------|--------------------------------------------------------|
+| --------------------- | -------------------- | ------------------------------------------------------ |
 | `isPow2`              | **DELETE**           | Unused; adds noise                                     |
 | `isAligned`           | **DELETE**           | Unused; adds noise                                     |
 | `acquire`             | **DELETE**           | Design stub for future feature; implement when needed  |
@@ -129,7 +129,7 @@ export interface AcquireOptions extends TryReadOptions {
    *
    * Default: 'never'
    */
-  readonly degrade?: 'never' | 'returnLatest';
+  readonly degrade?: "never" | "returnLatest";
 
   /**
    * Hard cap on number of tryRead attempts before giving up.
@@ -172,8 +172,12 @@ Higher-level, never-degraded seqlock read primitive built on top of `tryRead`. I
 **Original implementation**
 
 ```ts
-export function acquire<T>(p: SeqPair, reader: () => T, options?: AcquireOptions): T {
-  const degrade = options?.degrade ?? 'never';
+export function acquire<T>(
+  p: SeqPair,
+  reader: () => T,
+  options?: AcquireOptions,
+): T {
+  const degrade = options?.degrade ?? "never";
   const maxAttempts = options?.maxAttempts ?? 1000;
 
   let attempts = 0;
@@ -192,14 +196,14 @@ export function acquire<T>(p: SeqPair, reader: () => T, options?: AcquireOptions
     lastValue = result.value;
 
     // Writer stayed active; just retry.
-    if (result.status.kind === 'writerActive') {
+    if (result.status.kind === "writerActive") {
       // Loop continues, budgets are reset per tryRead call.
       continue;
     }
 
     // Budget exhausted inside tryRead; either degrade or continue.
-    if (result.status.kind === 'budgetExhausted') {
-      if (degrade === 'returnLatest' && lastValue !== undefined) {
+    if (result.status.kind === "budgetExhausted") {
+      if (degrade === "returnLatest" && lastValue !== undefined) {
         return lastValue;
       }
       // Otherwise, fall through and let the outer attempts budget decide.
@@ -208,7 +212,7 @@ export function acquire<T>(p: SeqPair, reader: () => T, options?: AcquireOptions
 
   // Exceeded maxAttempts: surface a structured timeout.
   const details = {
-    where: 'primitives.seqlock.acquire',
+    where: "primitives.seqlock.acquire",
     detail: `maxAttempts=${String(maxAttempts)}, degrade=${degrade}, spins=${String(
       totalSpins,
     )}`,
@@ -216,7 +220,11 @@ export function acquire<T>(p: SeqPair, reader: () => T, options?: AcquireOptions
     actualSpins: totalSpins,
   } as const satisfies PrimitivesSeqlockTimeoutDetails;
 
-  throw createError('primitives.seqlockTimeout', 'Seqlock acquisition timeout', details);
+  throw createError(
+    "primitives.seqlockTimeout",
+    "Seqlock acquisition timeout",
+    details,
+  );
 }
 ```
 
@@ -258,15 +266,15 @@ export function acquire<T>(p: SeqPair, reader: () => T, options?: AcquireOptions
      *  - 'writerActive'   → writer never quiesced on this attempt
      *  - 'budgetExhausted'→ exceeded spin/retry budgets
      */
-    readonly kind: 'ok' | 'writerActive' | 'budgetExhausted';
+    readonly kind: "ok" | "writerActive" | "budgetExhausted";
   }
   ```
 
 - `PrimitivesSeqlockTimeoutDetails` from the primitives error domain, and `createError(...)` from `src/errors`:
 
   ```ts
-  import type { PrimitivesSeqlockTimeoutDetails } from '../errors/codes/primitives';
-  import { createError } from '../errors';
+  import type { PrimitivesSeqlockTimeoutDetails } from "../errors/codes/primitives";
+  import { createError } from "../errors";
   ```
 
 **Notes**

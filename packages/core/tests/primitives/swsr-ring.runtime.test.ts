@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { SeqlokError } from '../../src/errors/error';
+import { SeqlokError } from "../../src/errors/error";
 import {
   allocateSwsrRing,
   bindSwsrRingConsumer,
@@ -10,9 +10,9 @@ import {
   SWSR_HEADER_WORDS,
   SWSR_HEADER_WRITE_INDEX,
   SWSR_HEADER_WRITE_SEQ,
-} from '../../src/primitives/swsr-ring';
+} from "../../src/primitives/swsr-ring";
 
-describe('SWSR Ring Primitives: Runtime Behavior', () => {
+describe("SWSR Ring Primitives: Runtime Behavior", () => {
   /**
    * Mock encoder strategy for testing.
    * Writes numbers directly into the underlying Uint32Array.
@@ -36,7 +36,7 @@ describe('SWSR Ring Primitives: Runtime Behavior', () => {
     },
   };
 
-  it('allocates backing memory with correct header size and zero initialization', () => {
+  it("allocates backing memory with correct header size and zero initialization", () => {
     const capacity = 4;
     const wordsPerSlot = 2;
 
@@ -60,24 +60,28 @@ describe('SWSR Ring Primitives: Runtime Behavior', () => {
     expect(backing.sab.byteLength).toBe(expectedBytes);
   });
 
-  it('rejects invalid layouts with specific error codes', () => {
+  it("rejects invalid layouts with specific error codes", () => {
     // Case: Capacity <= 0
-    expect(() => allocateSwsrRing({ capacity: 0, wordsPerSlot: 1 })).toThrow(SeqlokError);
+    expect(() => allocateSwsrRing({ capacity: 0, wordsPerSlot: 1 })).toThrow(
+      SeqlokError,
+    );
 
     try {
       allocateSwsrRing({ capacity: 0, wordsPerSlot: 1 });
     } catch (error) {
-      const err = error as SeqlokError<'primitives.swsrRingInvalidLayout'>;
-      expect(err.code).toBe('primitives.swsrRingInvalidLayout');
+      const err = error as SeqlokError<"primitives.swsrRingInvalidLayout">;
+      expect(err.code).toBe("primitives.swsrRingInvalidLayout");
       expect(err.details.capacity).toBe(0);
       expect(err.details.wordsPerSlot).toBe(1);
     }
 
     // Case: WordsPerSlot <= 0
-    expect(() => allocateSwsrRing({ capacity: 1, wordsPerSlot: 0 })).toThrow(SeqlokError);
+    expect(() => allocateSwsrRing({ capacity: 1, wordsPerSlot: 0 })).toThrow(
+      SeqlokError,
+    );
   });
 
-  it('enqueues and drains values in FIFO order while updating write sequences', () => {
+  it("enqueues and drains values in FIFO order while updating write sequences", () => {
     const backing = allocateSwsrRing({ capacity: 8, wordsPerSlot: 1 });
     const producer = bindSwsrRingProducer(backing, encodeNumber);
     const consumer = bindSwsrRingConsumer(backing, decodeNumber);
@@ -110,7 +114,7 @@ describe('SWSR Ring Primitives: Runtime Behavior', () => {
     );
   });
 
-  it('drops the newest value when the ring is full and tracks the dropped count', () => {
+  it("drops the newest value when the ring is full and tracks the dropped count", () => {
     // Capacity 2 implies at most 1 usable slot (one slot reserved for head/tail separation)
     const backing = allocateSwsrRing({ capacity: 2, wordsPerSlot: 1 });
     const producer = bindSwsrRingProducer(backing, encodeNumber);
@@ -135,7 +139,7 @@ describe('SWSR Ring Primitives: Runtime Behavior', () => {
     expect(drained).toEqual([10]);
   });
 
-  it('handles buffer wrap-around correctly when draining across boundary lines', () => {
+  it("handles buffer wrap-around correctly when draining across boundary lines", () => {
     const backing = allocateSwsrRing({ capacity: 4, wordsPerSlot: 1 });
     const producer = bindSwsrRingProducer(backing, encodeNumber);
     const consumer = bindSwsrRingConsumer(backing, decodeNumber);

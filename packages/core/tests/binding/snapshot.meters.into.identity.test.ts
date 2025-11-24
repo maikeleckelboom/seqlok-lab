@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   allocateShared,
@@ -8,7 +8,7 @@ import {
   defineSpec,
   planLayout,
   receiveHandoff,
-} from '../../src';
+} from "../../src";
 
 /**
  * Sets up a standard test harness with mixed meter types (scalars and arrays)
@@ -16,7 +16,7 @@ import {
  */
 function createHarness() {
   const spec = defineSpec(({ meter }) => ({
-    id: 'meters-identity-test',
+    id: "meters-identity-test",
     meters: {
       rms: meter.f32(),
       flags: meter.u32.array(64),
@@ -36,18 +36,18 @@ function createHarness() {
   return { ctl, proc };
 }
 
-describe('Meters Snapshot: Buffer Identity & Allocation', () => {
+describe("Meters Snapshot: Buffer Identity & Allocation", () => {
   it('reuses provided "into" buffers strictly by identity', () => {
     const { ctl, proc } = createHarness();
 
     // Populate meters with verification data
     proc.meters.publish((w) => {
-      w.set('rms', 0.42);
-      w.stage('flags', (dst) => {
+      w.set("rms", 0.42);
+      w.stage("flags", (dst) => {
         dst.fill(0);
         dst[0] = 1;
       });
-      w.stage('spectrum', (dst) => {
+      w.stage("spectrum", (dst) => {
         for (let i = 0; i < dst.length; i++) {
           dst[i] = i;
         }
@@ -59,7 +59,7 @@ describe('Meters Snapshot: Buffer Identity & Allocation', () => {
     const u32 = new Uint32Array(64);
 
     const snap = ctl.meters.snapshot({
-      keys: ['spectrum', 'flags', 'rms'],
+      keys: ["spectrum", "flags", "rms"],
       into: {
         spectrum: f32,
         flags: u32,
@@ -71,7 +71,7 @@ describe('Meters Snapshot: Buffer Identity & Allocation', () => {
     expect(snap.flags).toBe(u32);
 
     // Verify scalars are returned as primitives
-    expect(snap.rms).toBeTypeOf('number');
+    expect(snap.rms).toBeTypeOf("number");
 
     // Verify content integrity
     expect(f32[0]).toBe(0);
@@ -85,7 +85,7 @@ describe('Meters Snapshot: Buffer Identity & Allocation', () => {
 
     // Provide buffer for 'spectrum' but rely on internal allocation for 'flags'
     const result = ctl.meters.snapshot({
-      keys: ['spectrum', 'flags'],
+      keys: ["spectrum", "flags"],
       into: {
         spectrum: f32,
       },

@@ -8,7 +8,7 @@
  * - Integrates with the error registry for consistent error handling.
  */
 
-import type { ErrorCode, ErrorPayload } from './registry';
+import type { ErrorCode, ErrorPayload } from "./registry";
 
 /**
  * Custom error class for @seqlok/core library errors.
@@ -16,12 +16,17 @@ import type { ErrorCode, ErrorPayload } from './registry';
  * @template C - The error code type (must be a valid ErrorCode)
  */
 export class SeqlokError<C extends ErrorCode = ErrorCode> extends Error {
-  override readonly name = 'SeqlokError';
+  override readonly name = "SeqlokError";
   readonly code: C;
   readonly details: ErrorPayload<C>;
   override readonly cause?: unknown;
 
-  constructor(code: C, message: string, details: ErrorPayload<C>, cause?: unknown) {
+  constructor(
+    code: C,
+    message: string,
+    details: ErrorPayload<C>,
+    cause?: unknown,
+  ) {
     super(message);
     this.code = code;
     this.details = details;
@@ -44,7 +49,11 @@ export class SeqlokError<C extends ErrorCode = ErrorCode> extends Error {
  * Type guard to check if an error is a SeqlokError.
  */
 export function isSeqlokError(e: unknown): e is SeqlokError {
-  return !!e && typeof e === 'object' && (e as { name?: unknown }).name === 'SeqlokError';
+  return (
+    !!e &&
+    typeof e === "object" &&
+    (e as { name?: unknown }).name === "SeqlokError"
+  );
 }
 
 /**

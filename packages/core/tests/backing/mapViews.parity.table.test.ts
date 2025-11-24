@@ -1,12 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { allocateSharedPartitioned } from '../../src/backing/allocate-shared-partitioned';
-import { mapViews } from '../../src/backing/map-views';
-import { planLayout } from '../../src/plan/layout';
-import { specFromPlaneBytes } from '../helpers/spec-from-bytes';
+import { allocateSharedPartitioned } from "../../src/backing/allocate-shared-partitioned";
+import { mapViews } from "../../src/backing/map-views";
+import { planLayout } from "../../src/plan/layout";
+import { specFromPlaneBytes } from "../helpers/spec-from-bytes";
 
-import type { SharedBacking } from '../../src/backing/types';
-import type { PlaneByteLengths } from '../../src/plan/types';
+import type { SharedBacking } from "../../src/backing/types";
+import type { PlaneByteLengths } from "../../src/plan/types";
 
 const BYTES_F32 = 4;
 const BYTES_F64 = 8;
@@ -50,8 +50,8 @@ const TEST_CASES: readonly PlaneByteLengths[] = [
   },
 ];
 
-describe('Map Views: Parity & Layout Consistency', () => {
-  it('ensures view byte lengths match the planned layout', () => {
+describe("Map Views: Parity & Layout Consistency", () => {
+  it("ensures view byte lengths match the planned layout", () => {
     for (const req of TEST_CASES) {
       const plan = planLayout(specFromPlaneBytes(req));
 
@@ -61,7 +61,7 @@ describe('Map Views: Parity & Layout Consistency', () => {
 
       // 2. Contiguous Allocation (Single SAB)
       const contiguousBacking: SharedBacking = {
-        kind: 'shared',
+        kind: "shared",
         sab: new SharedArrayBuffer(plan.bytesTotal),
       };
       const vContiguous = mapViews(plan, contiguousBacking);

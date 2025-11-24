@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { bench, describe } from "vitest";
 
 import {
   allocateShared,
@@ -8,8 +8,8 @@ import {
   defineSpec,
   planLayout,
   receiveHandoff,
-} from '../src';
-import { E2E_BENCH_OPTS } from '../vitest.config';
+} from "../src";
+import { E2E_BENCH_OPTS } from "../vitest.config";
 
 /**
  * @fileoverview
@@ -23,9 +23,9 @@ import { E2E_BENCH_OPTS } from '../vitest.config';
 
 let _blackhole = 0;
 
-describe('End-to-end pipeline: plan, allocate, handoff, bind', () => {
+describe("End-to-end pipeline: plan, allocate, handoff, bind", () => {
   const smallSpec = defineSpec(({ param, meter }) => ({
-    id: 'bench/e2e/small',
+    id: "bench/e2e/small",
     params: {
       gain: param.f32({ min: 0, max: 2 }),
       cutoffHz: param.f32({ min: 20, max: 20_000 }),
@@ -39,7 +39,7 @@ describe('End-to-end pipeline: plan, allocate, handoff, bind', () => {
   }));
 
   const mediumSpec = defineSpec(({ param, meter }) => ({
-    id: 'bench/e2e/medium',
+    id: "bench/e2e/medium",
     params: {
       gain: param.f32({ min: 0, max: 2 }),
       cutoffHz: param.f32({ min: 20, max: 20_000 }),
@@ -59,7 +59,7 @@ describe('End-to-end pipeline: plan, allocate, handoff, bind', () => {
   }));
 
   const largeSpec = defineSpec(({ param, meter }) => ({
-    id: 'bench/e2e/large',
+    id: "bench/e2e/large",
     params: {
       gain: param.f32({ min: 0, max: 4 }),
       cutoffHz: param.f32({ min: 20, max: 20_000 }),
@@ -84,7 +84,7 @@ describe('End-to-end pipeline: plan, allocate, handoff, bind', () => {
   }));
 
   bench(
-    'small spec: full setup',
+    "small spec: full setup",
     () => {
       const plan = planLayout(smallSpec);
       const backing = allocateShared(plan);
@@ -102,7 +102,7 @@ describe('End-to-end pipeline: plan, allocate, handoff, bind', () => {
   );
 
   bench(
-    'medium spec: full setup',
+    "medium spec: full setup",
     () => {
       const plan = planLayout(mediumSpec);
       const backing = allocateShared(plan);
@@ -118,7 +118,7 @@ describe('End-to-end pipeline: plan, allocate, handoff, bind', () => {
   );
 
   bench(
-    'large spec: full setup',
+    "large spec: full setup",
     () => {
       const plan = planLayout(largeSpec);
       const backing = allocateShared(plan);

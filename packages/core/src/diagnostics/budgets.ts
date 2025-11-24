@@ -8,9 +8,9 @@
  * - Ensures safe defaults for diagnostic operations.
  */
 
-import { createError } from '../errors/error';
+import { createError } from "../errors/error";
 
-import type { DiagnosticsCounterDetails } from '../errors/codes/diagnostics';
+import type { DiagnosticsCounterDetails } from "../errors/codes/diagnostics";
 
 /**
  * Budget constraints for diagnostics and introspection paths.
@@ -63,8 +63,11 @@ export const DEFAULT_DIAGNOSTICS_BUDGETS: DiagnosticsBudgets = {
  *
  * @throws SeqlokError<'diagnostics.counterInvalid'>
  */
-function assertValidBudgetValue(name: keyof DiagnosticsBudgets, value: number): void {
-  const allowsInfinity = name === 'timeoutMs';
+function assertValidBudgetValue(
+  name: keyof DiagnosticsBudgets,
+  value: number,
+): void {
+  const allowsInfinity = name === "timeoutMs";
 
   const baseValid =
     (Number.isFinite(value) && Number.isInteger(value) && value > 0) ||
@@ -77,48 +80,48 @@ function assertValidBudgetValue(name: keyof DiagnosticsBudgets, value: number): 
     };
 
     throw createError(
-      'diagnostics.counterInvalid',
-      'Diagnostics counter invalid',
+      "diagnostics.counterInvalid",
+      "Diagnostics counter invalid",
       details,
     );
   }
 
   // Per-budget sanity caps (soft "this is probably a bug" thresholds).
-  if (name === 'spinLimit' && value > 100_000) {
+  if (name === "spinLimit" && value > 100_000) {
     const details: DiagnosticsCounterDetails = {
-      name: 'budget.spinLimit',
+      name: "budget.spinLimit",
       value,
     };
 
     throw createError(
-      'diagnostics.counterInvalid',
-      'Diagnostics counter invalid',
+      "diagnostics.counterInvalid",
+      "Diagnostics counter invalid",
       details,
     );
   }
 
-  if (name === 'retryLimit' && value > 10_000) {
+  if (name === "retryLimit" && value > 10_000) {
     const details: DiagnosticsCounterDetails = {
-      name: 'budget.retryLimit',
+      name: "budget.retryLimit",
       value,
     };
 
     throw createError(
-      'diagnostics.counterInvalid',
-      'Diagnostics counter invalid',
+      "diagnostics.counterInvalid",
+      "Diagnostics counter invalid",
       details,
     );
   }
 
-  if (name === 'traceBufferSize' && value > 1_000_000) {
+  if (name === "traceBufferSize" && value > 1_000_000) {
     const details: DiagnosticsCounterDetails = {
-      name: 'budget.traceBufferSize',
+      name: "budget.traceBufferSize",
       value,
     };
 
     throw createError(
-      'diagnostics.counterInvalid',
-      'Diagnostics counter invalid',
+      "diagnostics.counterInvalid",
+      "Diagnostics counter invalid",
       details,
     );
   }
@@ -130,10 +133,10 @@ function assertValidBudgetValue(name: keyof DiagnosticsBudgets, value: number): 
  * @throws SeqlokError<'diagnostics.counterInvalid'>
  */
 export function validateDiagnosticsBudgets(budgets: DiagnosticsBudgets): void {
-  assertValidBudgetValue('spinLimit', budgets.spinLimit);
-  assertValidBudgetValue('retryLimit', budgets.retryLimit);
-  assertValidBudgetValue('timeoutMs', budgets.timeoutMs);
-  assertValidBudgetValue('traceBufferSize', budgets.traceBufferSize);
+  assertValidBudgetValue("spinLimit", budgets.spinLimit);
+  assertValidBudgetValue("retryLimit", budgets.retryLimit);
+  assertValidBudgetValue("timeoutMs", budgets.timeoutMs);
+  assertValidBudgetValue("traceBufferSize", budgets.traceBufferSize);
 }
 
 /**

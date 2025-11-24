@@ -10,13 +10,17 @@
  * @internal
  */
 
-import { getSharedBuffer } from './buffers';
-import { createError } from '../errors/error';
-import { ALL_PLANES, BYTES_PER_ELEM, type PlaneKey } from '../primitives/planes';
+import { getBackingBuffer } from "./buffers";
+import { createError } from "../errors/error";
+import {
+  ALL_PLANES,
+  BYTES_PER_ELEM,
+  type PlaneKey,
+} from "../primitives/planes";
 
-import type { Backing, SharedBacking, WasmSharedBacking } from './types';
-import type { Plan, PlaneByteLengths } from '../plan/types';
-import type { SpecInput } from '../spec/types';
+import type { Backing, SharedBacking, WasmSharedBacking } from "./types";
+import type { Plan, PlaneByteLengths } from "../plan/types";
+import type { SpecInput } from "../spec/types";
 
 /**
  * Defines the memory layout for packed plane storage.
@@ -29,14 +33,14 @@ import type { SpecInput } from '../spec/types';
  * @see {@link computeBackingPlaneBases} for usage
  */
 export const BACKING_PLANE_PACK_ORDER_V1: readonly PlaneKey[] = [
-  'MF64', // 8-byte aligned
-  'PF32', // 4-byte aligned
-  'PI32', // 4-byte aligned
-  'PU', // 4-byte aligned
-  'MF32', // 4-byte aligned
-  'MU32', // 4-byte aligned
-  'MU', // 4-byte aligned
-  'PB', // 1-byte aligned
+  "MF64", // 8-byte aligned
+  "PF32", // 4-byte aligned
+  "PI32", // 4-byte aligned
+  "PU", // 4-byte aligned
+  "MF32", // 4-byte aligned
+  "MU32", // 4-byte aligned
+  "MU", // 4-byte aligned
+  "PB", // 1-byte aligned
 ];
 
 /** Maps each plane to its byte offset in a packed backing. */
@@ -137,16 +141,16 @@ function mapPackedBacking<S extends SpecInput>(
   plan: Plan<S>,
   backing: SharedBacking | WasmSharedBacking,
 ): MappedViews {
-  const buf = getSharedBuffer(backing);
+  const buf = getBackingBuffer(backing);
   const actualBytes = buf.byteLength;
   const requiredBytes = plan.bytesTotal;
 
   if (actualBytes < requiredBytes) {
-    throw createError('backing.allocUndersized', 'Backing buffer undersized', {
-      plane: 'all',
+    throw createError("backing.allocUndersized", "Backing buffer undersized", {
+      plane: "all",
       requestedBytes: requiredBytes,
       allocatedBytes: actualBytes,
-      where: 'mapViews',
+      where: "mapViews",
     });
   }
 
@@ -210,7 +214,7 @@ function mapPackedBacking<S extends SpecInput>(
  */
 function mapPartitionedBacking<S extends SpecInput>(
   plan: Plan<S>,
-  partitionedBacking: Extract<Backing, { kind: 'shared-partitioned' }>,
+  partitionedBacking: Extract<Backing, { kind: "shared-partitioned" }>,
 ): MappedViews {
   // In partitioned mode, each plane has its own SAB starting at offset 0
   const bases = createZeroPlaneBases();
@@ -224,11 +228,11 @@ function mapPartitionedBacking<S extends SpecInput>(
     const requiredBytes = plan.planes[plane];
 
     if (sab.byteLength < requiredBytes) {
-      throw createError('backing.allocUndersized', `Plane ${plane} too small`, {
+      throw createError("backing.allocUndersized", `Plane ${plane} too small`, {
         plane,
         requestedBytes: requiredBytes,
         allocatedBytes: sab.byteLength,
-        where: 'mapViews.partitioned',
+        where: "mapViews.partitioned",
       });
     }
 
@@ -236,39 +240,39 @@ function mapPartitionedBacking<S extends SpecInput>(
   };
 
   const PF32 = new Float32Array(
-    ensurePlaneBuffer('PF32'),
+    ensurePlaneBuffer("PF32"),
     0,
     Math.trunc(plan.planes.PF32 / BYTES_PER_ELEM.PF32),
   );
   const PI32 = new Int32Array(
-    ensurePlaneBuffer('PI32'),
+    ensurePlaneBuffer("PI32"),
     0,
     Math.trunc(plan.planes.PI32 / BYTES_PER_ELEM.PI32),
   );
-  const PB = new Uint8Array(ensurePlaneBuffer('PB'), 0, plan.planes.PB);
+  const PB = new Uint8Array(ensurePlaneBuffer("PB"), 0, plan.planes.PB);
   const PU = new Uint32Array(
-    ensurePlaneBuffer('PU'),
+    ensurePlaneBuffer("PU"),
     0,
     Math.trunc(plan.planes.PU / BYTES_PER_ELEM.PU),
   );
 
   const MF32 = new Float32Array(
-    ensurePlaneBuffer('MF32'),
+    ensurePlaneBuffer("MF32"),
     0,
     Math.trunc(plan.planes.MF32 / BYTES_PER_ELEM.MF32),
   );
   const MF64 = new Float64Array(
-    ensurePlaneBuffer('MF64'),
+    ensurePlaneBuffer("MF64"),
     0,
     Math.trunc(plan.planes.MF64 / BYTES_PER_ELEM.MF64),
   );
   const MU32 = new Uint32Array(
-    ensurePlaneBuffer('MU32'),
+    ensurePlaneBuffer("MU32"),
     0,
     Math.trunc(plan.planes.MU32 / BYTES_PER_ELEM.MU32),
   );
   const MU = new Uint32Array(
-    ensurePlaneBuffer('MU'),
+    ensurePlaneBuffer("MU"),
     0,
     Math.trunc(plan.planes.MU / BYTES_PER_ELEM.MU),
   );
@@ -302,10 +306,10 @@ export function mapViews<S extends SpecInput>(
   backing: Backing,
 ): MappedViews {
   switch (backing.kind) {
-    case 'shared-partitioned':
+    case "shared-partitioned":
       return mapPartitionedBacking(plan, backing);
-    case 'shared':
-    case 'wasm-shared':
+    case "shared":
+    case "wasm-shared":
       return mapPackedBacking(plan, backing);
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   allocateShared,
@@ -8,16 +8,16 @@ import {
   defineSpec,
   planLayout,
   receiveHandoff,
-} from '../../src';
+} from "../../src";
 
-describe('public quickstart: deck controller ↔ processor flow', () => {
-  it('wires params and meters over a SharedArrayBuffer', () => {
+describe("public quickstart: deck controller ↔ processor flow", () => {
+  it("wires params and meters over a SharedArrayBuffer", () => {
     const spec = defineSpec(({ param, meter }) => ({
-      id: 'deck',
+      id: "deck",
       params: {
         timeRatio: param.f32({ min: 0.25, max: 4 }),
         eqBands: param.f32.array({ length: 8 }),
-        mode: param.enum(['normal', 'granular']),
+        mode: param.enum(["normal", "granular"]),
       },
       meters: {
         rms: meter.f32(),
@@ -37,10 +37,10 @@ describe('public quickstart: deck controller ↔ processor flow', () => {
     // Controller writes params
     controller.params.update({
       timeRatio: 1.5,
-      mode: 'granular',
+      mode: "granular",
     });
 
-    controller.params.stage('eqBands', (bands) => {
+    controller.params.stage("eqBands", (bands) => {
       for (let i = 0; i < bands.length; i += 1) {
         bands[i] = i < 4 ? -3 : 3;
       }
@@ -58,21 +58,21 @@ describe('public quickstart: deck controller ↔ processor flow', () => {
       writer.rms(0.5);
       writer.peak(1.0);
 
-      writer.stage('spectrum', (buf) => {
+      writer.stage("spectrum", (buf) => {
         for (let i = 0; i < buf.length; i += 1) {
           buf[i] = i;
         }
       });
 
-      writer.set('framesProcessed', 128);
+      writer.set("framesProcessed", 128);
     });
 
     // Controller observes meters coherently
     const version = controller.meters.version();
     const { rms, peak, framesProcessed } = controller.meters.snapshot(
-      'rms',
-      'peak',
-      'framesProcessed',
+      "rms",
+      "peak",
+      "framesProcessed",
     );
 
     expect(version).toBeGreaterThan(0);

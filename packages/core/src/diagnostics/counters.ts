@@ -11,9 +11,9 @@
  * designed for observability and debugging purposes only.
  */
 
-import { createError } from '../errors/error';
+import { createError } from "../errors/error";
 
-import type { DiagnosticsCounterDetails } from '../errors/codes/diagnostics';
+import type { DiagnosticsCounterDetails } from "../errors/codes/diagnostics";
 
 /**
  * Names for diagnostics counters maintained by Seqlok's introspection layer.
@@ -71,7 +71,10 @@ const MAX_COUNTER_VALUE = Number.MAX_SAFE_INTEGER;
  *
  * @throws SeqlokError<'diagnostics.counterInvalid'>
  */
-function assertValidCounterValue(name: DiagnosticsCounterName, value: number): void {
+function assertValidCounterValue(
+  name: DiagnosticsCounterName,
+  value: number,
+): void {
   const isFiniteNumber = Number.isFinite(value);
   const isNonNegative = value >= 0;
   const withinBound = value <= MAX_COUNTER_VALUE;
@@ -83,8 +86,8 @@ function assertValidCounterValue(name: DiagnosticsCounterName, value: number): v
     };
 
     throw createError(
-      'diagnostics.counterInvalid',
-      'Diagnostics counter invalid',
+      "diagnostics.counterInvalid",
+      "Diagnostics counter invalid",
       details,
     );
   }
@@ -98,7 +101,10 @@ function assertValidCounterValue(name: DiagnosticsCounterName, value: number): v
  * diagnostics error if the new value is invalid. Designed for use in
  * cold paths (debug overlays, test harnesses, metrics exporters).
  */
-export function incrementCounter(name: DiagnosticsCounterName, delta = 1): void {
+export function incrementCounter(
+  name: DiagnosticsCounterName,
+  delta = 1,
+): void {
   const current = counters[name];
   const next = current + delta;
 

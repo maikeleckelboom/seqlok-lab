@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
-import type { BenchOptions } from 'vitest';
+import type { BenchOptions } from "vitest";
 
 /**
  * For ultra-fast micro operations where we want low RME.
@@ -27,11 +27,11 @@ export const E2E_BENCH_OPTS: BenchOptions = {
 export default defineConfig({
   test: {
     globals: true,
-    reporters: ['default'],
+    reporters: ["default"],
     coverage: {
-      provider: 'v8',
+      provider: "v8",
       enabled: false,
-      reporter: ['text', 'html', 'lcov'],
+      reporter: ["text", "html", "lcov"],
       thresholds: {
         statements: 75,
         branches: 70,
@@ -39,28 +39,23 @@ export default defineConfig({
         lines: 75,
       },
       exclude: [
-        'dist/**',
-        'tests/**',
-        'src/**/index.ts',
-        'src/types/**',
-        'src/public/**',
-        'src/errors/codes/**',
+        "dist/**",
+        "tests/**",
+        "src/**/index.ts",
+        "src/types/**",
+        "src/context/**",
       ],
     },
-
-    environment: 'node',
-
+    environment: "node",
     fileParallelism: false,
     isolate: false,
-
     testTimeout: 60_000,
     hookTimeout: 30_000,
-
     benchmark: {
-      include: ['bench/**/*.bench.ts'],
-      exclude: ['node_modules', 'dist', '.idea', '.git', '.cache'],
-      reporters: ['verbose'],
-      outputJson: 'bench-results.json',
+      include: ["bench/**/*.bench.ts"],
+      exclude: ["node_modules", "dist", ".idea", ".git", ".cache"],
+      reporters: ["verbose"],
+      outputJson: "bench-results.json",
       // compare: 'bench-results-main.json',
     },
   },

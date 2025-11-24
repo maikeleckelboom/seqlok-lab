@@ -15,18 +15,26 @@
  * - `MU`    Uint32  **Meter** seqlock counters `[LOCK, SEQ]`
  */
 
-export type PlaneKey = 'PF32' | 'PI32' | 'PB' | 'PU' | 'MF32' | 'MU32' | 'MF64' | 'MU';
+export type PlaneKey =
+  | "PF32"
+  | "PI32"
+  | "PB"
+  | "PU"
+  | "MF32"
+  | "MU32"
+  | "MF64"
+  | "MU";
 
 export const ALL_PLANES: readonly PlaneKey[] = [
-  'PF32',
-  'PI32',
-  'PB',
-  'PU',
-  'MF32',
-  'MF64',
-  'MU32',
-  'MU',
-];
+  "PF32",
+  "PI32",
+  "PB",
+  "PU",
+  "MF32",
+  "MF64",
+  "MU32",
+  "MU",
+] as const;
 
 /**
  * Specifies the number of bytes per element for various data types used in planes.
@@ -61,7 +69,7 @@ export const BYTES_PER_ELEM: Readonly<Record<PlaneKey, number>> = {
  */
 export function roundUpTo(n: number, align: number): number {
   if (align <= 0 || (align & (align - 1)) !== 0) {
-    throw new Error('roundUpTo: align must be power-of-two');
+    throw new Error("roundUpTo: align must be power-of-two");
   }
   return (n + (align - 1)) & ~(align - 1);
 }

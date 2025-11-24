@@ -2,31 +2,41 @@
 
 Complete API documentation for `@seqlok/core`.
 
+This file is about **shape and signatures**. For rationale and design notes, see:
+
+- `07-seqlok-api-shape-rationale.md`
+- `08-seqlok-api-and-naming-rationale.md`
+
+---
+
 ## Table of Contents
 
-* [Core](#core)
+- [Core](#core)
 
-  * [`defineSpec`](#definespec)
-  * [`planLayout`](#planlayout)
-  * [`allocateShared`](#allocateshared)
-  * [`allocateSharedPartitioned`](#allocatesharedpartitioned)
-  * [`allocateWasmShared`](#allocateWasmShared)
-  * [`buildHandoff`](#buildhandoff)
-  * [`receiveHandoff`](#receivehandoff)
-  * [`verifyHandoff`](#verifyhandoff)
+  - [`defineSpec`](#definespec)
+  - [`planLayout`](#planlayout)
+  - [`allocateShared`](#allocateshared)
+  - [`allocateSharedPartitioned`](#allocatesharedpartitioned)
+  - [`allocateWasmShared`](#allocatewasmshared)
+  - [`buildHandoff`](#buildhandoff)
+  - [`receiveHandoff`](#receivehandoff)
+  - [`verifyHandoff`](#verifyhandoff)
 
-* [Binding](#binding)
+- [Binding](#binding)
 
-  * [`bindController`](#bindcontroller)
-  * [`bindProcessor`](#bindprocessor)
+  - [`bindController`](#bindcontroller)
+  - [`bindProcessor`](#bindprocessor)
+  - [`bindObserver`](#bindobserver)
 
-* [Controller Binding API](#controller-binding-api)
+- [Controller Binding API](#controller-binding-api)
 
-* [Processor Binding API](#processor-binding-api)
+- [Processor Binding API](#processor-binding-api)
 
-* [Types](#types)
+- [Observer Binding API](#observer-binding-api)
 
-* [Error Codes](#error-codes)
+- [Types](#types)
+
+- [Error Codes](#error-codes)
 
 ---
 
@@ -34,110 +44,100 @@ Complete API documentation for `@seqlok/core`.
 
 ### `defineSpec`
 
-Define the specification (params + meters).
+Describe params/meters and obtain a strongly-typed spec.
 
 ```ts
-function defineSpec<S extends SpecInput>(
-  builder: (dsl: { param: ParamBuilders; meter: MeterBuilders }) => S,
+declare function defineSpec<S extends SpecInput>(
+  build: (ctx: { param: ParamDsl; meter: MeterDsl }) => S,
 ): S;
 ```
 
-**Example**
+- Specs are plain objects with:
 
-```ts
-import { defineSpec } from '@seqlok/core';
+  - `id: string` – optional human-readable ID.
+  - `params` – param definitions.
+  - `meters` – meter definitions.
 
-export const spec = defineSpec(({ param, meter }) => ({
-  id: 'demo',
-  params: {
-    timeRatio: param.f32({ min: 0.25, max: 4 }),
-    coeffs: param.f32.array(8),
-    mode: param.enum(['normal', 'granular']),
-  },
-  meters: {
-    rms: meter.f32(),
-    peak: meter.f32(),
-    spectrum: meter.f32.array(1024),
-    frames: meter.u32(),
-  },
-}));
-// typeof spec is inferred; used as S extends SpecInput everywhere else
-```
+- Numeric params are **range-only**:
 
-**DSL summary**
+  ```ts
+  // Scalars
+  gain: param.f32({ min: 0, max: 1 });
+  index: param.i32({ min: 0, max: 1023 });
 
-* Params (scalars)
+  // Arrays (shape-only)
+  curve: param.f32.array({ length: 1024 });
+  ```
 
-  * `param.f32({ min, max })`
-  * `param.i32({ min, max })`
-  * `param.bool()`
-  * `param.enum(values: readonly string[])`
+- Enums:
 
-* Params (arrays, fixed length)
+  ```ts
+  mode: param.enum(["off", "lp", "hp"]);
+  pattern: param.enum.array({
+    values: ["off", "dim", "full"],
+    length: 64,
+  });
+  ```
 
-  * `param.f32.array(length: number)` or `param.f32.array({ length })`
-  * `param.i32.array(length: number)` or `param.i32.array({ length })`
-  * `param.bool.array(length: number)` or `param.bool.array({ length })`
-  * `param.enum.array({ values: readonly string[]; length: number })`
+- Meters:
 
-* Meters (scalars)
+  ```ts
+  peak: meter.f32();
+  spectrum: meter.f32.array({ length: 2048 });
+  ```
 
-  * `meter.f32()`
-  * `meter.f64()`
-  * `meter.u32()`
-  * `meter.bool()`
-
-* Meters (arrays)
-
-  * `meter.f32.array(length: number)` or `meter.f32.array({ length })`
-  * `meter.f64.array(length: number)` or `meter.f64.array({ length })`
-  * `meter.u32.array(length: number)` or `meter.u32.array({ length })`
-
-> Numeric ranges are **scalar-only** and only for **params**.
-> Arrays (params/meters) are **shape-only** (fixed length, no per-element `{min,max}`).
-> Enum arrays always store **indices** (`Int32Array`) via `param.enum.array({ values, length })`.
+> Numeric ranges apply only to **scalar params** (`f32`, `i32`). Arrays (params/meters) are shape-only.
+> Enum arrays store **indices** (in `Int32Array`) into the shared `values` vocabulary.
 
 ---
 
 ### `planLayout`
 
-Compute a deterministic memory plan for the spec.
+Compute a deterministic plan from the spec.
 
 ```ts
-function planLayout<S extends SpecInput>(
+declare function planLayout<S extends SpecInput>(
   spec: S,
   options?: PlanOptions,
 ): Plan<S>;
 ```
 
-* Same spec + options → same layout and hash.
-* `Plan<S>` encodes:
+- Same `spec + options` → same layout + `hash`.
+- `Plan<S>` includes:
 
-  * bytes per plane (`PF32`, `PI32`, `PB`, `PU`, `MF32`, `MF64`, `MU32`, `MU`),
-  * offsets / lengths for all params and meters,
-  * seqlock indices for param and meter domains,
-  * a stable `hash` used for handoff verification and diagnostics.
+  - plane byte lengths for all planes (`PF32`, `PI32`, `PB`, `PU`, `MF32`, `MF64`, `MU32`, `MU`),
+  - per-param / per-meter offsets and lengths,
+  - seqlock indices for params/meters,
+  - a stable `hash` used for handoff/diagnostics,
+  - a `version` used as a plan ABI discriminant.
 
-The **plan layer** is the single source of truth for layout and spec metadata. All layout-related errors live under `plan.*`.
+Plans are **pure**: they do not allocate memory and do not depend on runtime environment.
 
 ---
 
 ### `allocateShared`
 
-Allocate a single `SharedArrayBuffer` for all planes (contiguous backing).
+Allocate a single contiguous `SharedArrayBuffer` and slice into planes.
 
 ```ts
-function allocateShared<S extends SpecInput>(plan: Plan<S>): SharedBacking;
+declare function allocateShared<S extends SpecInput>(
+  plan: Plan<S>,
+): SharedBacking;
 ```
 
-* Returns a backing object with:
+- Returns a backing object with:
 
-  * `kind: 'shared'`,
-  * one `SharedArrayBuffer`,
-  * all planes laid out contiguously,
-  * `bytesTotal` matching `plan.bytesTotal`.
+  - `kind: 'shared'`,
+  - `sab: SharedArrayBuffer`,
+  - `byteLength: number`,
+  - per-plane `TypedArray` views (PF32, PI32, PB, PU, MF32, MF64, MU32, MU).
 
-* This is the **canonical** backing for cross-thread usage and the simplest option for `buildHandoff`.
+- Plan-driven:
+
+  - planes are sized according to `plan.planes[plane]`,
+  - alignment is chosen to match cross-language expectations.
+
+This is the **golden path** for controller/processor/observer bindings.
 
 ---
 
@@ -146,56 +146,57 @@ function allocateShared<S extends SpecInput>(plan: Plan<S>): SharedBacking;
 Allocate separate SABs per plane (partitioned backing).
 
 ```ts
-function allocateSharedPartitioned<S extends SpecInput>(
+declare function allocateSharedPartitioned<S extends SpecInput>(
   plan: Plan<S>,
 ): SharedPartitionedBacking;
 ```
 
-* Returns a backing object with:
+- Returns a backing object with:
 
-  * `kind: 'shared-partitioned'`,
-  * one `SharedArrayBuffer` per plane,
-  * each plane sized according to `plan.planes[plane]`.
+  - `kind: 'shared-partitioned'`,
+  - one `SharedArrayBuffer` per plane,
+  - each plane sized according to `plan.planes[plane]`.
 
-* Intended for hosts that want:
+- Intended for hosts that want:
 
-  * distinct lifetimes per plane,
-  * OS-level mapping / NUMA tricks,
-  * more experimental memory policies.
+  - distinct lifetimes per plane,
+  - OS/NUMA tricks per plane,
+  - easier partial growth strategies.
 
-* **Supported by handoff**:
+- **Supported by handoff**:
 
-  * `buildHandoff(plan, backing)` accepts `SharedPartitionedBacking`,
-  * the resulting `Handoff<S>` uses `packing: 'shared-partitioned'`,
-  * `receiveHandoff` reconstructs a `ReceivedHandoff<S>` with a partitioned backing descriptor.
+  - `buildHandoff(plan, backing)` accepts `SharedPartitionedBacking`,
+  - `Handoff<S>` encodes `packing: 'shared-partitioned'`,
+  - `receiveHandoff` reconstructs a `ReceivedHandoff<S>` with a partitioned backing descriptor.
 
-From the binding point of view, contiguous vs partitioned is opaque; both produce the same param/meter API.
+Bindings do not care whether backing is contiguous vs partitioned; the param/meter API is identical.
 
 ---
 
 ### `allocateWasmShared`
 
-Use a shared `WebAssembly.Memory` as the backing (advanced).
+Use a shared `WebAssembly.Memory` as backing (advanced).
 
 ```ts
-function allocateWasmShared<S extends SpecInput>(
+declare function allocateWasmShared<S extends SpecInput>(
   plan: Plan<S>,
   memory: WebAssembly.Memory,
 ): WasmSharedBacking;
 ```
 
-* Uses a **shared** `WebAssembly.Memory` instead of a JS `SharedArrayBuffer`.
+- Uses a **shared** `WebAssembly.Memory` instead of JS `SharedArrayBuffer`.
 
-* Same plan-driven layout as `allocateShared`:
+- Layout is still plan-driven:
 
-  * plane offsets/lengths are derived from `Plan<S>`.
+  - plane offsets/lengths are derived from `Plan<S>`,
+  - typed views are created as `new <TypedArray>(memory.buffer, offset, length)`.
 
-* Intended for WASM-heavy engines that want Seqlok planes and DSP state in the same linear memory.
+- Intended for WASM-heavy engines that want "DSP state + Seqlok planes" in the same linear memory.
 
-* **Current limitation (v0.1.0)**:
+- **Current limitation (v0.2.0)**:
 
-  * `buildHandoff(plan, backing)` does **not** support `kind: 'wasm-shared'` yet,
-  * passing a Wasm backing to `buildHandoff` throws `handoff.invalidArtifact`.
+  - `buildHandoff(plan, backing)` does **not** support `kind: 'wasm-shared'`,
+  - passing a Wasm backing to `buildHandoff` throws `handoff.invalidArtifact`.
 
 You can still bind directly to a Wasm backing via `bindController` / `bindProcessor` if you manage agent boundaries yourself.
 
@@ -206,105 +207,87 @@ You can still bind directly to a Wasm backing via `bindController` / `bindProces
 Create a serializable handoff payload (owner/main → worker/secondary).
 
 ```ts
-function buildHandoff<S extends SpecInput>(
+declare function buildHandoff<S extends SpecInput>(
   plan: Plan<S>,
   backing: Backing, // shared or shared-partitioned
 ): Handoff<S>;
 ```
 
-* Accepts:
+- Accepts:
 
-  * `SharedBacking` (`kind: 'shared'`) from `allocateShared(plan)`,
-  * `SharedPartitionedBacking` (`kind: 'shared-partitioned'`) from `allocateSharedPartitioned(plan)`.
+  - `SharedBacking` (`kind: 'shared'`),
+  - `SharedPartitionedBacking` (`kind: 'shared-partitioned'`).
 
-* Rejects:
+- Rejects:
 
-  * `kind: 'wasm-shared'` backings (not serializable via handoff yet) with `handoff.invalidArtifact`.
+  - `kind: 'wasm-shared'` backings with `handoff.invalidArtifact`.
 
-* Packs:
+- Packs:
 
-  * `version` (handoff schema version),
-  * `packing` (`'shared' | 'shared-partitioned'`),
-  * `backingDescriptor` (SAB or per-plane SABs),
-  * `plan` (full `Plan<S>`: hash, planes, offsets, lengths).
+  - `plan` metadata (hash, version, per-plane byte lengths),
+  - backing descriptor (SAB or per-plane SABs),
+  - a version tag for the handoff schema.
 
 Conceptually:
 
 ```ts
-type Handoff<S extends SpecInput> =
+type Handoff<S extends SpecInput = SpecInput> =
   | {
       version: 1;
-      packing: 'shared';
+      packing: "shared";
       backingDescriptor: { sab: SharedArrayBuffer };
       plan: Plan<S>;
     }
   | {
       version: 1;
-      packing: 'shared-partitioned';
+      packing: "shared-partitioned";
       backingDescriptor: { planes: Record<PlaneKey, SharedArrayBuffer> };
       plan: Plan<S>;
     };
-// actual structure is opaque and may evolve
+// exact structure is opaque and may evolve
 ```
 
-The handoff is a **protocol envelope**; you should not rely on its exact shape outside of the typed helpers.
+You should treat `Handoff<S>` as an **opaque envelope** and only interact with it via `receiveHandoff`.
 
 ---
 
 ### `receiveHandoff`
 
-Deserialize a handoff payload on the consumer side.
+Decode and validate a `Handoff<S>` envelope on the consumer side.
 
 ```ts
-function receiveHandoff<S extends SpecInput>(
+declare function receiveHandoff<S extends SpecInput>(
   handoff: Handoff<S>,
 ): ReceivedHandoff<S>;
 ```
 
-* Validates basic handoff structure and extracts:
+- Validates:
 
-  * `plan` (remote `Plan<S>`),
+  - handoff schema version,
+  - packing kind (`'shared'` / `'shared-partitioned'`),
+  - SAB presence and byte lengths.
 
-  * backing descriptor, honoring `packing`:
+- Materializes new typed views over the SAB(s):
 
-    * `'shared'` → `ReceivedSharedHandoff<S>`,
-    * `'shared-partitioned'` → `ReceivedSharedPartitionedHandoff<S>`,
+  - planes,
+  - per-param / per-meter offsets and lengths.
 
-  * typed plane views,
-
-  * seqlock indices.
-
-* Does **not** need the spec at runtime; `S` is purely a type parameter.
-
-* Works in:
-
-  * Workers / AudioWorklets,
-  * same-thread “multi-agent” setups,
-  * tests.
-
-Typical consumer flow (B₂):
-
-```ts
-const received = receiveHandoff(handoff);
-const processor = bindProcessor(received);
-```
-
-If the envelope shape or packing is unsupported or inconsistent with the embedded plan, `receiveHandoff` throws `handoff.invalidArtifact`.
+Returns a `ReceivedHandoff<S>` that can be passed into `bindProcessor` / `bindObserver`.
 
 ---
 
 ### `verifyHandoff`
 
-Check that a remote plan matches a local `Plan<S>` (hash/size/version).
+Optional hardening: verify that a remote plan matches a local plan.
 
 ```ts
-function verifyHandoff<S extends SpecInput>(
+declare function verifyHandoff<S extends SpecInput>(
   localPlan: Plan<S>,
   remotePlan: Plan<S>,
 ): void;
 ```
 
-Usage pattern:
+Usage:
 
 ```ts
 // main thread
@@ -313,26 +296,26 @@ const plan = planLayout(spec);
 const backing = allocateShared(plan);
 const handoff = buildHandoff(plan, backing);
 
-// worker thread
+// worker
 const received = receiveHandoff(handoff);
 verifyHandoff(plan, received.plan); // throws on mismatch
 ```
 
-* Compares `localPlan` to `remotePlan`:
+- Compares:
 
-  * `hash` equality (spec + layout),
-  * `bytesTotal` consistency,
-  * plane byte lengths,
-  * version compatibility.
+  - `hash` (spec + layout),
+  - `bytesTotal`,
+  - per-plane byte lengths,
+  - plan `version`.
 
-* Throws a `SeqlokError` on mismatch:
+- Throws `SeqlokError` on mismatch:
 
-  * `handoff.specHashMismatch`
-  * `handoff.versionMismatch`
-  * `handoff.backingMismatch`
-  * `handoff.invalidArtifact`
+  - `handoff.specHashMismatch`
+  - `handoff.versionMismatch`
+  - `handoff.backingMismatch`
+  - `handoff.invalidArtifact`
 
-This is optional and intended for **diagnostics / hardening**. The golden production path (`receiveHandoff` → `bindProcessor`) does not require it.
+This is for diagnostics/hardening. The **golden path** (`receiveHandoff` → `bindProcessor` / `bindObserver`) does not require it.
 
 ---
 
@@ -343,7 +326,7 @@ This is optional and intended for **diagnostics / hardening**. The golden produc
 Create a controller binding (param writer + meter reader).
 
 ```ts
-function bindController<S extends SpecInput>(
+declare function bindController<S extends SpecInput>(
   spec: S,
   plan: Plan<S>,
   backing: Backing,
@@ -351,23 +334,19 @@ function bindController<S extends SpecInput>(
 ): ControllerBinding<S>;
 ```
 
-* `spec` — semantic contract (names, ranges, enum labels).
+- Validates `spec` vs `plan`:
 
-* `plan` — layout contract for that spec (`Plan<S>`).
+  - keys, kinds, array lengths,
+  - enum label sets.
 
-* `backing` — any supported backing for that plan:
+- Validates that `backing` has enough capacity for the plan.
 
-  * `SharedBacking` (`allocateShared`),
-  * `SharedPartitionedBacking` (`allocateSharedPartitioned`),
-  * `WasmSharedBacking` (`allocateWasmShared`).
+- Returns a `ControllerBinding<S>` with:
 
-* `ControllerOptions` configures:
+  - `params` (write-only at API level),
+  - `meters` (read-only).
 
-  * param range policy (`'reject' | 'clamp'`),
-  * meter snapshot degrade and budgets,
-  * exclusivity hints (`exclusive?: boolean`).
-
-Canonical owner/main flow:
+Typical usage:
 
 ```ts
 import {
@@ -377,7 +356,7 @@ import {
   buildHandoff,
   bindController,
   type Handoff,
-} from '@seqlok/core';
+} from "@seqlok/core";
 
 export const spec = defineSpec(/* ... */);
 const plan = planLayout(spec);
@@ -386,11 +365,9 @@ const backing = allocateShared(plan);
 export const handoff: Handoff<typeof spec> = buildHandoff(plan, backing);
 
 export const controller = bindController(spec, plan, backing, {
-  params: { rangePolicy: 'reject' },
+  params: { rangePolicy: "reject" },
 });
 ```
-
-`bindController` cross-checks `spec`, `plan`, and `backing` and throws `binding.*` or `backing.*` errors if they are inconsistent.
 
 ---
 
@@ -399,45 +376,77 @@ export const controller = bindController(spec, plan, backing, {
 Create a processor binding (param reader + meter writer) from a received handoff.
 
 ```ts
-function bindProcessor<S extends SpecInput>(
+declare function bindProcessor<S extends SpecInput>(
   received: ReceivedHandoff<S>,
   options?: ProcessorOptions,
 ): ProcessorBinding<S>;
 ```
 
-* Processor binding is **spec-free at runtime**:
+- Processor binding is **spec-free at runtime**:
 
-  * the spec is only used at type level (`S extends SpecInput`),
-  * runtime input is `ReceivedHandoff<S>` from `receiveHandoff`.
+  - spec is used only at type level (`S`),
+  - runtime input is `ReceivedHandoff<S>`.
 
-* Works with both packings:
+- Validates the received plan/backing descriptor and materializes typed views suitable for real-time loops.
 
-  * `packing: 'shared'`
-  * `packing: 'shared-partitioned'`
+- Returns a `ProcessorBinding<S>` with:
 
-Example (worker / AudioWorklet):
+  - `params` (read-only),
+  - `meters` (write-only).
+
+Typical usage (worker / AudioWorklet):
 
 ```ts
-import {
-  receiveHandoff,
-  bindProcessor,
-  type Handoff,
-  type ProcessorBinding,
-} from '@seqlok/core';
-import type { DemoSpec } from './spec';
+import { receiveHandoff, bindProcessor } from "@seqlok/core";
+import type { Handoff } from "@seqlok/core";
+import type { Spec } from "./spec";
 
-type InitMessage = { type: 'init'; handoff: Handoff<DemoSpec> };
+self.onmessage = (
+  ev: MessageEvent<{ type: "INIT"; handoff: Handoff<Spec> }>,
+) => {
+  if (ev.data.type !== "INIT") return;
 
-let proc: ProcessorBinding<DemoSpec> | undefined;
-
-self.onmessage = (ev: MessageEvent<InitMessage>) => {
-  if (ev.data.type !== 'init') return;
-
-  const received = receiveHandoff<DemoSpec>(ev.data.handoff);
-  proc = bindProcessor(received);
-
-  // proc.params / proc.meters now available in the audio/worker loop
+  const received = receiveHandoff(ev.data.handoff);
+  const processor = bindProcessor(received);
+  // processor.params / processor.meters available here
 };
+```
+
+---
+
+### `bindObserver`
+
+Create a **read-only observer binding** (param + meter reader) from a received handoff.
+
+```ts
+declare function bindObserver<S extends SpecInput>(
+  received: ReceivedHandoff<S>,
+  options?: ObserverOptions,
+): ObserverBinding<S>;
+```
+
+- Observer bindings share the same plan, backing, and seqlocks as controller/processor.
+
+- They are strictly **read-only**:
+
+  - no param writes,
+  - no meter writes.
+
+- Multiple observers can be created from the same `ReceivedHandoff<S>`; they do not interfere with each other or with the processor.
+
+Typical usage (HUD / telemetry worker):
+
+```ts
+const received = receiveHandoff(handoff);
+const observer = bindObserver(received);
+
+// HUD loop
+observer.params.within((p) => {
+  // coherent read of params
+});
+observer.meters.within((m) => {
+  // zero-copy read of meters (waveforms, etc.)
+});
 ```
 
 ---
@@ -464,29 +473,31 @@ params.set<K extends ScalarParamKeys<S>>(
   key: K,
   value: ParamValueFor<S, K>,
 ): void;
-
-params.update(patch: ScalarParamPatch<S>): void;
 ```
 
-* `set(key, value)`:
+- Writes a **single scalar param** (f32, i32, bool, enum).
+- Performs one param-domain seqlock commit (one `PUSeq` bump).
+- Range behavior is controlled by `ControllerOptions.params.rangePolicy`:
 
-  * single scalar write,
-  * one param-domain seqlock commit (one PU sequence bump).
+  - `'reject'` (default): out-of-range values throw `binding.paramRange`.
+  - `'clamp'`: values are clamped to `[min,max]` and committed.
 
-* `update(patch)`:
+---
 
-  * atomic micro-batch of **scalar** params,
-  * one commit for the whole patch.
+#### Atomic multi-scalar updates
 
-* `update` is **scalar-only**:
+```ts
+params.update(
+  patch: Partial<ScalarParamValues<S>>,
+): void;
+```
 
-  * array params are **not** allowed in the patch (shape errors == `binding.shapeInvalid`),
-  * unknown keys cause `binding.unknownKey`.
+- Atomic micro-batch of **scalar** params.
+- Exactly one param-domain commit (`PUSeq` bump) for the entire patch.
+- Arrays are **not allowed** in the patch; shape errors throw `binding.shapeInvalid`.
+- Unknown keys throw `binding.unknownKey`.
 
-* Range behavior is controlled by `ControllerOptions.params.rangePolicy`:
-
-  * `'reject'` (default): out-of-range values throw `binding.paramRange`.
-  * `'clamp'`: values are clamped into `[min,max]` and committed.
+---
 
 #### Array writes (hot path)
 
@@ -497,106 +508,39 @@ params.stage<K extends ArrayParamKeys<S>>(
 ): void;
 ```
 
-* `stage(key, cb)`:
+- `stage`:
 
-  * exposes a **mutable typed view** (`Float32Array`, `Int32Array`, `Uint8Array`, …),
-  * executes `cb(view)` under a single seqlock write window,
-  * commits the entire array with one PU bump,
-  * guarantees readers never see a torn array.
+  - exposes a **mutable TypedArray view** for the param array,
+  - runs `cb(view)` under a single seqlock write window,
+  - commits the entire array with one `PUSeq` bump,
+  - guarantees readers never see a torn array.
 
 Typical usage:
 
 ```ts
-controller.params.stage('coeffs', (view) => {
-  view.set(newCoeffs);
+controller.params.stage("curve", (view) => {
+  view.set(newCurve);
 });
 ```
+
+---
 
 #### Bulk hydration (cold path)
 
 ```ts
-params.hydrate(patch: HydratePatch<S>): void;
+params.hydrate(
+  patch: HydrationPatch<S>,
+): void;
 ```
 
-* `hydrate(patch)`:
+- Cold-path bulk-param write:
 
-  * accepts a **partial** param object with scalars and arrays,
+  - supports both scalars and arrays in a single patch,
+  - intended for preset recall, project restore, IPC hydration.
 
-  * validates keys and shapes up front:
+- Always one commit (`PUSeq` bump) per call.
 
-    * unknown keys → `binding.unknownKey`,
-    * wrong array types → `binding.shapeInvalid`,
-    * length mismatch → `binding.shapeInvalid`,
-
-  * applies all writes under a single seqlock commit (one PU bump),
-
-  * intended for presets, project load, snapshot restore, IPC, REPL.
-
-* Scalars:
-
-  * same semantics as `update`,
-  * respect `rangePolicy`.
-
-* Arrays:
-
-  * must be typed arrays (`Float32Array`, `Int32Array`, `Uint8Array`, etc.),
-  * length must match the spec-defined length.
-
-Round-trip pattern:
-
-```ts
-const snap = controller.params.snapshot();
-// ...
-controller.params.hydrate(snap);
-```
-
-#### Snapshots
-
-```ts
-type ParamSnapshotKeys<S extends SpecInput> =
-  | readonly (keyof S['params'])[]
-  | undefined;
-
-interface ParamSnapshotOptions<
-  S extends SpecInput,
-  P extends ParamSnapshotKeys<S> | undefined = undefined,
-> {
-  into?: SnapshotIntoBuffers<S, P>;
-}
-
-params.snapshot<P extends ParamSnapshotKeys<S> = undefined>(
-  keys?: P,
-  options?: ParamSnapshotOptions<S, P>,
-): ControllerParamsSnapshot<S, P>;
-```
-
-* `snapshot()`:
-
-  * coherent view of params at a single PU sequence,
-  * scalars: numbers / booleans / enum **labels**,
-  * arrays: owned copies (`Float32Array`, `Int32Array`, etc.).
-
-* `snapshot(keys)`:
-
-  * subset of params.
-
-* `snapshot(keys, { into })`:
-
-  * reuses preallocated typed arrays from `into`,
-  * avoids allocations when lengths/types match,
-  * mismatches:
-
-    * type mismatch → `binding.snapshotIntoTypeMismatch`,
-    * length mismatch → `binding.snapshotIntoLengthMismatch`.
-
-#### Version
-
-```ts
-params.version(): PUSeq;
-```
-
-* Returns the current param-domain seqlock sequence.
-* Cheap atomic; ideal for "only snapshot when changed" loops.
+- Does **not** attempt to be hot-path; allocations and copy work are allowed.
 
 ---
 
@@ -616,33 +560,30 @@ interface MeterSnapshotOptions<
   into?: MeterSnapshotIntoBuffers<S, M>;
 }
 
-meters.snapshot<M extends MeterSnapshotKeys<S> = undefined>(
-  keys?: M,
-  options?: MeterSnapshotOptions<S, M>,
-): ControllerMetersSnapshot<S, M>;
+meters.snapshot(): MeterValues<S>;
+
+meters.snapshot<M extends MeterSnapshotKeys<S>>(
+  keys: M,
+): MeterSubsetValues<S, M>;
+
+meters.snapshot<M extends MeterSnapshotKeys<S>>(
+  keys: M,
+  options: MeterSnapshotOptions<S, M>,
+): MeterSubsetValues<S, M>;
 ```
 
-* `snapshot()`:
+- `snapshot()` with no args returns **all** meters.
+- `snapshot(keys)` returns a subset.
+- `snapshot(keys, { into })` allows reusing caller-provided buffers for arrays.
+- Snapshots are seqlock-coherent:
 
-  * coherent view of meters at a single MU sequence,
-  * scalars: numbers / booleans,
-  * arrays: copies (`Float32Array`, `Float64Array`, `Uint32Array`, `Int32Array` for enum arrays).
+  - controller may spin/retry under the hood,
+  - behavior when budgets are exhausted is controlled by `ControllerOptions.meters.degrade`:
 
-* `snapshot(keys, { into })`:
+    - `'returnLatest'` – return last successful values,
+    - `'throw'` – throw `binding.snapshotRetryExhausted`.
 
-  * subset + reuse existing array buffers,
-  * same snapshot-into error semantics as params (`binding.snapshotInto*`).
-
-Degrade / budgets via `ControllerOptions.meters`:
-
-* `degrade: 'returnLatest' | 'throw'`
-
-  * `'returnLatest'`: returns last coherent snapshot if retries are exhausted;
-  * `'throw'`: throws `binding.snapshotRetryExhausted`.
-
-* `spinBudget`, `retryBudget`:
-
-  * control how aggressively snapshot will spin/retry under heavy writer contention.
+---
 
 #### Version
 
@@ -650,8 +591,8 @@ Degrade / budgets via `ControllerOptions.meters`:
 meters.version(): MUSeq;
 ```
 
-* Returns the meter-domain seqlock sequence.
-* Cheap atomic; useful to gate snapshotting.
+- Returns meter-domain sequence counter.
+- Cheap change-detection primitive: "only `snapshot` when version changed."
 
 ---
 
@@ -676,78 +617,169 @@ Coherent read window:
 params.within<T>(cb: (view: ProcessorParamView<S>) => T): T;
 ```
 
-* Executes `cb` inside a seqlock **read window**.
+- Executes `cb` inside a seqlock **read window**.
 
-* If a write is in progress:
+  - If a write is in progress:
 
-  * spins for a bounded `spinBudget`,
-  * retries up to `retryBudget` times.
+    - spins for up to `spinBudget`,
+    - retries up to `retryBudget`.
 
-* Guarantees that `view` is self-consistent (no half-updated state). If budgets are exhausted, throws `binding.coherentRetryExhausted`.
+  - If budgets are exhausted, throws `binding.coherentRetryExhausted`.
 
-Inside `cb(view)`:
+- Inside `cb(view)`:
 
-* Scalars:
+  - scalars are exposed as numbers/booleans/enum **indices** (DSP-friendly),
+  - arrays are exposed as ephemeral `TypedArray` views valid only inside `cb`.
 
-  * exposed as plain numbers / booleans / enum **indices**.
-
-* Arrays:
-
-  * exposed as ephemeral `TypedArray` views into the backing,
-  * valid only during the callback.
-
-Example:
+Version:
 
 ```ts
-processor.params.within((p) => {
-  const ratio = p.timeRatio;
-  const coeffs = p.coeffs; // Float32Array view
-  // use coeffs within this callback only
-});
+params.version(): PUSeq;
 ```
 
-Spin/retry budgets are controlled via `ProcessorOptions.params`.
+- Returns param-domain sequence counter, useful for lightweight change detection.
+
+---
 
 ### `meters` (processor)
 
-Coherent write window:
+Meters publish:
 
 ```ts
-meters.publish<T>(cb: (w: MeterWriter<S>) => T): T;
+meters.publish(cb: (w: MeterWriters<S>) => void): void;
 ```
 
-* Exposes a meter writer inside a single seqlock write window.
-* Commits all scalar and array meter updates with one MU bump.
-* Exhausted spin/retry budgets throw `binding.coherentRetryExhausted`.
+- Executes `cb(w)` inside a **single** meter-domain seqlock write window.
+- Meter writers:
 
-Inside `cb(w)`:
+  - scalar meters: `w.peak(value)`,
+  - array meters: `w.stage('spectrum', cb(view))` with one `MUSeq` bump.
 
-* Scalar meters:
-
-  * functions: `w.peak(value)`, `w.rms(value)`, `w.frames(value)`, etc.
-
-* Array meters:
-
-  * `w.stage('spectrum', (view) => { /* fill view */ })`,
-  * `view` is a `TypedArray` aliasing meter plane storage.
-
-Recommended DSP pattern:
+Recommended pattern:
 
 ```ts
 processor.params.within((p) => {
-  const ratio = p.timeRatio;
-  // read params, compute audio...
+  const gain = p.gain;
+  const modeIndex = p.mode; // enum index
+
+  // ...DSP...
 
   processor.meters.publish((w) => {
     w.peak(computedPeak);
-    w.stage('spectrum', (view) => {
+    w.stage("spectrum", (view) => {
       view.set(computedSpectrum);
     });
   });
 });
 ```
 
-Budgets are controlled via `ProcessorOptions.meters`.
+Budgets are controlled via `ProcessorOptions.params` / `ProcessorOptions.meters`.
+
+Version:
+
+```ts
+meters.version(): MUSeq;
+```
+
+- Returns meter-domain sequence counter.
+
+---
+
+## Observer Binding API
+
+An `ObserverBinding<S>` exposes:
+
+```ts
+interface ObserverBinding<S extends SpecInput> {
+  readonly params: ObserverParams<S>;
+  readonly meters: ObserverMeters<S>;
+
+  dispose(): void;
+}
+```
+
+Observer bindings are **read-only**:
+
+- share the same backing and seqlocks as controller/processor,
+- never write params or meters,
+- give HUDs / inspectors coherent views of state without affecting writers.
+
+### `params` (observer)
+
+Observer params expose snapshots and coherent read windows:
+
+```ts
+// Full snapshot of all params
+observer.params.snapshot(): ParamsSnapshot<S>;
+
+// Subset snapshot
+observer.params.snapshot<K extends ParamKeys<S>>(
+  keys: readonly K[],
+): ParamsSubsetSnapshot<S, K>;
+
+// Coherent read window
+observer.params.within<T>(cb: (view: ObserverParamView<S>) => T): T;
+
+// Sequence counter
+observer.params.version(): PUSeq;
+```
+
+Semantics:
+
+- `snapshot()` / `snapshot(keys)`:
+
+  - same shapes as controller snapshots (scalars as numbers/booleans/enum **labels**; arrays as owned copies),
+  - uses the same degrade/budget machinery as controller snapshots.
+
+- `within(cb)`:
+
+  - executes `cb` inside a seqlock **read window**,
+  - exposes scalars as numbers/booleans/enum labels,
+  - exposes arrays as ephemeral `TypedArray` views valid only during `cb`.
+
+- `version()`:
+
+  - returns the param-domain sequence counter (`PUSeq`),
+  - useful for HUD change detection.
+
+---
+
+### `meters` (observer)
+
+```ts
+// Full snapshot of all meters
+observer.meters.snapshot(): MetersSnapshot<S>;
+
+// Subset snapshot
+observer.meters.snapshot<K extends MeterKeys<S>>(
+  keys: readonly K[],
+): MetersSubsetSnapshot<S, K>;
+
+// Coherent read window
+observer.meters.within<T>(cb: (view: ObserverMeterView<S>) => T): T;
+
+// Sequence counter
+observer.meters.version(): MUSeq;
+```
+
+Semantics:
+
+- `snapshot()` / `snapshot(keys)`:
+
+  - same shapes as controller meter snapshots (scalars as numbers/booleans; arrays as typed copies),
+  - suited for lower-frequency HUDs ("grab everything, then render").
+
+- `within(cb)`:
+
+  - gives the HUD an ephemeral, zero-copy `TypedArray` view into meter planes,
+  - ideal for higher-frequency visualizations (waveforms, spectrograms).
+
+- `version()`:
+
+  - returns the meter-domain sequence counter (`MUSeq`),
+  - useful for detecting whether meters changed without doing a full snapshot.
+
+Budget/degrade knobs are provided by `ObserverOptions.params` / `ObserverOptions.meters`, mirroring the controller/processor options: bounded spin/retry and choice between `'throw'` and `'returnLatest'`.
 
 ---
 
@@ -759,7 +791,7 @@ Key public types (simplified):
 export type PUSeq = number; // param-domain seqlock sequence
 export type MUSeq = number; // meter-domain seqlock sequence
 
-export type RangePolicy = 'clamp' | 'reject';
+export type RangePolicy = "clamp" | "reject";
 ```
 
 ### Value helpers
@@ -776,22 +808,16 @@ export type MeterValues<S extends SpecInput> = {
 };
 ```
 
-### Hydration patch
+These are used by:
 
-```ts
-/**
- * Patch shape for `params.hydrate()`.
- *
- * - Keys are spec param keys.
- * - Scalars use controller-visible types (numbers, booleans, enum labels).
- * - Arrays must be typed arrays (`Float32Array`, `Int32Array`, `Uint8Array`, etc.).
- */
-export type HydratePatch<S extends SpecInput> = {
-  readonly [K in ParamKeys<S>]?: ParamValueFor<S, K> | undefined;
-};
-```
+- `controller.params.hydrate(...)`,
+- `controller.params.snapshot(...)` (where present),
+- `controller.meters.snapshot(...)`,
+- observer snapshot helpers.
 
-### Controller / Processor options
+---
+
+### Controller / Processor / Observer options
 
 ```ts
 export interface ControllerOptions {
@@ -805,7 +831,7 @@ export interface ControllerOptions {
      * - 'returnLatest': return the latest successfully read values.
      * - 'throw': throw `binding.snapshotRetryExhausted`.
      */
-    readonly degrade?: 'returnLatest' | 'throw';
+    readonly degrade?: "returnLatest" | "throw";
 
     /** Max spin iterations per snapshot attempt. */
     readonly spinBudget?: number;
@@ -825,20 +851,40 @@ export interface ControllerOptions {
 
 export interface ProcessorOptions {
   readonly params?: {
+    /**
+     * Behavior when coherent reads cannot complete within budgets.
+     * - 'returnLatest': return the last successfully read values.
+     * - 'throw': throw `binding.coherentRetryExhausted`.
+     */
+    readonly degrade?: "returnLatest" | "throw";
+
     /** Max spin iterations per `within()` attempt. */
     readonly spinBudget?: number;
-    /** Max retry attempts before giving up and throwing. */
+
+    /** Max retry attempts before giving up. */
     readonly retryBudget?: number;
   };
 
   readonly meters?: {
+    /**
+     * Behavior when coherent publishes cannot complete within budgets.
+     * - 'returnLatest': keep previous values and return.
+     * - 'throw': throw `binding.coherentRetryExhausted`.
+     */
+    readonly degrade?: "returnLatest" | "throw";
+
     /** Max spin iterations per `publish()` attempt. */
     readonly spinBudget?: number;
-    /** Max retry attempts before giving up and throwing. */
+
+    /** Max retry attempts before giving up. */
     readonly retryBudget?: number;
   };
 }
 ```
+
+Observer bindings use a parallel `ObserverOptions` shape (same `degrade` / `spinBudget` / `retryBudget` knobs), applied to `params`/`meters` **reads** only. Observer options never affect writes because observers are read-only.
+
+---
 
 ### Binding & handoff types
 
@@ -855,6 +901,12 @@ export interface ProcessorBinding<S extends SpecInput> {
   dispose(): void;
 }
 
+export interface ObserverBinding<S extends SpecInput> {
+  readonly params: ObserverParams<S>;
+  readonly meters: ObserverMeters<S>;
+  dispose(): void;
+}
+
 /**
  * Opaque, serializable envelope for a given spec.
  * Type parameter S is used only at compile-time.
@@ -862,19 +914,42 @@ export interface ProcessorBinding<S extends SpecInput> {
 export type Handoff<S extends SpecInput = SpecInput> = unknown;
 
 /**
- * Opaque, rehydrated handoff on the consumer side.
- * Carries plan/meta information and backing references.
+ * Decoded and validated handoff on the consumer side.
  */
-export type ReceivedHandoff<S extends SpecInput = SpecInput> = unknown;
+export interface ReceivedHandoff<S extends SpecInput = SpecInput> {
+  readonly plan: Plan<S>;
+  readonly backing: Backing; // shared or shared-partitioned
+}
+```
 
-/** Backing variants. */
+---
+
+### Backing types
+
+```ts
+export interface SharedBacking {
+  readonly kind: "shared";
+  readonly sab: SharedArrayBuffer;
+  readonly byteLength: number;
+}
+
+export interface SharedPartitionedBacking {
+  readonly kind: "shared-partitioned";
+  readonly planes: Record<PlaneKey, SharedArrayBuffer>;
+}
+
+export interface WasmSharedBacking {
+  readonly kind: "wasm-shared";
+  readonly memory: WebAssembly.Memory;
+}
+
 export type Backing =
   | SharedBacking
   | SharedPartitionedBacking
   | WasmSharedBacking;
 ```
 
-`Plan<S>`, `SharedBacking`, `SharedPartitionedBacking`, `WasmSharedBacking`, `ControllerParams<S>`, `ControllerMeters<S>`, `ProcessorParams<S>`, and `ProcessorMeters<S>` are exported generics over `SpecInput` and covered by type tests.
+`Plan<S>`, `SharedBacking`, `SharedPartitionedBacking`, and `WasmSharedBacking` are exported generics over `SpecInput` and validated by type tests.
 
 ---
 
@@ -882,108 +957,68 @@ export type Backing =
 
 Error domains (grouped by concern), as exposed from the error registry:
 
-* `spec.*` — spec definition / DSL misuse
-* `plan.*` — planning/layout issues
-* `backing.*` — SAB / WASM allocation, mapping, and capacity
-* `handoff.*` — handoff envelopes and plan/backing verification
-* `binding.*` — controller/processor binding and runtime usage
-* `primitives.*` — low-level seqlock/atomic primitives and SWSR ring
-* `env.*` — environment/runtime capability checks
-* `diagnostics.*` — diagnostics and introspection
-* `internal.*` — internal invariants (`assertionFailed`, `unreachable`, etc.)
+- `spec.*` — spec definition / DSL misuse
+- `plan.*` — planning/layout issues
+- `backing.*` — SAB / WASM allocation, mapping, capacity
+- `handoff.*` — handoff envelopes and plan/backing verification
+- `binding.*` — controller/processor/observer binding and runtime usage
+- `primitives.*` — low-level seqlock/Atomics + SWSR ring primitives
+- `env.*` — environment/runtime capability checks
+- `diagnostics.*` — diagnostics and introspection
+- `internal.*` — internal invariants (`assertionFailed`, `unreachable`, etc.)
 
-Selected examples:
+Selected examples (non-exhaustive):
 
-* `spec.rangeInvalid`, `spec.enumInvalid`, `spec.arrayInvalid`
+- `spec.duplicateKey`, `spec.enumEmpty`, `spec.rangeInvalid`
 
-  * Thrown by `defineSpec` / DSL when ranges, enums, or array lengths are invalid.
+  - Misuse of the spec DSL.
 
-* `plan.failed`, `plan.overflowRisk`
+- `plan.overflowRisk`, `plan.invariant`
 
-  * Thrown when layout planning fails or risks overflowing numeric limits.
+  - Plan cannot be realized with safe integer sizes or hits a layout invariant.
 
-* `backing.allocFailed`
+- `backing.capacityInsufficient`, `backing.kindMismatch`
 
-  * Failure to allocate SAB/Wasm memory for a given plan or plane.
+  - Backing too small or wrong kind for a given plan.
 
-* `backing.allocUndersized`
+- `handoff.versionMismatch`, `handoff.specHashMismatch`, `handoff.invalidArtifact`
 
-  * Backing is smaller than `plan.bytesTotal` (or per-plane requirement).
+  - Handoff/plan compatibility issues.
 
-* `backing.wasmMemoryNotShared`
+- `binding.unknownKey`, `binding.shapeInvalid`, `binding.paramRange`
 
-  * `allocateWasmShared` called with a non-shared memory.
+  - Binding usage errors: unknown param/meter keys, wrong shapes, out-of-range values (with `rangePolicy: 'reject'`).
 
-* `handoff.specHashMismatch`, `handoff.versionMismatch`
+- `binding.snapshotRetryExhausted`
 
-  * `verifyHandoff` detected plan/layout incompatibility between local and remote plans.
+  - Cannot obtain a coherent controller/observer snapshot within configured budgets.
 
-* `handoff.backingMismatch`
+- `binding.coherentRetryExhausted`
 
-  * Backing byte lengths or plane layout are inconsistent with the plan.
+  - Coherent operations (`params.within`, `meters.publish`, observer `within`) cannot complete within configured budgets.
 
-* `handoff.invalidArtifact`
+- `primitives.seqlockTimeout`
 
-  * Handoff envelope is malformed, uses unsupported packing, or contains invalid backing descriptors.
+  - Low-level seqlock `tryRead` exhausted its internal budget.
 
-* `binding.paramRange`
+- `primitives.swsrRingInvalidLayout`
 
-  * Out-of-range param write under `rangePolicy: 'reject'`.
+  - SWSR ring layout invalid or inconsistent with expected header/region sizes.
 
-* `binding.paramInvalidValue`
+- `env.unsupported`
 
-  * Param value has the wrong shape/type (e.g., enum label not in the spec's `values`).
+  - Environment does not support required primitives (e.g. `SharedArrayBuffer`).
 
-* `binding.shapeInvalid`
+- `env.coopCoepRequired`
 
-  * Wrong array type/length for params or meters.
+  - Indicates missing COOP/COEP when SAB is required in a browser.
 
-* `binding.unknownKey`
+- `diagnostics.counterInvalid`, `diagnostics.featureInvalid`
 
-  * Param/meter key not present in the spec.
+  - Diagnostics counters/feature flags invalid or out-of-range.
 
-* `binding.snapshotIntoTypeMismatch`,
-  `binding.snapshotIntoLengthMismatch`
+- `internal.assertionFailed`, `internal.unreachable`, `internal.exhaustiveness`
 
-  * Using `params.snapshot({ into })` / `meters.snapshot({ into })` with mismatched typed arrays.
+  - Internal invariants violated; these indicate bugs in Seqlok itself.
 
-* `binding.snapshotRetryExhausted`
-
-  * Cannot obtain a coherent controller snapshot within configured budgets.
-
-* `binding.coherentRetryExhausted`
-
-  * Processor `within()` or `publish()` cannot complete a coherent operation within budgets.
-
-* `primitives.seqlockTimeout`
-
-  * Seqlock `tryRead` exhausted its internal budget and could not acquire a coherent snapshot.
-
-* `primitives.swsrRingInvalidLayout`
-
-  * SWSR ring layout invalid or inconsistent with expected header/region sizes.
-
-* `env.unsupported`
-
-  * Environment does not support required primitives (e.g. `SharedArrayBuffer`).
-
-* `env.coopCoepRequired`
-
-  * Indicates missing COOP/COEP when SAB is required in a browser.
-
-* `diagnostics.counterInvalid`, `diagnostics.featureInvalid`
-
-  * Counters or diagnostics feature flags are invalid or out-of-range.
-
-* `internal.assertionFailed`, `internal.unreachable`, `internal.exhaustiveness`
-
-  * Internal invariants violated; these indicate bugs and should never be triggered in normal usage.
-
-All error codes carry structured details and meta:
-
-* `severity` (e.g. `'warning' | 'error' | 'fatal'`)
-* `recoverable` (boolean)
-* `boundarySafe` (boolean, for “safe to send across process/worker boundary”)
-* a detail payload type (e.g. `RangeDetails`, `EnumDetails`, `BufferDetails`, …)
-
-They are registered in the central error registry and exercised by unit tests.
+All error codes are centralized in the error registry and covered by tests to prevent accidental renames or silent semantic changes.

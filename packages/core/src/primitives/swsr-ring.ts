@@ -1,4 +1,4 @@
-import { invariant } from '../errors/invariant';
+import { invariant } from "../errors/invariant";
 
 /**
  * Number of 32-bit header words reserved for a SWSR ring.
@@ -153,15 +153,15 @@ export function allocateSwsrRing(layout: SwsrRingLayout): SwsrRingBacking {
 
   invariant(
     Number.isInteger(capacity) && capacity > 0,
-    'primitives.swsrRingInvalidLayout',
-    'SwsrRing: capacity must be a positive integer',
+    "primitives.swsrRingInvalidLayout",
+    "SwsrRing: capacity must be a positive integer",
     { capacity, wordsPerSlot },
   );
 
   invariant(
     Number.isInteger(wordsPerSlot) && wordsPerSlot > 0,
-    'primitives.swsrRingInvalidLayout',
-    'SwsrRing: wordsPerSlot must be a positive integer',
+    "primitives.swsrRingInvalidLayout",
+    "SwsrRing: wordsPerSlot must be a positive integer",
     { capacity, wordsPerSlot },
   );
 

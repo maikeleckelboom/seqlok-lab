@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { mapViews } from '../../src/backing/map-views';
-import { planLayout } from '../../src/plan/layout';
-import { specFromPlaneBytes } from '../helpers/spec-from-bytes';
+import { mapViews } from "../../src/backing/map-views";
+import { planLayout } from "../../src/plan/layout";
+import { specFromPlaneBytes } from "../helpers/spec-from-bytes";
 
 const BYTES_F32 = 4;
 
-describe('Map Views (Contiguous Layout)', () => {
-  it('correctly maps zero-length byte planes while preserving subsequent lock views', () => {
+describe("Map Views (Contiguous Layout)", () => {
+  it("correctly maps zero-length byte planes while preserving subsequent lock views", () => {
     const planeSizes = {
       // Define non-zero predecessor planes to establish non-zero offsets
       PF32: 8 * BYTES_F32,
@@ -25,7 +25,7 @@ describe('Map Views (Contiguous Layout)', () => {
 
     const plan = planLayout(specFromPlaneBytes(planeSizes));
     const sab = new SharedArrayBuffer(plan.bytesTotal);
-    const v = mapViews(plan, { kind: 'shared', sab });
+    const v = mapViews(plan, { kind: "shared", sab });
 
     // The boolean/byte plane should reflect the requested zero-length exactly
     expect(v.params.PB.byteLength).toBe(0);

@@ -121,7 +121,7 @@ All shared state is defined **up front** via a typed DSL. For example:
 const spec = defineSpec(({ param, meter }) => ({
   params: {
     frequency: param.f32({ min: 20, max: 20_000 }),
-    waveform: param.enum(['sine', 'square', 'saw']),
+    waveform: param.enum(["sine", "square", "saw"]),
     harmonics: param.f32.array({ length: 16 }),
   },
   meters: {
@@ -154,10 +154,10 @@ Seqlok leans heavily on TypeScript so that many illegal states are just **unrepr
 
 ```ts
 // ✅ Type-safe: TS knows 'waveform' is 'sine' | 'square' | 'saw'
-controller.params.set('waveform', 'sine');
+controller.params.set("waveform", "sine");
 
 // ❌ Compile-time error
-controller.params.set('waveform', 'triangle');
+controller.params.set("waveform", "triangle");
 //            ~~~~ Type '"triangle"' is not assignable to type '"sine" | "square" | "saw"'.
 
 // ✅ Array access: TS knows harmonics is a read-only Float32Array-like view
@@ -466,7 +466,7 @@ Examples:
 const spec = defineSpec(({ param, meter }) => ({
   params: {
     frequency: param.f32({ min: 20, max: 20_000 }),
-    filterType: param.enum(['lowpass', 'highpass', 'bandpass']),
+    filterType: param.enum(["lowpass", "highpass", "bandpass"]),
     drive: param.f32({ min: 0, max: 10 }),
   },
   meters: {
@@ -539,7 +539,7 @@ const processor = bindProcessor(received);
 const spec = defineSpec(({ param, meter }) => ({
   params: {
     bitrateKbps: param.i32({ min: 128, max: 50_000 }),
-    codec: param.enum(['h264', 'h265', 'vp9', 'av1']),
+    codec: param.enum(["h264", "h265", "vp9", "av1"]),
   },
   meters: {
     framesProcessed: meter.f32(),

@@ -9,39 +9,40 @@
  */
 
 // SPEC
-export { defineSpec, type ParamBuilders, type MeterBuilders } from './spec/define';
-export type { SpecInput } from './spec/types';
+export {
+  defineSpec,
+  type ParamBuilders,
+  type MeterBuilders,
+} from "./spec/define";
+export type { SpecInput } from "./spec/types";
 
 // PLAN
-export { planLayout } from './plan/layout';
+export { planLayout } from "./plan/layout";
 
 // BACKING
-export { allocateShared } from './backing/allocate-shared';
-export { allocateSharedPartitioned } from './backing/allocate-shared-partitioned';
-export { allocateWasmShared } from './backing/allocate-wasm-shared';
+export { allocateShared } from "./backing/allocate-shared";
+export { allocateSharedPartitioned } from "./backing/allocate-shared-partitioned";
+export { allocateWasmShared } from "./backing/allocate-wasm-shared";
 
 // BINDING
-export { bindController } from './binding/controller';
-export { bindProcessor } from './binding/processor';
+export { bindController } from "./binding/controller";
+export { bindProcessor } from "./binding/processor";
+export { bindObserver } from "./binding/observer";
 
 // BINDING TYPES
 export type {
-  // Core binding interfaces
   ControllerBinding,
   ProcessorBinding,
+  ObserverBinding,
   ControllerParams,
   ProcessorParams,
+  ObserverParams,
   ControllerMeters,
   ProcessorMeters,
-
-  // Param value
+  ObserverMeters,
   ParamValueFor,
   ScalarParamPatch,
-
-  // Meter value
   MeterValueFor,
-
-  // Snapshot
   ParamsSnapshot,
   MetersSnapshot,
   SnapshotParamsObject,
@@ -50,21 +51,20 @@ export type {
   SnapshotMetersOptions,
   IntoForParams,
   IntoForMeters,
-
-  // Options
   ControllerOptions,
   ProcessorOptions,
+  ObserverOptions,
   RangePolicy,
-} from './binding/common/types';
+} from "./binding/common/types";
 
 // HANDOFF
-export { buildHandoff, receiveHandoff, verifyHandoff } from './handoff/handoff';
-export type { Handoff, HandoffPacking, ReceivedHandoff } from './handoff/types';
+export { buildHandoff, receiveHandoff, verifyHandoff } from "./handoff/handoff";
+export type { Handoff, HandoffPacking, ReceivedHandoff } from "./handoff/types";
 
 // ERRORS
-export { SeqlokError, isSeqlokError } from './errors/error';
-export { getErrorMeta, getErrorMessage, isErrorCode } from './errors/registry';
-export { interpretHealth } from './errors/health';
+export { SeqlokError, isSeqlokError } from "./errors/error";
+export { getErrorMeta, getErrorMessage, isErrorCode } from "./errors/registry";
+export { interpretHealth } from "./errors/health";
 
 // ERROR TYPES
 export type {
@@ -73,7 +73,7 @@ export type {
   ErrorDetails,
   ErrorMeta,
   HealthInterpretation,
-} from './errors/types';
+} from "./errors/types";
 
 // ENUM UTILITIES
 export {
@@ -85,7 +85,7 @@ export {
   enumPaletteFor,
   type EnumLabel,
   type EnumKeyOf,
-} from './spec/enums';
+} from "./spec/enums";
 
 // TYPE UTILITIES
 export type {
@@ -95,7 +95,7 @@ export type {
   ProcessorMeterView,
   SnapshotOf,
   SnapshotMetersOf,
-} from './types';
+} from "./types";
 
 // PRIMITIVES
 export {
@@ -107,7 +107,7 @@ export {
   allocateSwsrRing,
   bindSwsrRingProducer,
   bindSwsrRingConsumer,
-} from './primitives/swsr-ring';
+} from "./primitives/swsr-ring";
 
 export type {
   SwsrRingLayout,
@@ -117,4 +117,8 @@ export type {
   SwsrRingProducer,
   SwsrRingConsumer,
   SwsrRingStats,
-} from './primitives/swsr-ring';
+} from "./primitives/swsr-ring";
+
+// CONTEXT
+export type { SharedContext } from "./context/types";
+export { createSharedContext } from "./context/create";

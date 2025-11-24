@@ -27,25 +27,25 @@ export type SpecHash = string;
  */
 export type ScalarParamDef =
   // f32 with no bounds
-  | { readonly kind: 'f32' }
+  | { readonly kind: "f32" }
   // f32 with min only (preserves literal type)
-  | { readonly kind: 'f32'; readonly min: number }
+  | { readonly kind: "f32"; readonly min: number }
   // f32 with max only (preserves literal type)
-  | { readonly kind: 'f32'; readonly max: number }
+  | { readonly kind: "f32"; readonly max: number }
   // f32 with both min and max (preserves literal types)
-  | { readonly kind: 'f32'; readonly min: number; readonly max: number }
+  | { readonly kind: "f32"; readonly min: number; readonly max: number }
   // i32 with no bounds
-  | { readonly kind: 'i32' }
+  | { readonly kind: "i32" }
   // i32 with min only (preserves literal type)
-  | { readonly kind: 'i32'; readonly min: number }
+  | { readonly kind: "i32"; readonly min: number }
   // i32 with max only (preserves literal type)
-  | { readonly kind: 'i32'; readonly max: number }
+  | { readonly kind: "i32"; readonly max: number }
   // i32 with both min and max (preserves literal types)
-  | { readonly kind: 'i32'; readonly min: number; readonly max: number }
+  | { readonly kind: "i32"; readonly min: number; readonly max: number }
   // bool flag
-  | { readonly kind: 'bool' }
+  | { readonly kind: "bool" }
   // enum with tuple type preservation
-  | { readonly kind: 'enum'; readonly values: readonly string[] };
+  | { readonly kind: "enum"; readonly values: readonly string[] };
 
 /**
  * Array param definition with literal length preservation.
@@ -54,11 +54,11 @@ export type ScalarParamDef =
  * string labels, but are stored as integer indices internally.
  */
 export type ArrayParamDef =
-  | { readonly kind: 'f32.array'; readonly length: number }
-  | { readonly kind: 'i32.array'; readonly length: number }
-  | { readonly kind: 'bool.array'; readonly length: number }
+  | { readonly kind: "f32.array"; readonly length: number }
+  | { readonly kind: "i32.array"; readonly length: number }
+  | { readonly kind: "bool.array"; readonly length: number }
   | {
-      readonly kind: 'enum.array';
+      readonly kind: "enum.array";
       readonly values: readonly string[];
       readonly length: number;
     };
@@ -72,19 +72,19 @@ export type ParamDef = ScalarParamDef | ArrayParamDef;
  * Scalar meter definition (single value per key).
  */
 export type ScalarMeterDef =
-  | { readonly kind: 'f32' }
-  | { readonly kind: 'f64' }
-  | { readonly kind: 'u32' }
-  | { readonly kind: 'bool' };
+  | { readonly kind: "f32" }
+  | { readonly kind: "f64" }
+  | { readonly kind: "u32" }
+  | { readonly kind: "bool" };
 
 /**
  * Array meter definition with literal length preservation.
  */
 export type ArrayMeterDef =
-  | { readonly kind: 'f32.array'; readonly length: number }
-  | { readonly kind: 'f64.array'; readonly length: number }
-  | { readonly kind: 'u32.array'; readonly length: number }
-  | { readonly kind: 'bool.array'; readonly length: number };
+  | { readonly kind: "f32.array"; readonly length: number }
+  | { readonly kind: "f64.array"; readonly length: number }
+  | { readonly kind: "u32.array"; readonly length: number }
+  | { readonly kind: "bool.array"; readonly length: number };
 
 /**
  * Union of all meter definitions.
@@ -118,13 +118,13 @@ export interface SpecInput {
  * accidental `string` blow-ups in generic code.
  */
 type ParamsOf<S extends SpecInput> =
-  S['params'] extends Readonly<Record<string, ParamDef>> ? S['params'] : object;
+  S["params"] extends Readonly<Record<string, ParamDef>> ? S["params"] : object;
 
 /**
  * Helper: meters mapping for a spec, or `{}` when absent.
  */
 type MetersOf<S extends SpecInput> =
-  S['meters'] extends Readonly<Record<string, MeterDef>> ? S['meters'] : object;
+  S["meters"] extends Readonly<Record<string, MeterDef>> ? S["meters"] : object;
 
 /**
  * Strip readonly from a shape.

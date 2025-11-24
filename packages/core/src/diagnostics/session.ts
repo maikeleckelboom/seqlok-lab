@@ -8,9 +8,9 @@
  * - Integrates with the error registry for consistent diagnostics reporting.
  */
 
-import { createError } from '../errors/error';
+import { createError } from "../errors/error";
 
-import type { DiagnosticsCounterDetails } from '../errors/codes/diagnostics';
+import type { DiagnosticsCounterDetails } from "../errors/codes/diagnostics";
 
 /**
  * Metadata for a diagnostics session.
@@ -44,7 +44,9 @@ function assertValidTimestamp(field: string, timestamp: number): void {
   const now = Date.now();
 
   const isValid =
-    Number.isFinite(timestamp) && timestamp > 0 && timestamp <= now + FUTURE_TOLERANCE_MS;
+    Number.isFinite(timestamp) &&
+    timestamp > 0 &&
+    timestamp <= now + FUTURE_TOLERANCE_MS;
 
   if (!isValid) {
     const details: DiagnosticsCounterDetails = {
@@ -53,8 +55,8 @@ function assertValidTimestamp(field: string, timestamp: number): void {
     };
 
     throw createError(
-      'diagnostics.counterInvalid',
-      'Diagnostics counter invalid',
+      "diagnostics.counterInvalid",
+      "Diagnostics counter invalid",
       details,
     );
   }
@@ -81,7 +83,7 @@ export function startDiagnosticsSession(
     );
   }
 
-  assertValidTimestamp('startTime', startTime);
+  assertValidTimestamp("startTime", startTime);
 
   const session: DiagnosticsSession = {
     id,
@@ -110,17 +112,17 @@ export function endDiagnosticsSession(
     return null;
   }
 
-  assertValidTimestamp('endTime', endTime);
+  assertValidTimestamp("endTime", endTime);
 
   if (endTime < activeSession.startTime) {
     const details: DiagnosticsCounterDetails = {
-      name: 'session.endTime',
+      name: "session.endTime",
       value: endTime,
     };
 
     throw createError(
-      'diagnostics.counterInvalid',
-      'Diagnostics counter invalid',
+      "diagnostics.counterInvalid",
+      "Diagnostics counter invalid",
       details,
     );
   }
@@ -147,7 +149,9 @@ export function getActiveDiagnosticsSession(): DiagnosticsSession | null {
  * @remarks
  * For active sessions, uses `Date.now()` as the end.
  */
-export function getDiagnosticsSessionDuration(session: DiagnosticsSession): number {
+export function getDiagnosticsSessionDuration(
+  session: DiagnosticsSession,
+): number {
   const end = session.endTime ?? Date.now();
   return end - session.startTime;
 }

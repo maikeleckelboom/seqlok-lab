@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   allocateShared,
@@ -7,14 +7,14 @@ import {
   defineSpec,
   planLayout,
   receiveHandoff,
-} from '../../src';
-import { mapViews } from '../../src/backing/map-views';
-import { isSeqlokError, type SeqlokError } from '../../src/errors/error';
+} from "../../src";
+import { mapViews } from "../../src/backing/map-views";
+import { isSeqlokError, type SeqlokError } from "../../src/errors/error";
 
-describe('Processor Params: Coherent Read Transaction', () => {
-  it('propagates binding.coherentRetryExhausted when lock contention exceeds budget', () => {
+describe("Processor Params: Coherent Read Transaction", () => {
+  it("propagates binding.coherentRetryExhausted when lock contention exceeds budget", () => {
     const spec = defineSpec(({ param, meter }) => ({
-      id: 'processor-within-coherence',
+      id: "processor-within-coherence",
       params: {
         gain: param.f32({ min: 0, max: 2 }),
       },
@@ -49,7 +49,7 @@ describe('Processor Params: Coherent Read Transaction', () => {
       processor.params.within(() => {
         // If this executes, the coherence check failed to block the read
         throw new Error(
-          'processor.params.within callback should not be invoked when coherent retries are exhausted',
+          "processor.params.within callback should not be invoked when coherent retries are exhausted",
         );
       });
     } catch (err) {
@@ -58,12 +58,14 @@ describe('Processor Params: Coherent Read Transaction', () => {
 
     // Verify the error structure matches the expected contract
     if (!isSeqlokError(thrown)) {
-      throw new Error('Expected processor.params.within to throw a SeqlokError');
+      throw new Error(
+        "Expected processor.params.within to throw a SeqlokError",
+      );
     }
 
-    const err = thrown as SeqlokError<'binding.coherentRetryExhausted'>;
+    const err = thrown as SeqlokError<"binding.coherentRetryExhausted">;
 
-    expect(err.code).toBe('binding.coherentRetryExhausted');
-    expect(err.details.where).toBe('processor.params.within');
+    expect(err.code).toBe("binding.coherentRetryExhausted");
+    expect(err.details.where).toBe("processor.params.within");
   });
 });

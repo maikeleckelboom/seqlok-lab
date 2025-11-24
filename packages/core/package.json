@@ -1,6 +1,6 @@
 {
   "name": "@seqlok/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -16,33 +16,41 @@
     },
     "./package.json": "./package.json"
   },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "bench": "vitest bench --reporter=verbose --run",
+    "bench:format": "tsx scripts/format-bench.ts --clean",
+    "bench:report": "pnpm run bench && pnpm run bench:format",
+    "lint": "eslint src tests bench scripts",
+    "lint:fix": "eslint src tests bench scripts --fix",
+    "format": "prettier --ignore-path ../../.prettierignore --write .",
+    "clean": "rimraf dist .eslintcache node_modules/.vite node_modules/.cache pnpm-debug.log",
+    "purge": "pnpm run clean && rimraf node_modules",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
-    "bench": "vitest bench --reporter=verbose --run",
-    "bench:format": "tsx scripts/format-bench.ts",
-    "bench:report": "pnpm run bench && pnpm bench:format",
-    "lint": "eslint src tests bench scripts",
-    "lint:fix": "eslint src tests bench scripts --fix",
-    "clean": "rimraf dist .eslintcache node_modules/.vite node_modules/.cache pnpm-debug.log",
     "test:types": "tsc -b --noEmit --pretty",
-    "format": "prettier --write ."
+    "build": "pnpm run clean && vite build && rollup -c rollup.dts.config.mts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "eslint-import-resolver-typescript": "catalog:",
     "eslint-plugin-import": "catalog:",
     "eslint-plugin-regex": "catalog:",
     "fast-check": "catalog:",
     "globals": "catalog:",
+    "rollup": "catalog:",
+    "rollup-plugin-dts": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@vitest/coverage-v8": "catalog:"
   }
 }

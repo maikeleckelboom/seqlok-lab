@@ -1,18 +1,18 @@
-import { describe, it, expectTypeOf } from 'vitest';
+import { describe, it, expectTypeOf } from "vitest";
 
-import { allocateShared } from '../../src/backing/allocate-shared';
-import { bindProcessor } from '../../src/binding/processor';
-import { buildHandoff, receiveHandoff } from '../../src/handoff/handoff';
-import { planLayout } from '../../src/plan/layout';
-import { defineSpec } from '../../src/spec/define';
+import { allocateShared } from "../../src/backing/allocate-shared";
+import { bindProcessor } from "../../src/binding/processor";
+import { buildHandoff, receiveHandoff } from "../../src/handoff/handoff";
+import { planLayout } from "../../src/plan/layout";
+import { defineSpec } from "../../src/spec/define";
 
-import type { ProcessorBinding } from '../../src/binding/common/types';
-import type { Handoff, ReceivedHandoff } from '../../src/handoff/types';
+import type { ProcessorBinding } from "../../src/binding/common/types";
+import type { Handoff, ReceivedHandoff } from "../../src/handoff/types";
 
-describe('Typed Handoff → receiveHandoff → bindProcessor: Inference Contracts', () => {
-  it('preserves DemoSpec through the pipeline', () => {
+describe("Typed Handoff → receiveHandoff → bindProcessor: Inference Contracts", () => {
+  it("preserves DemoSpec through the pipeline", () => {
     const spec = defineSpec(({ param, meter }) => ({
-      id: 'demo',
+      id: "demo",
       params: {
         timeRatio: param.f32({ min: 0.25, max: 4 }),
         coeffs: param.f32.array(8),

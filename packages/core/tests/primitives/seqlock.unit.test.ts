@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   beginWrite,
@@ -6,7 +6,7 @@ import {
   publish,
   type SeqPair,
   tryRead,
-} from '../../src/primitives/seqlock';
+} from "../../src/primitives/seqlock";
 
 /**
  * Minimal local factory for isolation; avoids shared test utils dependencies.
@@ -21,8 +21,8 @@ function pair(): { p: SeqPair; u32: Uint32Array; dataIndex: number } {
   return { p, u32, dataIndex };
 }
 
-describe('Seqlock Primitives', () => {
-  it('publish increments SEQ exactly once and maintains even LOCK parity', () => {
+describe("Seqlock Primitives", () => {
+  it("publish increments SEQ exactly once and maintains even LOCK parity", () => {
     const { p } = pair();
     // Use nullish coalescing to satisfy strict null checks without non-null assertions
     const seq0 = (p.u32[p.seqIndex] ?? 0) >>> 0;
@@ -42,7 +42,7 @@ describe('Seqlock Primitives', () => {
     expect(lock1 - lock0).toBe(2);
   });
 
-  it('beginWrite/endWrite cycle toggles LOCK parity and commits sequence once', () => {
+  it("beginWrite/endWrite cycle toggles LOCK parity and commits sequence once", () => {
     const { p } = pair();
     const lock0 = (p.u32[p.lockIndex] ?? 0) >>> 0;
     const seq0 = (p.u32[p.seqIndex] ?? 0) >>> 0;
@@ -62,7 +62,7 @@ describe('Seqlock Primitives', () => {
     expect(seq1).toBe((seq0 + 1) >>> 0);
   });
 
-  it('tryRead returns coherent value when uncontended', () => {
+  it("tryRead returns coherent value when uncontended", () => {
     const { p, u32, dataIndex } = pair();
     publish(p, () => {
       u32[dataIndex] = 42;
@@ -75,14 +75,17 @@ describe('Seqlock Primitives', () => {
     expect(res.status.retries).toBeGreaterThanOrEqual(0);
   });
 
-  it('tryRead returns fallback (ok=false) when writer holds LOCK (odd state)', () => {
+  it("tryRead returns fallback (ok=false) when writer holds LOCK (odd state)", () => {
     const { p, u32, dataIndex } = pair();
     u32[dataIndex] = 7;
 
     beginWrite(p);
     try {
       // Set 0 retries to fail immediately on lock contention
-      const res = tryRead(p, () => u32[dataIndex], { spinBudget: 1, retryBudget: 0 });
+      const res = tryRead(p, () => u32[dataIndex], {
+        spinBudget: 1,
+        retryBudget: 0,
+      });
 
       expect(res.ok).toBe(false);
       // Value is a best-effort capture
@@ -93,7 +96,7 @@ describe('Seqlock Primitives', () => {
     }
   });
 
-  it('handles SEQ integer overflow (wraparound) while remaining readable', () => {
+  it("handles SEQ integer overflow (wraparound) while remaining readable", () => {
     const { p, u32, dataIndex } = pair();
 
     // Force SEQ to max u32 to test overflow behavior
@@ -111,7 +114,7 @@ describe('Seqlock Primitives', () => {
     expect(r.value).toBe(1234);
   });
 
-  it('sequential publishes increment SEQ by 2 and maintain LOCK parity', () => {
+  it("sequential publishes increment SEQ by 2 and maintain LOCK parity", () => {
     const { p } = pair();
     const seq0 = (p.u32[p.seqIndex] ?? 0) >>> 0;
     const lock0 = (p.u32[p.lockIndex] ?? 0) >>> 0;
@@ -130,7 +133,7 @@ describe('Seqlock Primitives', () => {
     expect(lock - lock0).toBe(4);
   });
 
-  it('bumps seq and unlocks when publish callback throws', () => {
+  it("bumps seq and unlocks when publish callback throws", () => {
     const { p, u32, dataIndex } = pair();
 
     // Seed a known value in the payload and capture initial header words.
@@ -143,7 +146,7 @@ describe('Seqlock Primitives', () => {
       publish(p, () => {
         // Partial write: mutate the payload, then throw.
         u32[dataIndex] = 2;
-        throw new Error('boom');
+        throw new Error("boom");
       });
     }).toThrowError(/boom/);
 

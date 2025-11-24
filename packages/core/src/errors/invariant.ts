@@ -8,9 +8,9 @@
  * - Used for internal assertions and preconditions throughout the codebase.
  */
 
-import { createError } from './error';
+import { createError } from "./error";
 
-import type { ErrorCode, ErrorPayload } from './types';
+import type { ErrorCode, ErrorPayload } from "./types";
 
 export function invariant<C extends ErrorCode>(
   condition: unknown,

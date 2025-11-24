@@ -1,27 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { allocateShared } from '../../src/backing/allocate-shared';
-import { mapViews } from '../../src/backing/map-views';
-import { type SeqlokError } from '../../src/errors/error';
-import { planLayout } from '../../src/plan/layout';
-import { defineSpec } from '../../src/spec/define';
+import { allocateShared } from "../../src/backing/allocate-shared";
+import { mapViews } from "../../src/backing/map-views";
+import { type SeqlokError } from "../../src/errors/error";
+import { planLayout } from "../../src/plan/layout";
+import { defineSpec } from "../../src/spec/define";
 
 /**
  * Type guard to identify Seqlok specific errors.
  * Validates the presence of `name`, `message`, and `code` properties.
  */
 export function isSeqlokError(x: unknown): x is SeqlokError {
-  if (typeof x !== 'object' || x === null) {
+  if (typeof x !== "object" || x === null) {
     return false;
   }
   const obj = x as Record<string, unknown>;
-  return obj.name === 'SeqlokError' && typeof obj.message === 'string' && 'code' in obj;
+  return (
+    obj.name === "SeqlokError" &&
+    typeof obj.message === "string" &&
+    "code" in obj
+  );
 }
 
-describe('Map Views: Runtime Behavior & Validation', () => {
-  it('maps contiguous backing memory to typed arrays matching the planned layout', () => {
+describe("Map Views: Runtime Behavior & Validation", () => {
+  it("maps contiguous backing memory to typed arrays matching the planned layout", () => {
     const spec = defineSpec(({ param, meter }) => ({
-      id: 'demo-mapping',
+      id: "demo-mapping",
       params: {
         table: param.f32.array(8),
         flags: param.bool.array(3),
@@ -47,9 +51,9 @@ describe('Map Views: Runtime Behavior & Validation', () => {
     expect(views.params.PB.length).toBe(plan.planes.PB);
   });
 
-  it('throws backing.allocUndersized when the provided SharedArrayBuffer is smaller than the plan requires', () => {
+  it("throws backing.allocUndersized when the provided SharedArrayBuffer is smaller than the plan requires", () => {
     const spec = defineSpec(({ param }) => ({
-      id: 'undersized-validation',
+      id: "undersized-validation",
       params: {
         table: param.f32.array(16),
       },
@@ -59,7 +63,7 @@ describe('Map Views: Runtime Behavior & Validation', () => {
 
     // Create a buffer that is intentionally too small (short by 8 bytes)
     const sab = new SharedArrayBuffer(Math.max(0, plan.bytesTotal - 8));
-    const backing = { kind: 'shared' as const, sab };
+    const backing = { kind: "shared" as const, sab };
 
     let thrown: unknown;
     try {
@@ -71,10 +75,10 @@ describe('Map Views: Runtime Behavior & Validation', () => {
     expect(isSeqlokError(thrown)).toBe(true);
 
     if (isSeqlokError(thrown)) {
-      expect(thrown.code).toBe('backing.allocUndersized');
+      expect(thrown.code).toBe("backing.allocUndersized");
       expect(thrown.message).toMatch(/smaller than required|undersized/i);
     } else {
-      throw new Error('Expected mapViews to throw a SeqlokError');
+      throw new Error("Expected mapViews to throw a SeqlokError");
     }
   });
 });

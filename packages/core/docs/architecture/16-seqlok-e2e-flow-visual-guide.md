@@ -4,17 +4,17 @@
 
 This document is the "single page mental model" for Seqlok's end-to-end flow:
 
-* Main thread (controller) defines the shared state and owns **params**.
-* Worker / AudioWorklet (processor) owns **meters** and the real-time loop.
-* Both talk via a **plan-driven shared memory layout** (planes + seqlocks).
+- Main thread (controller) defines the shared state and owns **params**.
+- Worker / AudioWorklet (processor) owns **meters** and the real-time loop.
+- Both talk via a **plan-driven shared memory layout** (planes + seqlocks).
 
 For deeper dives, see:
 
-* `03-seqlok-concurrency-model-and-roles.md`
-* `07-seqlok-api-shape-rationale.md`
-* `10-seqlok-primitives-and-seqlock.md`
-* `11-seqlok-backing-and-plane-layout.md`
-* `12-coherent-reads-and-planes.md`
+- `03-seqlok-concurrency-model-and-roles.md`
+- `07-seqlok-api-shape-rationale.md`
+- `10-seqlok-primitives-and-seqlock.md`
+- `11-seqlok-backing-and-plane-layout.md`
+- `12-coherent-reads-and-planes.md`
 
 ---
 
@@ -52,8 +52,7 @@ graph TB
   H --> Q
 ```
 
-> **Verification note:**
-> `verifyHandoff(plan, received)` exists for diagnostics/tests (e.g. asserting a handoff matches a locally planned
+> **Verification note:** > `verifyHandoff(plan, received)` exists for diagnostics/tests (e.g. asserting a handoff matches a locally planned
 > layout). It can run on the controller side or in a non-RT worker. It is **not** part of the processor's hot path and
 > is omitted from the canonical runtime pipeline above.
 
@@ -141,9 +140,9 @@ graph LR
   M4 --> R3[MU: LOCK=38, SEQ=19]
 ```
 
-* **Plan** computes exactly how each param/meter key maps into these planes (offsets + lengths).
-* **Backing** allocates concrete memory and hosts the TypedArray views.
-* **Bindings** use that plan to enforce safe, coherent access on each side.
+- **Plan** computes exactly how each param/meter key maps into these planes (offsets + lengths).
+- **Backing** allocates concrete memory and hosts the TypedArray views.
+- **Bindings** use that plan to enforce safe, coherent access on each side.
 
 ---
 
@@ -187,9 +186,9 @@ stateDiagram-v2
 
 Key properties:
 
-* **Single writer per domain** (params vs meters).
-* Readers are **lock-free** and **retry-based** with bounded spin/retry budgets.
-* On success, readers see a **coherent snapshot**; they never observe partially written payload for that family.
+- **Single writer per domain** (params vs meters).
+- Readers are **lock-free** and **retry-based** with bounded spin/retry budgets.
+- On success, readers see a **coherent snapshot**; they never observe partially written payload for that family.
 
 ---
 
@@ -227,20 +226,20 @@ graph TB
 
 Story in plain terms:
 
-* The DSL (`defineSpec`) defines a **single source of truth**: params + meters.
+- The DSL (`defineSpec`) defines a **single source of truth**: params + meters.
 
-* The spec type `S` drives:
+- The spec type `S` drives:
 
-  * Valid param / meter keys.
-  * The value types per key.
-  * The shapes of controller/processor bindings.
+  - Valid param / meter keys.
+  - The value types per key.
+  - The shapes of controller/processor bindings.
 
-* At runtime, you only get strongly-typed APIs:
+- At runtime, you only get strongly-typed APIs:
 
-  * `controller.params.set('gain', numberInRange)`
-  * `controller.meters.snapshot(...)`
-  * `processor.params.within(params => { … })`
-  * `processor.meters.publish(writer => { … })`
+  - `controller.params.set('gain', numberInRange)`
+  - `controller.meters.snapshot(...)`
+  - `processor.params.within(params => { … })`
+  - `processor.meters.publish(writer => { … })`
 
 Invalid keys/values are rejected at compile time; invalid layouts/backings are rejected at bind time.
 
@@ -282,34 +281,34 @@ gantt
 
 1. **Two independent domains**
 
-  * Params and meters sit in **separate planes** (`PF32/PI32/PB/PU` vs `MF32/MF64/MU32/MU`) with **separate seqlocks**.
-  * Controller writes params; processor writes meters. There's no cross-domain write contention.
+- Params and meters sit in **separate planes** (`PF32/PI32/PB/PU` vs `MF32/MF64/MU32/MU`) with **separate seqlocks**.
+- Controller writes params; processor writes meters. There's no cross-domain write contention.
 
 2. **Where coherence actually lives**
 
-  * **Params:** all coherent param reads go through `processor.params.within(...)`, which is seqlock-guarded on `PU`.
-  * **Meters (writer):** all coherent meter commits go through `processor.meters.publish(...)`, which is seqlock-guarded
-    on `MU`.
-  * **Meters (controller):** `controller.meters.snapshot(...)` is a **cold-path, best-effort read** – ideal for HUDs and
-    tooling, allowed to observe mixed frames under contention.
-  * **Meters (observer, future):** visualizer-grade coherent meter snapshots live in a future **observer binding**
-    (e.g. in `@seqlok/compose`), which will use seqlock-aware helpers over `MU` with budgets and degrade policy.
+- **Params:** all coherent param reads go through `processor.params.within(...)`, which is seqlock-guarded on `PU`.
+- **Meters (writer):** all coherent meter commits go through `processor.meters.publish(...)`, which is seqlock-guarded
+  on `MU`.
+- **Meters (controller):** `controller.meters.snapshot(...)` is a **cold-path, best-effort read** – ideal for HUDs and
+  tooling, allowed to observe mixed frames under contention.
+- **Meters (observer, future):** visualizer-grade coherent meter snapshots live in a future **observer binding**
+  (e.g. in `@seqlok/compose`), which will use seqlock-aware helpers over `MU` with budgets and degrade policy.
 
 3. **Type safety end-to-end**
 
-  * `defineSpec` → spec type `S` → bindings and key/value types.
-  * Invalid keys and values fail at compile time; mismatched backing/plan fails at bind time.
+- `defineSpec` → spec type `S` → bindings and key/value types.
+- Invalid keys and values fail at compile time; mismatched backing/plan fails at bind time.
 
 4. **Zero serialization / copies on the hot path**
 
-  * SharedArrayBuffer + TypedArrays + Atomics – no JSON, no structured clone, no memcpy loops in the RT loop.
-  * Only the handoff envelope is cloned; the underlying memory is genuinely **shared**.
+- SharedArrayBuffer + TypedArrays + Atomics – no JSON, no structured clone, no memcpy loops in the RT loop.
+- Only the handoff envelope is cloned; the underlying memory is genuinely **shared**.
 
 5. **Real-time friendliness**
 
-  * Processor binding's hot path (`within` / `publish`) does **no allocations** and uses bounded, predictable seqlock
-    operations.
-  * The main thread can be relatively "squishy"; strict discipline is concentrated in the processor binding and backing.
+- Processor binding's hot path (`within` / `publish`) does **no allocations** and uses bounded, predictable seqlock
+  operations.
+- The main thread can be relatively "squishy"; strict discipline is concentrated in the processor binding and backing.
 
 This is the whole loop in one picture: **spec → plan → backing → handoff → bindings**, stitched together across agents
 by shared memory and seqlocks, with TypeScript keeping your keys and value types honest.

@@ -8,19 +8,20 @@
  * - Registered into the global error registry as the `handoff.*` domain.
  */
 
-import type { ErrorDetails, ErrorMeta } from '../registry';
+import type { AssertTrue, IsExact } from "../../internal/type-assert";
+import type { ErrorDetails, ErrorMeta } from "../registry";
 
 export type HandoffErrorCode =
-  | 'handoff.versionMismatch'
-  | 'handoff.invalidArtifact'
-  | 'handoff.specHashMismatch'
-  | 'handoff.backingMismatch';
+  | "handoff.versionMismatch"
+  | "handoff.invalidArtifact"
+  | "handoff.specHashMismatch"
+  | "handoff.backingMismatch";
 
 export type HandoffErrorKey =
-  | 'versionMismatch'
-  | 'invalidArtifact'
-  | 'specHashMismatch'
-  | 'backingMismatch';
+  | "versionMismatch"
+  | "invalidArtifact"
+  | "specHashMismatch"
+  | "backingMismatch";
 
 export interface HandoffVersionMismatchDetails extends ErrorDetails {
   readonly expectedVersion: number;
@@ -55,10 +56,10 @@ interface HandoffErrorDescriptor<C extends HandoffErrorCode> {
 }
 
 interface HandoffErrorsMap {
-  versionMismatch: HandoffErrorDescriptor<'handoff.versionMismatch'>;
-  invalidArtifact: HandoffErrorDescriptor<'handoff.invalidArtifact'>;
-  specHashMismatch: HandoffErrorDescriptor<'handoff.specHashMismatch'>;
-  backingMismatch: HandoffErrorDescriptor<'handoff.backingMismatch'>;
+  versionMismatch: HandoffErrorDescriptor<"handoff.versionMismatch">;
+  invalidArtifact: HandoffErrorDescriptor<"handoff.invalidArtifact">;
+  specHashMismatch: HandoffErrorDescriptor<"handoff.specHashMismatch">;
+  backingMismatch: HandoffErrorDescriptor<"handoff.backingMismatch">;
 }
 
 /**
@@ -67,37 +68,37 @@ interface HandoffErrorsMap {
  */
 const HANDOFF_ERRORS_DEF: HandoffErrorsMap = {
   versionMismatch: {
-    code: 'handoff.versionMismatch',
-    message: 'Unexpected handoff version',
+    code: "handoff.versionMismatch",
+    message: "Unexpected handoff version",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: false,
       boundarySafe: true,
     },
   },
   invalidArtifact: {
-    code: 'handoff.invalidArtifact',
-    message: 'Unsupported handoff artifact',
+    code: "handoff.invalidArtifact",
+    message: "Unsupported handoff artifact",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: false,
       boundarySafe: true,
     },
   },
   specHashMismatch: {
-    code: 'handoff.specHashMismatch',
-    message: 'Spec hash mismatch',
+    code: "handoff.specHashMismatch",
+    message: "Spec hash mismatch",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: false,
       boundarySafe: true,
     },
   },
   backingMismatch: {
-    code: 'handoff.backingMismatch',
-    message: 'Backing byteLength mismatch',
+    code: "handoff.backingMismatch",
+    message: "Backing byteLength mismatch",
     meta: {
-      severity: 'error',
+      severity: "error",
       recoverable: false,
       boundarySafe: true,
     },
@@ -106,14 +107,8 @@ const HANDOFF_ERRORS_DEF: HandoffErrorsMap = {
 
 export const HANDOFF_ERRORS: HandoffErrorsMap = HANDOFF_ERRORS_DEF;
 
-type _CodesFromDescriptors = HandoffErrorsMap[HandoffErrorKey]['code'];
-type _CodesExact = HandoffErrorCode;
+type HandoffCodesFromDescriptors = HandoffErrorsMap[HandoffErrorKey]["code"];
+type HandoffCodesEqual = IsExact<HandoffErrorCode, HandoffCodesFromDescriptors>;
 
-type _HandoffCodesMatch = _CodesFromDescriptors extends _CodesExact
-  ? _CodesExact extends _CodesFromDescriptors
-    ? true
-    : never
-  : never;
-
-const _handoffCodesMatch: _HandoffCodesMatch = true;
-void _handoffCodesMatch;
+/** @internal */
+export type _HandoffCodesMatch = AssertTrue<HandoffCodesEqual>;

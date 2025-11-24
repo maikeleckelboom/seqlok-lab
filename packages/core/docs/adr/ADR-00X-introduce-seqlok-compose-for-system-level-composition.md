@@ -123,7 +123,7 @@ Conceptual example:
 
 ```ts
 const system = defineComposition((b) => ({
-  id: 'dekzer-v1',
+  id: "dekzer-v1",
 
   domains: {
     deckA: b.domain({ spec: deckSpec }),
@@ -145,20 +145,20 @@ const system = defineComposition((b) => ({
 
   runtimes: {
     main: {
-      deckA: 'observer',
-      deckB: 'observer',
-      analyzer: 'observer',
-      registry: 'observer',
+      deckA: "observer",
+      deckB: "observer",
+      analyzer: "observer",
+      registry: "observer",
     },
     deckWorkerA: {
-      deckA: 'controller+processor',
+      deckA: "controller+processor",
     },
     deckWorkerB: {
-      deckB: 'controller+processor',
+      deckB: "controller+processor",
     },
     analyzerWorker: {
-      analyzer: 'processor',
-      registry: 'observer',
+      analyzer: "processor",
+      registry: "observer",
     },
   },
 }));

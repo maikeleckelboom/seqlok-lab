@@ -8,14 +8,17 @@
  * - All throwing helpers surface typed `env.*` Seqlok errors.
  */
 
-import { createError } from '../errors/error';
+import { createError } from "../errors/error";
 
-import type { EnvCoopCoepDetails, EnvUnsupportedDetails } from '../errors/codes/env';
+import type {
+  EnvCoopCoepDetails,
+  EnvUnsupportedDetails,
+} from "../errors/codes/env";
 
 /**
  * Coarse environment classification for SAB/COOP/COEP diagnostics.
  */
-export type EnvKind = 'node' | 'browser' | 'worker' | 'unknown';
+export type EnvKind = "node" | "browser" | "worker" | "unknown";
 
 export interface EnvSummary {
   readonly kind: EnvKind;
@@ -55,33 +58,34 @@ export type EnvGlobal = typeof globalThis & {
  * - This is the main entry point for tests; it does not touch real globals.
  */
 export function summarizeEnv(globalLike: EnvGlobal): EnvSummary {
-  const hasSharedArrayBuffer = typeof globalLike.SharedArrayBuffer === 'function';
+  const hasSharedArrayBuffer =
+    typeof globalLike.SharedArrayBuffer === "function";
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const isNode = typeof globalLike.process?.versions?.node === 'string';
+  const isNode = typeof globalLike.process?.versions?.node === "string";
   if (isNode) {
     return {
-      kind: 'node',
+      kind: "node",
       hasSharedArrayBuffer,
     };
   }
 
   const isWorker =
-    typeof globalLike.importScripts === 'function' &&
-    typeof globalLike.document === 'undefined';
+    typeof globalLike.importScripts === "function" &&
+    typeof globalLike.document === "undefined";
 
   if (isWorker) {
     return {
-      kind: 'worker',
+      kind: "worker",
       hasSharedArrayBuffer,
       crossOriginIsolated: globalLike.crossOriginIsolated,
     };
   }
 
-  const isBrowser = typeof globalLike.document !== 'undefined';
+  const isBrowser = typeof globalLike.document !== "undefined";
   if (isBrowser) {
     return {
-      kind: 'browser',
+      kind: "browser",
       hasSharedArrayBuffer,
       crossOriginIsolated: globalLike.crossOriginIsolated,
     };
@@ -89,7 +93,7 @@ export function summarizeEnv(globalLike: EnvGlobal): EnvSummary {
 
   // Fallback bucket for exotic hosts.
   return {
-    kind: 'unknown',
+    kind: "unknown",
     hasSharedArrayBuffer,
     crossOriginIsolated: globalLike.crossOriginIsolated,
   };
@@ -130,19 +134,19 @@ export function assertSabSupportFromSummary(
   if (!summary.hasSharedArrayBuffer) {
     const details: EnvUnsupportedDetails = {
       ...base,
-      feature: 'SharedArrayBuffer',
+      feature: "SharedArrayBuffer",
       reason: `${summary.kind} environment lacks SharedArrayBuffer support`,
     };
 
     throw createError(
-      'env.unsupported',
-      'SharedArrayBuffer is required but not available in this environment',
+      "env.unsupported",
+      "SharedArrayBuffer is required but not available in this environment",
       details,
     );
   }
 
   if (
-    (summary.kind === 'browser' || summary.kind === 'worker') &&
+    (summary.kind === "browser" || summary.kind === "worker") &&
     summary.crossOriginIsolated === false
   ) {
     const details: EnvCoopCoepDetails = {
@@ -151,8 +155,8 @@ export function assertSabSupportFromSummary(
     };
 
     throw createError(
-      'env.coopCoepRequired',
-      'SharedArrayBuffer usage requires COOP/COEP headers (crossOriginIsolated = true).',
+      "env.coopCoepRequired",
+      "SharedArrayBuffer usage requires COOP/COEP headers (crossOriginIsolated = true).",
       details,
     );
   }
