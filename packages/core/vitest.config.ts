@@ -28,6 +28,16 @@ export default defineConfig({
   test: {
     globals: true,
     reporters: ["default"],
+    environment: "node",
+    fileParallelism: false,
+    isolate: false,
+
+    testTimeout: 60_000,
+    hookTimeout: 30_000,
+
+    include: ["tests/**/*.test.ts", "tests/**/*.spec.ts"],
+    exclude: ["dist/**", "node_modules/**", "bench/**", "docs/**"],
+
     coverage: {
       provider: "v8",
       enabled: false,
@@ -41,22 +51,25 @@ export default defineConfig({
       exclude: [
         "dist/**",
         "tests/**",
+        "bench/**",
         "src/**/index.ts",
         "src/types/**",
         "src/context/**",
       ],
     },
-    environment: "node",
-    fileParallelism: false,
-    isolate: false,
-    testTimeout: 60_000,
-    hookTimeout: 30_000,
+
     benchmark: {
       include: ["bench/**/*.bench.ts"],
-      exclude: ["node_modules", "dist", ".idea", ".git", ".cache"],
+      exclude: [
+        "node_modules/**",
+        "dist/**",
+        ".idea/**",
+        ".git/**",
+        ".cache/**",
+      ],
       reporters: ["verbose"],
       outputJson: "bench-results.json",
-      // compare: 'bench-results-main.json',
+      // compare: "bench-results-main.json",
     },
   },
 });

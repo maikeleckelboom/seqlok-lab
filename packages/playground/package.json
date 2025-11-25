@@ -1,0 +1,40 @@
+{
+  "name": "@seqlok/playground",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playground app for Seqlok experiments (dev host).",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --ignore-path ../../.prettierignore --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "test:types": "tsc -b --noEmit --pretty"
+  },
+  "dependencies": {
+    "@seqlok/core": "workspace:*",
+    "@seqlok/hotswap": "workspace:*",
+    "@seqlok/host": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import": "catalog:",
+    "eslint-plugin-regex": "catalog:",
+    "globals": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "@vitejs/plugin-vue": "^6.0.2"
+  }
+}

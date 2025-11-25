@@ -15,7 +15,7 @@ import type { ErrorDetails, ErrorMeta } from "../registry";
  * String union of all plan-layer error codes.
  *
  * @remarks
- * These codes are stable and safe to persist in logs and telemetry.
+ * These codes are stable and safe to persist in logs and diagnostics.
  */
 export type PlanErrorCode = "plan.failed" | "plan.overflowRisk";
 

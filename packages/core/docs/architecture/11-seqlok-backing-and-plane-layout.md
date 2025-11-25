@@ -343,7 +343,7 @@ views.meters.MF64; // Float64Array over MF64 plane
 views.meters.MU32; // Uint32Array over MU32 plane
 views.meters.MU; // Uint32Array over MU (control)
 
-// Seqlock integration
+// Seqlock host
 views.locks.PU; // same underlying view as params.PU
 views.locks.MU; // same underlying view as meters.MU
 ```

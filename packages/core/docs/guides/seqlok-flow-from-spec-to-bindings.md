@@ -93,7 +93,7 @@ const processor = bindProcessor(received);
 
 // Future additional consumers on the same backing:
 // const observer  = bindObserver(received);
-// const telemetry = bindTelemetry(received);
+// const diagnostics = bindTelemetry(received);
 ```
 
 Notes:
@@ -391,7 +391,7 @@ const processor = bindProcessor(received);
 
 // Future additional roles on the same backing:
 // const observer  = bindObserver(received);
-// const telemetry = bindTelemetry(received);
+// const diagnostics = bindTelemetry(received);
 ```
 
 Typical uses:

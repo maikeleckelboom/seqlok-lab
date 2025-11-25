@@ -261,7 +261,7 @@ self.onmessage = (
   observer = bindObserver(received);
 };
 
-// Periodic telemetry sampling loop
+// Periodic diagnostics sampling loop
 function sampleTelemetry() {
   if (!observer) return;
 

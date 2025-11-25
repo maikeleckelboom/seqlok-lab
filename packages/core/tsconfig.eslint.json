@@ -1,8 +1,8 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["vitest/globals", "node"]
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/core-eslint.tsbuildinfo"
   },
   "include": [
     "src/**/*",
@@ -10,6 +10,8 @@
     "bench/**/*",
     "scripts/**/*",
     "*.config.ts",
-    "vite.config.ts"
-  ]
+    "vite.config.ts",
+    "rollup.*.config.{js,ts,mts}"
+  ],
+  "exclude": ["dist", "node_modules"]
 }

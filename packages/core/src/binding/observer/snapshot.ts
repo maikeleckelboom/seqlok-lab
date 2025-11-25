@@ -14,7 +14,7 @@
  *   - `snapshot(keys)` → subset snapshot
  *
  * Coherence and retry/degrade policy are handled by `snapshotWithPolicy`
- * in `binding/common/coherent.ts`. This module is purely view logic.
+ * in `binding/foundation/coherent.ts`. This module is purely view logic.
  */
 
 import { createError } from "../../errors/error";

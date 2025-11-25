@@ -1080,7 +1080,7 @@ export interface ObserverMeters<S extends SpecInput> {
  * Observer binding: read-only facade for params and meters.
  *
  * @remarks
- * - Intended for visualizations, telemetry, HUDs, and remote inspectors.
+ * - Intended for visualizations, diagnostics, HUDs, and remote inspectors.
  * - `params` exposes coherent reads via `within(...)` and small snapshots.
  * - `meters` exposes coherent snapshots with rich overloads.
  * - No write capability.

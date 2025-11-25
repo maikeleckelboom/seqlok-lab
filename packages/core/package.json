@@ -8,11 +8,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "source": "./src/index.ts",
       "default": "./dist/index.js"
-    },
-    "./diagnostics": {
-      "types": "./dist/diagnostics.d.ts",
-      "default": "./dist/diagnostics.js"
     },
     "./package.json": "./package.json"
   },
@@ -25,8 +22,8 @@
     "bench": "vitest bench --reporter=verbose --run",
     "bench:format": "tsx scripts/format-bench.ts",
     "bench:report": "pnpm run bench && pnpm run bench:format",
-    "lint": "eslint src tests bench scripts",
-    "lint:fix": "eslint src tests bench scripts --fix",
+    "lint": "eslint src tests scripts",
+    "lint:fix": "eslint src tests scripts --fix",
     "format": "prettier --ignore-path ../../.prettierignore --write .",
     "clean": "rimraf dist .eslintcache node_modules/.vite node_modules/.cache pnpm-debug.log",
     "purge": "pnpm run clean && rimraf node_modules",

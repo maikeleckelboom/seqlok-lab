@@ -160,7 +160,7 @@ export interface RunWithDiagnosticsOptions {
    *
    * @remarks
    * By default, non-Seqlok errors are rethrown after diagnostics
-   * bookkeeping. This hook is for logging/telemetry only.
+   * bookkeeping. This hook is for logging/diagnostics only.
    */
   readonly onUnknownError?: (error: unknown) => void;
 }

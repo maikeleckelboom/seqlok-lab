@@ -8,7 +8,6 @@ export default defineConfig(({ mode }) => ({
     lib: {
       entry: {
         index: "src/index.ts",
-        diagnostics: "src/diagnostics.ts",
       },
       formats: ["es"],
       fileName: (_format, entry) => `${entry}.js`,

@@ -4,7 +4,7 @@
  *
  * @remarks
  * - Type-safe mapping of error codes to their detail shapes
- * - Centralized metadata for telemetry, UI, and recovery
+ * - Centralized metadata for diagnostics, UI, and recovery
  * - Organizes errors by domain (backing, binding, diagnostics, etc.)
  * - Provides type-safe error message and metadata lookups
  * - Enables consistent error handling across the codebase
@@ -77,7 +77,7 @@ import {
 import type { CoherentDetails, SnapshotRetryDetails } from "./details";
 
 /**
- * Base details common to all errors.
+ * Base details foundation to all errors.
  *
  * Domain detail interfaces may extend this or remain separate; this is a
  * lightweight hook for `where` / `detail` that we've found useful.

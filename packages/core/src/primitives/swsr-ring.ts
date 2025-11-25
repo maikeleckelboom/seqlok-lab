@@ -108,7 +108,7 @@ export interface SwsrRingProducer<T> {
    * Read a snapshot of producer-side statistics.
    *
    * @remarks
-   * Stats are approximate and intended for diagnostics/telemetry only.
+   * Stats are approximate and intended for diagnostics/diagnostics only.
    */
   stats(): SwsrRingStats;
 }

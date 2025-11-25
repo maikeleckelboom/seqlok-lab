@@ -1,0 +1,42 @@
+{
+  "name": "@seqlok/hotswap",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "source": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "clean": "rimraf dist .eslintcache node_modules/.vite node_modules/.cache pnpm-debug.log",
+    "test:types": "tsc -b --noEmit --pretty",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import": "catalog:",
+    "eslint-plugin-regex": "catalog:",
+    "fast-check": "catalog:",
+    "globals": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

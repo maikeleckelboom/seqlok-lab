@@ -1,11 +1,8 @@
-**/*.md
-
-# Usual non-source stuff
-coverage/**
-dist/**
-node_modules/
-dist/
-coverage/
-
-# All docs in packages
-packages/**/docs/**
+node_modules
+dist
+coverage
+docs
+.vscode
+.idea
+pnpm-lock.yaml
+package-lock.json

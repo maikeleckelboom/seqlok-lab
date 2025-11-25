@@ -3,7 +3,7 @@
  * Observer binding implementation.
  *
  * @remarks
- * - Read-only binding for passive/telemetry consumers.
+ * - Read-only binding for passive/diagnostics consumers.
  * - Shares the same backing and seqlocks as controller/processor.
  * - Uses seqlock-protected snapshots with configurable degradation.
  */
