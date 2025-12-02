@@ -21,6 +21,12 @@ import {
   type SeqlokError,
 } from "@seqlok/base";
 
+import type {
+  DecodeErrorInvalidPayload,
+  DecodeErrorUnknownCommand,
+} from "../codec";
+import type { CommandPushResult } from "../mailbox";
+
 /**
  * Details for `commands.ringOverflow`.
  *
@@ -28,6 +34,13 @@ import {
  * Used when a producer attempts to enqueue into a full SWSR command ring.
  */
 export interface CommandsRingOverflowDetails extends ErrorDetails {
+  /**
+   * Logical identifier for the mailbox / endpoint whose ring overflowed.
+   *
+   * @example "engine-A", "deck-1-transport"
+   */
+  readonly mailboxId: string;
+
   /**
    * Total number of slots in the ring.
    */
@@ -88,6 +101,17 @@ export interface CommandsInvalidPayloadDetails extends ErrorDetails {
 }
 
 /**
+ * Details for `commands.duplicateSourceId`.
+ *
+ * @remarks
+ * Used when a new source is registered with an id that already exists
+ * in the command bus.
+ */
+export interface CommandsDuplicateSourceIdDetails extends ErrorDetails {
+  readonly sourceId: string;
+}
+
+/**
  * Detail map keyed by local error keys.
  */
 export interface CommandsErrorDetailsByKey {
@@ -95,6 +119,7 @@ export interface CommandsErrorDetailsByKey {
   readonly mailboxClosed: CommandsMailboxClosedDetails;
   readonly unknownCommand: CommandsUnknownCommandDetails;
   readonly invalidPayload: CommandsInvalidPayloadDetails;
+  readonly duplicateSourceId: CommandsDuplicateSourceIdDetails;
 }
 
 /**
@@ -141,6 +166,16 @@ const COMMANDS_DEFS = {
       tags: ["transport", "validation"],
     },
   },
+  duplicateSourceId: {
+    message: "Duplicate command bus source id",
+    meta: {
+      severity: "error",
+      recoverable: false,
+      boundarySafe: true,
+      domainHint: "commands",
+      tags: ["transport", "bus", "topology"],
+    },
+  },
 } as const;
 
 type CommandsDefs = typeof COMMANDS_DEFS;
@@ -184,3 +219,81 @@ export const createCommandsError: KeyedErrorFactoryOf<
  * Convenience alias for the commands error factory type.
  */
 export type CommandsErrorFactory = typeof createCommandsError;
+
+/**
+ * Upgrade a codec "unknown command" decode error into `commands.unknownCommand`.
+ *
+ * @remarks
+ * Safe to call off the audio thread. Intended for mailbox consumers and
+ * integration layers that want a structured error instead of adhoc logs.
+ */
+export function createUnknownCommandError(
+  error: DecodeErrorUnknownCommand,
+  cause?: unknown,
+): CommandsError {
+  return createCommandsError(
+    "unknownCommand",
+    {
+      commandType: error.commandType,
+    },
+    cause,
+  );
+}
+
+/**
+ * Upgrade a codec "invalid payload" decode error into `commands.invalidPayload`.
+ */
+export function createInvalidPayloadError(
+  error: DecodeErrorInvalidPayload,
+  cause?: unknown,
+): CommandsError {
+  const details =
+    error.reason === undefined
+      ? {
+          commandType: error.commandType,
+        }
+      : {
+          commandType: error.commandType,
+          reason: error.reason,
+        };
+
+  return createCommandsError("invalidPayload", details, cause);
+}
+
+/**
+ * Upgrade a mailbox push failure into `commands.*` transport error.
+ *
+ * @returns
+ * - `null` when `result.ok === true`
+ * - A `commands.mailboxClosed` or `commands.ringOverflow` error otherwise
+ */
+export function createPushFailureError(
+  mailboxId: string,
+  result: CommandPushResult,
+  cause?: unknown,
+): CommandsError | null {
+  if (result.ok) {
+    return null;
+  }
+
+  if (result.reason === "mailboxClosed") {
+    return createCommandsError(
+      "mailboxClosed",
+      {
+        mailboxId,
+      },
+      cause,
+    );
+  }
+
+  // reason === "ringOverflow"
+  return createCommandsError(
+    "ringOverflow",
+    {
+      mailboxId,
+      capacity: result.capacity,
+      queued: result.queued,
+    },
+    cause,
+  );
+}

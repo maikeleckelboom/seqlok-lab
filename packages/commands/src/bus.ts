@@ -8,6 +8,8 @@
  * transport; it only composes existing consumers.
  */
 
+import { createCommandsError } from "./errors/commands";
+
 import type {
   DecodeErrorInvalidPayload,
   DecodeErrorUnknownCommand,
@@ -70,6 +72,7 @@ export interface CommandBus<C> {
    * Number of registered sources.
    */
   readonly sourceCount: number;
+
   /**
    * Snapshot of registered source ids.
    */
@@ -78,7 +81,8 @@ export interface CommandBus<C> {
   /**
    * Register a new source.
    *
-   * @throws Error if the source id is already registered.
+   * @throws CommandsError with code `"commands.duplicateSourceId"`
+   *         if the source id is already registered.
    */
   addSource(id: SourceId, consumer: CommandConsumer<C>): void;
 
@@ -93,7 +97,7 @@ export interface CommandBus<C> {
    * Drain all registered sources in registration order.
    *
    * @remarks
-   * No fairness guarantees beyond a registration order. Higher-level
+   * No fairness guarantees beyond registration order. Higher-level
    * scheduling belongs in the host/topology layer.
    */
   drainAll(hooks: CommandBusHooks<C>): CommandBusDrainStats;
@@ -107,7 +111,7 @@ export function createCommandBus<C>(): CommandBus<C> {
 
   function addSource(id: SourceId, consumer: CommandConsumer<C>): void {
     if (sources.some((entry) => entry.id === id)) {
-      throw new Error(`[commands.bus] duplicate source id "${id}"`);
+      throw createCommandsError("duplicateSourceId", { sourceId: id });
     }
     sources.push({ id, consumer });
   }

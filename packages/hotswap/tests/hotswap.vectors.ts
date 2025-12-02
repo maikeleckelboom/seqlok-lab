@@ -1,5 +1,3 @@
-// File: packages/hotswap/test/hotswap.vectors.ts
-
 import type {
   SwapPhase,
   SwapStepKind,

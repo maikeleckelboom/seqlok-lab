@@ -29,7 +29,7 @@
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --ignore-path ../../.prettierignore --write .",
     "clean": "rimraf dist .eslintcache node_modules/.vite node_modules/.cache pnpm-debug.log",
-    "test:types": "pnpm --filter seqlok test:types",
+    "test:types": "pnpm --workspace-root test:types",
     "dev": "pnpm run test:watch"
   },
   "dependencies": {

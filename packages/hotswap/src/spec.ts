@@ -1,18 +1,6 @@
-export function invariant(
-  condition: boolean,
-  message: string,
-): asserts condition {
-  if (!condition) {
-    // In dev/test this should blow up loudly.
-    // In production builds you can have your bundler/tree-shaker
-    // replace this function with a no-op if desired.
-    throw new Error(message);
-  }
-}
+import { panic } from "@seqlok/base";
 
-// import { invariant } from "packages/base";
-
-const __DEV__ = true;
+import { createHotswapError } from "./errors/hotswap";
 
 /**
  * Branded ticket identifier.
@@ -27,16 +15,19 @@ export type TicketId = number & { readonly [TicketIdBrand]: never };
 /**
  * Construct a `TicketId` from a plain number.
  *
- * This enforces that:
+ * Enforces:
  * - `id !== 0`
  * - `id` is finite
+ *
+ * Violations are reported as `hotswap.invalidTicket`.
  */
 export function createTicketId(id: number): TicketId {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (__DEV__) {
-    invariant(Number.isFinite(id), "TicketId: id must be a finite number");
-
-    invariant(id !== 0, 'TicketId: 0 is reserved for "no ticket"');
+  if (!Number.isFinite(id) || id === 0) {
+    throw createHotswapError("invalidTicket", {
+      where: "hotswap.createTicketId",
+      reason: "ticketIdOutOfRange",
+      ticketId: id,
+    });
   }
 
   return id as TicketId;
@@ -109,7 +100,7 @@ export interface SwapTicketRT<EngineKind extends number> {
 }
 
 /**
- * RT status: safe to publish from the audio thread to a introspect /
+ * RT status: safe to publish from the audio thread to an introspect /
  * meter plane (numbers only, no heap allocation).
  */
 export interface SwapStatusRT<EngineKind extends number> {
@@ -117,7 +108,7 @@ export interface SwapStatusRT<EngineKind extends number> {
   readonly ticketId: number; // 0 = none
   readonly progress: number; // 0..1 over the lifecycle
   readonly activeEngineKind: EngineKind;
-  readonly nextEngineKind: EngineKind; // caller chooses a sentinel for "none"
+  readonly nextEngineKind: EngineKind; // the caller chooses a sentinel for "none"
 }
 
 /**
@@ -148,31 +139,48 @@ export interface SwapStepDecisionRT<EngineKind extends number> {
 }
 
 /**
- * Initialise RT swap state when the audio thread accepts a ticket and
+ * Initialize RT swap state when the audio thread accepts a ticket and
  * the next engine is ready to be used.
  *
- * The actual engine handle / pointer is owned by the caller; this
+ * The caller owns the actual engine handle / pointer; this
  * state machine only tracks protocol phase and counters.
+ *
+ * Violations of ticket preconditions are reported as `hotswap.invalidTicket`.
  */
 export function initSwapStateRT<EngineKind extends number>(
   ticket: SwapTicketRT<EngineKind>,
 ): SwapStateRT<EngineKind> {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (__DEV__) {
-    invariant(
-      ticket.ticketId !== 0,
-      'SwapTicketRT: ticketId 0 is reserved for "no ticket"',
-    );
+  if (!Number.isFinite(ticket.fadeFrames) || ticket.fadeFrames < 1) {
+    throw createHotswapError("invalidTicket", {
+      where: "hotswap.initSwapStateRT",
+      reason: "fadeFramesNonPositive",
+      ticketId: ticket.ticketId,
+      atFrame: ticket.atFrame,
+      fadeFrames: ticket.fadeFrames,
+      preWarmBlocks: ticket.preWarmBlocks,
+    });
+  }
 
-    invariant(
-      Number.isFinite(ticket.fadeFrames) && ticket.fadeFrames >= 1,
-      "SwapTicketRT: fadeFrames must be >= 1",
-    );
+  if (!Number.isFinite(ticket.preWarmBlocks) || ticket.preWarmBlocks < 0) {
+    throw createHotswapError("invalidTicket", {
+      where: "hotswap.initSwapStateRT",
+      reason: "preWarmBlocksNegative",
+      ticketId: ticket.ticketId,
+      atFrame: ticket.atFrame,
+      fadeFrames: ticket.fadeFrames,
+      preWarmBlocks: ticket.preWarmBlocks,
+    });
+  }
 
-    invariant(
-      Number.isFinite(ticket.preWarmBlocks) && ticket.preWarmBlocks >= 0,
-      "SwapTicketRT: preWarmBlocks must be >= 0",
-    );
+  if (ticket.ticketId === 0) {
+    throw createHotswapError("invalidTicket", {
+      where: "hotswap.initSwapStateRT",
+      reason: "ticketIdOutOfRange",
+      ticketId: ticket.ticketId,
+      atFrame: ticket.atFrame,
+      fadeFrames: ticket.fadeFrames,
+      preWarmBlocks: ticket.preWarmBlocks,
+    });
   }
 
   const preWarmBlocks = ticket.preWarmBlocks;
@@ -237,7 +245,7 @@ export function stepSwapStateRT<EngineKind extends number>(
 
   switch (state.phase) {
     case "spawn": {
-      // New engine is already constructed and associated with this slot
+      // The new engine is already constructed and associated with this slot
       // by the caller; we simply advance the protocol.
       state.phase = "prime";
       state.stepIndex += 1;
@@ -262,8 +270,8 @@ export function stepSwapStateRT<EngineKind extends number>(
 
     case "prewarm": {
       // Caller should:
-      // - run current engine normally for output
-      // - run next engine in "prewarm" mode and discard its output
+      // - run the current engine normally for output
+      // - run the next engine in "prewarm" mode and discard its output
       state.preWarmBlocksRemaining -= 1;
       state.stepIndex += 1;
 
@@ -315,10 +323,8 @@ export function stepSwapStateRT<EngineKind extends number>(
     default: {
       // Exhaustiveness guard: if a new phase is added to `SwapPhase`
       // but not handled here, this assignment will fail to type-check.
-
       const _exhaustive: never = state.phase;
-
-      throw new Error(`Unhandled swap phase: ${String(_exhaustive)}`);
+      panic(`Unhandled swap phase: ${String(_exhaustive)}`);
     }
   }
 }

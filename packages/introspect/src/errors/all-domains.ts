@@ -18,7 +18,7 @@ import {
   type ErrorNumericCode,
 } from "@seqlok/base";
 
-import { getRegistryForDomain, type DomainRegistry } from "./registry-map";
+import { getRegistryEntry, getRegistryForDomain } from "./registry-map";
 
 /**
  * Domain name type used by the introspect layer.
@@ -57,13 +57,18 @@ export interface ErrorIndexEntry {
  * numeric code from the domain id and a stable key order.
  */
 function entriesFromRegistry(
-  registry: DomainRegistry,
+  registry: ReturnType<typeof getRegistryForDomain>,
   domainId: number,
 ): DomainEntry[] {
   const keys = Object.keys(registry);
   return keys.map((key, index): DomainEntry => {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const descriptor = registry[key]!;
+    const descriptor = getRegistryEntry(registry, key);
+
+    if (!descriptor) {
+      // Should never happen if registry is well-formed.
+      throw new Error(`Missing descriptor for key: ${key}`);
+    }
+
     return {
       key,
       code: descriptor.code,
@@ -145,6 +150,10 @@ const COMMANDS_DOMAIN_DESCRIPTOR: DomainDescriptor = buildDomainDescriptor(
   DOMAIN_IDS.commands,
 );
 
+const HOTSWAP_DOMAIN_DESCRIPTOR = buildDomainDescriptor(
+  "hotswap",
+  DOMAIN_IDS.hotswap,
+);
 /**
  * All error domains exported by Seqlok.
  *
@@ -163,6 +172,7 @@ export const ALL_DOMAINS: readonly DomainDescriptor[] = [
   HANDOFF_DOMAIN_DESCRIPTOR,
   INTROSPECT_DOMAIN_DESCRIPTOR,
   COMMANDS_DOMAIN_DESCRIPTOR,
+  HOTSWAP_DOMAIN_DESCRIPTOR,
 ];
 
 /**

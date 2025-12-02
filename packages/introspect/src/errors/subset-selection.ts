@@ -10,7 +10,11 @@
 
 import { ALL_DOMAINS, type DomainName } from "./all-domains";
 import { type AggregatedErrorDescriptor } from "./descriptors";
-import { type DomainRegistry, getRegistryForDomain } from "./registry-map";
+import {
+  type DomainRegistry,
+  getRegistryEntry,
+  getRegistryForDomain,
+} from "./registry-map";
 
 import type { DomainDescriptor, ErrorMeta, ErrorSeverity } from "@seqlok/base";
 
@@ -179,7 +183,7 @@ export function selectErrorSubset(
     const errors: AggregatedErrorDescriptor[] = [];
 
     for (const entry of descriptor.entries) {
-      const registryEntry = registry[entry.key];
+      const registryEntry = getRegistryEntry(registry, entry.key);
 
       if (!registryEntry) {
         // Invariant violation: descriptor entry without registry entry.

@@ -239,7 +239,7 @@ No code outside controller/processor bindings writes into Seqlok planes, regardl
 
 This ADR clarifies that **orchestration is not** a concern of `@seqlok/core` or `bindObserver`:
 
-- The "driver" (DeckDriver / DomainOrchestrator / SystemManager) is responsible for:
+- The "driver" (TimelineDriver / DomainOrchestrator / SystemManager) is responsible for:
 
   - consuming rings,
   - translating intents into param updates and swap tickets,

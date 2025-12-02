@@ -21,7 +21,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && rollup -c rollup.dts.config.mts",
+    "build": "vite build && rollup -c rollup.dts.config.mts",
     "clean": "rimraf dist .eslintcache pnpm-debug.log",
     "purge": "pnpm run clean && rimraf node_modules",
     "lint": "eslint src tests",
@@ -32,7 +32,7 @@
     "test:cov": "vitest run --coverage",
     "bench": "vitest bench --run",
     "bench:watch": "vitest bench",
-    "test:types": "pnpm --filter seqlok test:types",
+    "test:types": "pnpm --workspace-root test:types",
     "dev": "pnpm run test:watch"
   },
   "devDependencies": {
@@ -48,6 +48,7 @@
     "typescript-eslint": "catalog:",
     "rollup": "catalog:",
     "rollup-plugin-dts": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vite": "catalog:"
   }
 }
