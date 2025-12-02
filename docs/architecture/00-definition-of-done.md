@@ -158,9 +158,8 @@ The sections below describe that target.
 - Error codes are partitioned by package:
 
   - `internal.*`: base (internal invariants, unreachable states, programmer errors)
-  - `env.*`: introspect (environment capability and policy; protocol types live in base)
   - `primitives.*`: primitives (seqlock, rings, planes)
-  - `spec.*`, `plan.*`, `backing.*`, `binding.*`, `handoff.*`: core
+  - `env.*`, `backing.*`, `binding.*`, `spec.*`, `plan.*`, `handoff.*`: core
   - `commands.*`: commands
   - `hotswap.*`: hotswap
   - `integration.*`: integration (host-specific; not required for cross-language consumers)
@@ -168,7 +167,7 @@ The sections below describe that target.
 
 - Each code lives in exactly one `codes/*.ts` file under its owning package.
 
-- Runtime packages construct errors via `createError` from base; they do not know or care about global registries.
+- Runtime packages construct errors via their domain-local factories (e.g. `createBackingError`, `createPrimitivesError`), all built on top of the shared error primitives in `@seqlok/base`. They do not know or care about global registries.
 
 ### ERR-2: Global registry in the introspect package aggregates, does not own
 

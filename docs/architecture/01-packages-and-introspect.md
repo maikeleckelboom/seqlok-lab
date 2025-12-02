@@ -66,7 +66,7 @@ Key properties:
 * All runtime packages import only from layers below them
 * No runtime package imports `@seqlok/introspect`
 * `@seqlok/introspect` is allowed to import from base and all runtime packages
-* `@seqlok/docs` can import from both runtime and introspect
+* `@seqlok/docs` (planned docs tooling package) can import from both runtime and introspect
 * `@seqlok/integration` and `@seqlok/playground` live above runtime and do not participate in core scheduling or seqlock
   logic
 
@@ -124,7 +124,7 @@ Responsibilities:
 * Layout planning for shared backing storage
 * Backing allocation and view construction
 * Controller and processor bindings on top of seqlock primitives
-* The error registry that covers core level errors, expressed in terms of the base error contracts
+* Error domains for `env.*`, `backing.*`, `binding.*`, `spec.*`, `plan.*`, `handoff.*`, expressed in terms of the base error contracts
 
 Core imports from primitives and base. Core must not import introspect.
 
@@ -206,9 +206,9 @@ Concretely:
 * Error definitions live in each runtime package
 
   * `@seqlok/primitives` owns `primitives.*` error codes
-  * `@seqlok/core` owns `core.*` codes
-  * `@seqlok/commands` owns `commands.*` codes
-  * `@seqlok/hotswap` owns `hotswap.*` codes
+  * `@seqlok/core` owns `env.*`, `backing.*`, `binding.*`, `spec.*`, `plan.*`, `handoff.*` error codes
+  * `@seqlok/commands` owns `commands.*` error codes
+  * `@seqlok/hotswap` owns `hotswap.*` error codes
 
 * Diagnostics imports the registry slices from each runtime package and combines them into a global view
 

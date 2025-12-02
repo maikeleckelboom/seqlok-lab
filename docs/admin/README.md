@@ -17,8 +17,8 @@ Core files:
 
 - `rd-log-2025.md` – running R&D log for 2025
 - `rd-log-2026.md` – next year once the calendar flips
-- `release-checklist.md` – steps to cut a release safely
-- `governance.md` – notes on roles, decisions and process
+- `release-checklist.md` – (planned) steps to cut a release safely
+- `governance.md` – (planned) notes on roles, decisions and process
 
 More files can appear here as the project grows.  
 Rule of thumb: if it is about how we work rather than what the code does, it lives in `docs/admin`.
@@ -46,9 +46,9 @@ Can span multiple lines if needed.
 
 **Tags** are free-form but should roughly mirror the architecture and work domains, for example:
 
-* `errors`, `base`, `primitives`, `introspect`, `core`
-* `commands`, `hotswap`, `integration`
-* `docs`, `tooling`, `perf`, `arch`, `planning`
+- `errors`, `base`, `primitives`, `introspect`, `core`
+- `commands`, `hotswap`, `integration`
+- `docs`, `tooling`, `perf`, `arch`, `planning`
 
 Keep entries short and technical.
 This is for evidence and recall, not personal journaling.
@@ -76,5 +76,5 @@ Readiness, Gravity Well, and this R&D log to reflect the new reality.
 
 Any consistent tagging scheme is fine as long as:
 
-* you can skim a month and see where the time went, and
-* a future script can parse `[tags] Nh` lines without guessing.
+- you can skim a month and see where the time went, and
+- a future script can parse `[tags] Nh` lines without guessing.
