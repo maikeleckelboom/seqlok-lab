@@ -181,3 +181,4 @@ Scaffolded the commands playground: `CommandRingLab`, `CommandRingConfig`,
 `CommandRingVisualizer`, `CommandRingMetrics`, `CommandRingEventLog`, and the
 `useCommandRingLab` composable. Wired the new components into the router and
 ensured the playground builds cleanly with the expanded commands/hotswap UI.
+

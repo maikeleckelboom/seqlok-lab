@@ -9,8 +9,8 @@ import {
 } from "vue";
 import type { SwapTraceFrame } from "./trace";
 import type { EngineGains, PhaseSegment, BlockTick } from "./useHotswapLab";
-import IconCircleLetterAFilled from "../icons/IconCircleLetterAFilled.vue";
-import IconSquareLetterBFilled from "../icons/IconSquareLetterBFilled.vue";
+import IconCircleLetterAFilled from "../../icons/IconCircleLetterAFilled.vue";
+import IconSquareLetterBFilled from "../../icons/IconSquareLetterBFilled.vue";
 
 // ---- Visual constants -------------------------------------------------------
 

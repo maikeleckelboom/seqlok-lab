@@ -17,7 +17,7 @@ Pick the entry that matches.
 
 ---
 
-## 1. Orientation
+## Orientation
 
 **Conceptual overview**
 
@@ -34,7 +34,7 @@ Pick the entry that matches.
 
 ---
 
-## 2. Architecture & Contracts
+## Architecture & Contracts
 
 The `architecture/` folder describes how the substrate is structured and
 what “done” means at the system level.
@@ -63,7 +63,7 @@ or touching the error system.
 
 ---
 
-## 4. Decisions & ADRs
+## Decisions & ADRs
 
 The `adr/` folder records discrete design decisions with long half-life.
 
@@ -83,7 +83,7 @@ local template you prefer.
 
 ---
 
-## 5. Admin & R&D Evidence
+## Admin & R&D Evidence
 
 The `admin/` folder is project admin, not runtime API.
 
@@ -99,7 +99,7 @@ belong here.
 
 ---
 
-## 6. Product / Host Docs (Ghost DJ, etc.)
+## Product / Host Docs (Ghost DJ, etc.)
 
 Seqlok is the substrate; Ghost DJ is one of the first serious clients.
 
@@ -112,3 +112,8 @@ substrate stays generic and portable. For example:
 
 These docs are allowed to assume “we are building Ghost DJ”; they should
 not leak back into the Seqlok public API.
+
+## Formal verification
+
+- Param/meter binding & command mailbox specs (TLA+)
+- Roadmap for Seqlok + Dekzer specs (modes, hotswap driver, session recorder, etc.)

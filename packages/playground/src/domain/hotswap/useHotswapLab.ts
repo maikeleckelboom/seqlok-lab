@@ -10,19 +10,13 @@ import {
 
 import { type SwapTraceFrame, traceSwap } from "./trace";
 
-// Guards / layout
-
 const MAX_AUTO_BLOCKS = 400;
 const TARGET_VIEW_BLOCKS = 256;
 const PLAYBACK_BASE_FPS = 60; // 1.0x speed ≈ 60 blocks/sec
 
-// SVG coordinate system: 0..50 internal units on Y
-const SVG_HEIGHT = 50;
 const GAIN_TOP = 4;
 const GAIN_BOTTOM = 46;
 const GAIN_HEIGHT = GAIN_BOTTOM - GAIN_TOP;
-
-// Protocol enums / types --
 
 export enum EngineKind {
   None = 0,
@@ -69,8 +63,6 @@ export interface BlockTick {
   readonly isMajor: boolean;
 }
 
-// Crossfade curve catalog
-
 export type CrossfadeCurveId = "equalPower" | "linear" | "fastIn" | "fastOut";
 
 export interface CrossfadeCurveDescriptor {
@@ -101,8 +93,6 @@ export const CROSSFADE_CURVES: readonly CrossfadeCurveDescriptor[] = [
     description: "current lingers; next ramps late",
   },
 ];
-
-// Helpers
 
 function clamp01(v: number): number {
   if (v < 0) {
@@ -169,8 +159,6 @@ function gainsForCurve(curveId: CrossfadeCurveId, tRaw: number): EngineGains {
       return equalPowerGains(tRaw);
   }
 }
-
-// API surface
 
 export interface HotswapLabApi {
   readonly blockFrames: Ref<number>;
@@ -603,8 +591,10 @@ export function useHotswapLab(): HotswapLabApi {
     let nextFrames: readonly SwapTraceFrame<EngineKind>[];
 
     if (rawFrames.length > 0 && rawFrames.length < TARGET_VIEW_BLOCKS) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const last = rawFrames[rawFrames.length - 1]!;
+      const last = rawFrames.at(-1);
+      if (!last) {
+        return;
+      }
       const padding: SwapTraceFrame<EngineKind>[] = [];
       const needed = TARGET_VIEW_BLOCKS - rawFrames.length;
 
@@ -636,7 +626,7 @@ export function useHotswapLab(): HotswapLabApi {
     stopPlayback();
   }
 
-  // Playback engine -----------------------------------------------------------
+  // Playback engine
 
   function stopPlayback(): void {
     isPlaying.value = false;

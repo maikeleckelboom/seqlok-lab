@@ -6,8 +6,8 @@ import type {
   EngineActivity,
   EngineGains,
 } from "./useHotswapLab";
-import IconCircleLetterAFilled from "../icons/IconCircleLetterAFilled.vue";
-import IconSquareLetterBFilled from "../icons/IconSquareLetterBFilled.vue";
+import IconCircleLetterAFilled from "../../icons/IconCircleLetterAFilled.vue";
+import IconSquareLetterBFilled from "../../icons/IconSquareLetterBFilled.vue";
 
 const props = defineProps<{
   open: boolean;

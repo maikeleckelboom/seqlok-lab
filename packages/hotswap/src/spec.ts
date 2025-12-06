@@ -37,7 +37,7 @@ export function createTicketId(id: number): TicketId {
  * Phases of the hot-swap protocol for a single engine slot.
  *
  * Must be kept in sync with:
- * - C++ enum `SwapPhase` in `include/seqlok/hotswap_spec.hpp`
+ * - C++ enum `SwapPhase` in `include/seqlok/hotswap_spec.reference.hpp`
  * - TLA+ `phase` domain in `HotSwapProtocol.tla`
  */
 export type SwapPhase =
@@ -52,7 +52,7 @@ export type SwapPhase =
  * What the caller should do in the current audio block.
  *
  * Must be kept in sync with:
- * - C++ enum `SwapStepKind` in `include/seqlok/hotswap_spec.hpp`
+ * - C++ enum `SwapStepKind` in `include/seqlok/hotswap_spec.reference.hpp`
  */
 export type SwapStepKind =
   | "idle"

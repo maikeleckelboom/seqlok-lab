@@ -4,6 +4,7 @@ import { useHotswapLab } from "./useHotswapLab";
 import HotswapConfigPanel from "./HotswapConfigPanel.vue";
 import HotswapViewport from "./HotswapViewport.vue";
 import HotswapInspector from "./HotswapInspector.vue";
+import HotswapStateMachine from "./HotswapStateMachine.vue";
 
 const inspectorOpen = ref(false);
 
@@ -47,30 +48,10 @@ const {
   <div
     class="h-svh flex flex-col bg-zinc-950 text-zinc-100 font-sans antialiased"
   >
-    <!-- Header with subtle gradient -->
-    <header
-      class="relative border-b border-zinc-800/80 px-4 sm:px-6 py-4 shrink-0 bg-gradient-to-b from-zinc-900/50 to-zinc-950"
-    >
-      <div class="w-full max-w-7xl mx-auto flex items-center justify-between">
-        <div class="flex items-baseline gap-3">
-          <h1 class="text-xl font-bold tracking-tight text-white">Seqlok</h1>
-          <span
-            class="text-[11px] font-mono text-zinc-500 uppercase tracking-widest"
-          >
-            Hotswap Lab
-          </span>
-        </div>
-
-        <!-- Optional: Add a status indicator or version -->
-        <!--       <div class="hidden sm:flex items-center gap-2 text-[10px] text-zinc-600 font-mono">-->
-        <!--       </div>-->
-      </div>
-    </header>
-
     <main
       class="flex-1 overflow-y-auto overflow-x-hidden overscroll-none scrollbar-thin"
     >
-      <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div class="w-full max-w-7xl mx-auto">
         <!-- Main grid with better balance -->
         <div class="grid gap-6 lg:gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
           <!-- Left column: Config + Viewport -->
@@ -118,7 +99,7 @@ const {
 
           <!-- Right column: Inspector (sticky on desktop) -->
           <div
-            class="lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto"
+            class="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto no-scrollbar"
           >
             <HotswapInspector
               v-model:open="inspectorOpen"
@@ -127,18 +108,13 @@ const {
               :engine-gains="engineGains"
               :engine-activity="engineActivity"
             />
+            <HotswapStateMachine
+              :current-phase="currentFrame?.state.phase ?? 'idle'"
+              :has-prewarm="preWarmBlocks > 0"
+            />
           </div>
         </div>
       </div>
     </main>
-
-    <!-- Optional: Subtle footer -->
-    <footer
-      class="border-t border-zinc-800/50 px-4 sm:px-6 py-3 text-center text-[10px] text-zinc-600 font-mono"
-    >
-      <!--      <div class="w-full max-w-7xl mx-auto">-->
-      <!--        Real-time engine swap protocol visualization-->
-      <!--      </div>-->
-    </footer>
   </div>
 </template>

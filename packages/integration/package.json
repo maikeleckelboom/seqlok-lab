@@ -17,7 +17,7 @@
   },
   "files": [
     "dist/**/*",
-    "README.md",
+    "docs/HOTSWAP_INTEGRATION.md",
     "LICENSE"
   ],
   "scripts": {

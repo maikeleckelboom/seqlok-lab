@@ -46,19 +46,35 @@ function formatTime(timestamp: number): string {
   return `${h}:${m}:${s}.${ms}`;
 }
 
+function getOpLabel(opCode: DemoOpCode | null | undefined): string {
+  if (opCode == null) {
+    return "CMD";
+  }
+  return OPCODE_LABELS[opCode];
+}
+
 // Format event label
 function formatEventLabel(event: LogEvent): string {
+  const seqPart = event.seq != null ? ` #${event.seq}` : "";
+  const opPart = event.opCode != null ? ` [${getOpLabel(event.opCode)}]` : "";
+
   switch (event.kind) {
-    case "enqueue":
-      return event.payload
-        ? `enqueue #${event.seq} [${getOpLabel(event.payload.opCode)}]`
-        : `enqueue #${event.seq}`;
-    case "enqueue_dropped":
-      return `dropped #${event.seq}`;
-    case "enqueue_closed":
-      return `blocked #${event.seq} (closed)`;
-    case "drain_batch":
-      return `drained ${event.count} cmd${event.count === 1 ? "" : "s"}`;
+    case "enqueue": {
+      return `enqueue${seqPart}${opPart}`;
+    }
+    case "enqueue_dropped": {
+      const head = event.seq != null ? `dropped${seqPart}` : "dropped cmd";
+      return `${head}${opPart}`;
+    }
+    case "enqueue_closed": {
+      const head = event.seq != null ? `blocked${seqPart}` : "blocked enqueue";
+      return `${head}${opPart} (closed)`;
+    }
+    case "drain_batch": {
+      const count = event.processedCount ?? 0;
+      const word = count === 1 ? "cmd" : "cmds";
+      return `drained ${count} ${word}`;
+    }
     case "drain_empty":
       return "drain (empty)";
     case "mailbox_closed":
@@ -71,26 +87,22 @@ function formatEventLabel(event: LogEvent): string {
       return event.kind;
   }
 }
-
-function getOpLabel(opCode: DemoOpCode): string {
-  return OPCODE_LABELS[opCode] ?? `OP${opCode}`;
-}
 </script>
 
 <template>
   <section
-    class="flex flex-col h-full bg-zinc-900/50 rounded-lg border border-zinc-800"
+    class="flex max-h-[80svh] flex-col rounded-lg border border-zinc-800 bg-zinc-900/50"
   >
     <!-- Header -->
     <div
-      class="flex items-center justify-between px-3 py-2 border-b border-zinc-800/50"
+      class="flex items-center justify-between border-b border-zinc-800/50 px-3 py-2"
     >
-      <h2 class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-zinc-400">
         Event Log
       </h2>
       <button
         type="button"
-        class="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+        class="text-[10px] text-zinc-500 transition-colors hover:text-zinc-300"
         @click="emit('clear')"
       >
         Clear
@@ -98,10 +110,10 @@ function getOpLabel(opCode: DemoOpCode): string {
     </div>
 
     <!-- Event list -->
-    <div class="flex-1 overflow-y-auto scrollbar-thin p-2">
+    <div class="flex-1 overflow-y-auto p-2 scrollbar-thin">
       <div
         v-if="events.length === 0"
-        class="h-full flex items-center justify-center"
+        class="flex h-full items-center justify-center"
       >
         <span class="text-xs text-zinc-600">No events yet</span>
       </div>
@@ -110,20 +122,21 @@ function getOpLabel(opCode: DemoOpCode): string {
         <div
           v-for="event in events"
           :key="event.id"
-          class="flex items-start gap-2 py-1 px-1.5 rounded hover:bg-zinc-800/30 transition-colors text-[10px] font-mono"
+          class="flex items-start gap-2 rounded px-1.5 py-1 text-[10px] font-mono transition-colors hover:bg-zinc-800/30"
+          :title="formatEventLabel(event)"
         >
           <!-- Timestamp -->
-          <span class="text-zinc-600 shrink-0 w-20">
+          <span class="w-20 shrink-0 text-zinc-600">
             {{ formatTime(event.timestamp) }}
           </span>
 
           <!-- Icon -->
-          <span :class="colorMap[event.kind]" class="shrink-0 w-3 text-center">
+          <span class="w-3 shrink-0 text-center" :class="colorMap[event.kind]">
             {{ iconMap[event.kind] }}
           </span>
 
           <!-- Label -->
-          <span class="text-zinc-300 flex-1 truncate">
+          <span class="flex-1 truncate text-zinc-300">
             {{ formatEventLabel(event) }}
           </span>
         </div>
@@ -132,7 +145,7 @@ function getOpLabel(opCode: DemoOpCode): string {
 
     <!-- Footer -->
     <div
-      class="px-3 py-1.5 border-t border-zinc-800/50 text-[9px] text-zinc-600 font-mono"
+      class="border-t border-zinc-800/50 px-3 py-1.5 text-[9px] font-mono text-zinc-600"
     >
       {{ events.length }} events
     </div>

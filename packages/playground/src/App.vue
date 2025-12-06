@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { RouterView, useRoute, useRouter, type RouteMeta } from "vue-router";
 import { TabsRoot, TabsList, TabsTrigger, TabsIndicator } from "reka-ui";
 
@@ -69,12 +69,15 @@ const activeDomain = computed<PlaygroundDomainNavItem["id"]>({
   <TabsRoot
     v-model="activeDomain"
     activation-mode="manual"
-    class="flex min-h-screen flex-col bg-zinc-950 text-zinc-50"
+    class="flex h-svh flex-col bg-zinc-950 text-zinc-50"
   >
     <!-- Top shell / header -->
-    <header class="border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur">
+    <header
+      class="border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blu h-16 flex items-center justify-center"
+      ref="header"
+    >
       <div
-        class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6"
+        class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6"
       >
         <!-- Brand -->
         <div class="flex items-center gap-3">
@@ -87,7 +90,7 @@ const activeDomain = computed<PlaygroundDomainNavItem["id"]>({
             <span class="text-sm font-semibold tracking-tight">
               Seqlok Playground
             </span>
-            <span class="text-[11px] text-zinc-500">
+            <span class="text-[11px] text-zinc-500 truncate">
               Real-time shared-state labs: hotswap, command rings, integration.
             </span>
           </div>
@@ -123,7 +126,7 @@ const activeDomain = computed<PlaygroundDomainNavItem["id"]>({
 
     <!-- Page content -->
     <main
-      class="flex-1 overflow-y-auto overflow-x-hidden overscroll-none scrollbar-thin"
+      class="flex-1 grid overflow-y-auto overflow-x-hidden overscroll-none scrollbar-thin"
     >
       <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <RouterView />

@@ -4,8 +4,8 @@ import {
   type RouteRecordRaw,
 } from "vue-router";
 
-import CommandRingLab from "./commands/CommandRingLab.vue";
-import HotswapLab from "./hotswap/HotswapLab.vue";
+import CommandRingLab from "./domain/commands/CommandRingLab.vue";
+import HotswapLab from "./domain/hotswap/HotswapLab.vue";
 
 declare module "vue-router" {
   interface RouteMeta {

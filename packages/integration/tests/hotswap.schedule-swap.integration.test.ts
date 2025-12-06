@@ -25,7 +25,7 @@ enum EngineKind {
 
 describe("integration: scheduleSwap → mailbox → HotswapSlotDriver", () => {
   it("delivers a validated ticket over a mailbox and drives the swap back to idle", () => {
-    // 1. Hotswap command codec and mailbox for a single slot.
+    // Hotswap command codec and mailbox for a single slot.
     const codec = createHotswapCommandCodec<EngineKind>();
 
     const layout: SwsrRingLayout = {
@@ -41,7 +41,7 @@ describe("integration: scheduleSwap → mailbox → HotswapSlotDriver", () => {
 
     const { producer, consumer } = mailbox;
 
-    // 2. Host-side scheduler config: "install swap" as a mailbox command.
+    // Host-side scheduler config: "install swap" as a mailbox command.
     const schedulerConfig: HotswapSchedulerConfig<
       EngineKind,
       HotswapCommand<EngineKind>
@@ -58,7 +58,7 @@ describe("integration: scheduleSwap → mailbox → HotswapSlotDriver", () => {
       },
     };
 
-    // 3. Valid ticket: small fade and a couple of prewarm blocks.
+    // Valid ticket: small fade and a couple of prewarm blocks.
     const ticket: SwapTicketRT<EngineKind> = {
       ticketId: createTicketId(1),
       engineKind: EngineKind.Next,
@@ -67,10 +67,9 @@ describe("integration: scheduleSwap → mailbox → HotswapSlotDriver", () => {
       preWarmBlocks: 2,
     };
 
-    // 4. Use scheduleSwap (host helper).
-    //    This:
-    //    - dry-runs initSwapStateRT off-RT
-    //    - enqueues the command into the mailbox
+    // Use scheduleSwap (host helper)
+    //  - dry-runs initSwapStateRT off-RT
+    //  - enqueues the command into the mailbox
     expect(() => {
       scheduleSwap<EngineKind, HotswapCommand<EngineKind>>(
         schedulerConfig,
@@ -78,7 +77,7 @@ describe("integration: scheduleSwap → mailbox → HotswapSlotDriver", () => {
       );
     }).not.toThrow();
 
-    // 5. RT side: create a real hotswap slot driver.
+    // RT side: create a real hotswap slot driver.
     const slot = createHotswapSlotDriver<EngineKind>();
 
     // Drain the mailbox once and install any tickets into the slot.
@@ -98,7 +97,7 @@ describe("integration: scheduleSwap → mailbox → HotswapSlotDriver", () => {
     expect(slot.state).not.toBeNull();
     expect(slot.state?.ticket.ticketId).toBe(ticket.ticketId);
 
-    // 6. Drive the RT protocol until it returns to idle.
+    // Drive the RT protocol until it returns to idle.
     const blockFrames = 64;
     const activeKind = EngineKind.Current;
     const nextKind = EngineKind.Next;

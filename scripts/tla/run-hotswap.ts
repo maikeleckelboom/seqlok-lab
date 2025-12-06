@@ -5,14 +5,21 @@ import { spawn } from "node:child_process";
 type HotswapMode = "invonly" | "full";
 
 const TOOLS_JAR = resolve("tools/tla/tla2tools.jar");
-const SPEC_PATH = resolve("packages/hotswap/docs/HotSwapProtocol.tla");
+
+// Centralize the TLA directory for hotswap
+const HOTSWAP_TLA_DIR = resolve("packages", "hotswap", "docs", "formal", "tla");
+
+// Spec now lives under docs/formal/tla
+const SPEC_PATH = resolve(HOTSWAP_TLA_DIR, "HotSwapProtocol.tla");
 
 function getConfigPath(mode: HotswapMode): string {
   if (mode === "full") {
-    return resolve("packages/hotswap/docs/HotSwapProtocol.cfg");
+    // Full config under docs/formal/tla
+    return resolve(HOTSWAP_TLA_DIR, "HotSwapProtocol.cfg");
   }
 
-  return resolve("packages/hotswap/docs/HotSwapProtocol.invonly.cfg");
+  // Invariants-only config under docs/formal/tla
+  return resolve(HOTSWAP_TLA_DIR, "HotSwapProtocol.invonly.cfg");
 }
 
 interface ParsedArgs {
@@ -21,10 +28,6 @@ interface ParsedArgs {
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
-  // argv[0] node
-  // argv[1] script path
-  // argv[2] mode
-  // argv[3...] optional TLC flags after a `--` from pnpm
   const [, , rawMode, ...rest] = argv;
 
   if (rawMode !== "full" && rawMode !== "invonly") {

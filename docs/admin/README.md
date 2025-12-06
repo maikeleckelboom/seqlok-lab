@@ -32,7 +32,7 @@ Each R&D log file tracks one calendar year:
 
 Inside a file:
 
-- one section per day: `## YYYY-MM-DD (Nh)`  
+- one section per day: `## YYYY-MM-DD (Nh)`
   - the total hours for that day in parentheses are optional but recommended
 - under each date, a small number of tagged entries (1–4 is typical)
 - each entry uses this shape:

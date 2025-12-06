@@ -12,7 +12,7 @@ const props = defineProps<Props>();
 // Utilization bar width clamped to 100%
 const utilizationWidth = computed(() => {
   const pct = Math.min(props.snapshot.utilizationPct, 100);
-  return `${pct}%`;
+  return `width: ${pct}%`;
 });
 
 // Utilization color based on level
@@ -48,9 +48,9 @@ const dropRate = computed(() => {
         class="h-3 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800"
       >
         <div
-          class="h-full bg-gradient-to-r transition-all duration-150"
+          class="h-full bg-sky-600 transition-all duration-150"
           :class="utilizationColor"
-          :style="{ width: utilizationWidth }"
+          :style="utilizationWidth"
         />
       </div>
     </div>

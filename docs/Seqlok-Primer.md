@@ -135,7 +135,7 @@ This makes it straightforward to:
 
 ```ts
 SeqlokError
-createInternalError(kind, details ?)
+createInternalError(kind, details)
 buildErrorDomain(prefix, domainId, defs)
 
 encodeNumeric(domainId, localOrdinal)
@@ -311,7 +311,7 @@ controller.params.stage("coefficients", (view) => {
 // Bulk hydrate scalars + arrays in one go
 controller.params.hydrate({
   volume: 0.9,
-  coefficients: new Float32Array([...]),
+  coefficients: new Float32Array([...vals]),
 });
 
 // Read params (allocates & copies)
