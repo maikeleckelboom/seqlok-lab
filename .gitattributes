@@ -1,0 +1,60 @@
+# -----------------------------------------------------------------------------
+# Seqlok: normalize text files to LF in the repository (cross-platform stable).
+# -----------------------------------------------------------------------------
+
+# Default: treat files as text and normalize line endings.
+* text=auto eol=lf
+
+# --- Source code ---
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.mjs  text eol=lf
+*.cjs  text eol=lf
+*.mts  text eol=lf
+*.cts  text eol=lf
+
+# --- Config / docs ---
+*.json  text eol=lf
+*.jsonc text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.toml  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.xml   text eol=lf
+*.svg   text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.scss  text eol=lf
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# Windows command scripts should keep CRLF (if you have any).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# --- Binaries: never touch ---
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+
+*.pdf  binary
+*.zip  binary
+*.7z   binary
+*.gz   binary
+*.tgz  binary
+
+*.wasm binary
+*.node binary
+
+*.mp3  binary
+*.wav  binary
+*.flac binary
+*.ogg  binary
+*.m4a  binary
