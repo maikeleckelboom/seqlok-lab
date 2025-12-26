@@ -83,7 +83,7 @@ interface PrimeContext {
 /**
  * EngineABI - The canonical engine interface.
  * 
- * All engines implement this interface regardless of their domain
+ * All engines implement this interface regardless of their domains
  * (stretch, FX, synth, etc.). The TConfig type parameter determines
  * what configuration the engine accepts.
  */

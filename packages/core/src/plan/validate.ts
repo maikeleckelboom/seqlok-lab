@@ -60,7 +60,8 @@ function alignUp(n: number, m: number): number {
   return r === 0 ? n : n + (m - r);
 }
 
-const MAX_ARRAY_LENGTH = 1_000_000; // tune as needed
+// TODO: Look into this and set the most reasonable value
+const MAX_ARRAY_LENGTH = 1_000_000;
 
 function assertArrayLength(key: string, length: number): void {
   if (!Number.isFinite(length) || length <= 0) {

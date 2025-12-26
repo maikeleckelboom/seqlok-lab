@@ -4,13 +4,14 @@
  */
 export const SEQLOK_PACKAGES = [
   "base",
+  "coprocessor-runtime",
   "primitives",
   "streambuf",
-  "introspect",
   "core",
   "commands",
   "hotswap",
   "integration",
+  "introspect",
   "playground",
 ] as const;
 

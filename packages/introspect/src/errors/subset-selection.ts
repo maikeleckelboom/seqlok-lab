@@ -3,7 +3,7 @@
  * Subset selection over the global error universe.
  *
  * @remarks
- * - Joins numeric descriptors (`ALL_DOMAINS`) with per-domain registries.
+ * - Joins numeric descriptors (`ALL_DOMAINS`) with per-domains registries.
  * - Produces `AggregatedErrorDescriptor` values for each selected error.
  * - Used by JSON export, tooling, and future native bindings.
  */
@@ -28,7 +28,7 @@ import type { DomainDescriptor, ErrorMeta, ErrorSeverity } from "@seqlok/base";
  */
 export interface SubsetSelectionCriteria {
   /**
-   * Restrict to these domain prefixes (e.g. ["env", "backing"]).
+   * Restrict to these domains prefixes (e.g. ["env", "backing"]).
    * If omitted, all domains are considered.
    */
   readonly domains?: readonly DomainName[];
@@ -159,7 +159,7 @@ function matchesCriteria(
  * Compute a filtered view of the error universe.
  *
  * @remarks
- * - Joins `ALL_DOMAINS` numeric entries with per-domain registries.
+ * - Joins `ALL_DOMAINS` numeric entries with per-domains registries.
  * - Applies `SubsetSelectionCriteria` to each joined descriptor.
  * - Returns domains that have at least one matching error.
  */

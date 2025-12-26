@@ -111,11 +111,15 @@ function createZeroPlaneBases(): MutablePlaneBases {
  * - Used by both contiguous and WASM backings
  *
  * @param planes - Byte lengths for each plane
+ * @param startByteOffset
  * @returns Record mapping planes to their byte offsets
  */
-export function computeBackingPlaneBases(planes: PlaneByteLengths): PlaneBases {
+export function computeBackingPlaneBases(
+  planes: PlaneByteLengths,
+  startByteOffset = 0,
+): PlaneBases {
   const bases = createZeroPlaneBases();
-  let cursor = 0;
+  let cursor = startByteOffset;
 
   for (const plane of BACKING_PLANE_PACK_ORDER_V1) {
     bases[plane] = cursor;
@@ -140,8 +144,28 @@ function mapPackedBacking<S extends SpecInput>(
   backing: SharedBacking | WasmSharedBacking,
 ): MappedViews {
   const buf = getBackingBuffer(backing);
-  const requiredBytes = plan.bytesTotal >>> 0;
-  const actualBytes = buf.byteLength >>> 0;
+  const baseOffsetBytes =
+    backing.kind === "wasm-shared" ? (backing.baseOffsetBytes ?? 0) : 0;
+
+  if (baseOffsetBytes !== 0) {
+    if (!Number.isSafeInteger(baseOffsetBytes) || baseOffsetBytes < 0) {
+      throw createBackingError("invalidBaseOffset", {
+        baseOffsetBytes,
+        alignmentBytes: BYTES_PER_ELEM.MF64,
+        where: "backing.mapPackedBacking",
+      });
+    }
+    if (baseOffsetBytes % BYTES_PER_ELEM.MF64 !== 0) {
+      throw createBackingError("invalidBaseOffset", {
+        baseOffsetBytes,
+        alignmentBytes: BYTES_PER_ELEM.MF64,
+        where: "backing.mapPackedBacking",
+      });
+    }
+  }
+
+  const requiredBytes = plan.bytesTotal + baseOffsetBytes;
+  const actualBytes = buf.byteLength;
 
   invariant(actualBytes >= requiredBytes, () =>
     createBackingError("allocUndersized", {
@@ -154,7 +178,7 @@ function mapPackedBacking<S extends SpecInput>(
     }),
   );
 
-  const bases = computeBackingPlaneBases(plan.planes);
+  const bases = computeBackingPlaneBases(plan.planes, baseOffsetBytes);
 
   const PF32 = new Float32Array(
     buf,

@@ -109,8 +109,6 @@ function gainToY(gain: number): number {
   return GAIN_TOP + (1 - clamped) * GAIN_HEIGHT;
 }
 
-// Each curve returns { current, next } for t in [0,1]
-
 function equalPowerGains(tRaw: number): EngineGains {
   const t = clamp01(tRaw);
   const angle = (t * Math.PI) / 2;
@@ -208,21 +206,17 @@ export interface GenerateTraceOptions {
 }
 
 export function useHotswapLab(): HotswapLabApi {
-  // Core params
   const blockFrames = ref(128);
   const fadeFrames = ref(8192);
   const preWarmBlocks = ref(4);
 
-  // Playback
   const playbackSpeedOptions: readonly number[] = [0.25, 0.5, 1, 2, 4];
   const playbackSpeed = ref(1);
 
-  // Trace data
   const frames = ref<readonly SwapTraceFrame<EngineKind>[]>([]);
   const baseBlocks = ref(0);
   const cursor = ref(0);
 
-  // Curve selection
   const crossfadeCurveId = ref<CrossfadeCurveId>("equalPower");
   const crossfadeCurves = CROSSFADE_CURVES;
 
@@ -232,12 +226,9 @@ export function useHotswapLab(): HotswapLabApi {
   let playbackAccumulator = 0;
   let lastPlaybackTimestamp: number | null = null;
 
-  // Derived views
   const currentFrame = computed<SwapTraceFrame<EngineKind> | null>(() => {
     return frames.value[cursor.value] ?? null;
   });
-
-  // Phase / grid helpers
 
   const phaseColors: Record<PhaseId, string> = {
     idle: "#52525b",
@@ -262,8 +253,8 @@ export function useHotswapLab(): HotswapLabApi {
       blockCount: number;
     }[] = [];
 
-    let currentPhase: PhaseId | null =
-      localFrames[0]?.state.phase ?? ("idle" as PhaseId);
+    const idle: PhaseId = "idle";
+    let currentPhase: PhaseId = localFrames[0]?.state.phase ?? idle;
     let startIndex = 0;
 
     for (let index = 1; index <= total; index += 1) {
@@ -275,13 +266,15 @@ export function useHotswapLab(): HotswapLabApi {
         const blockCount = endIndex - startIndex + 1;
 
         rawSegments.push({
-          phase: currentPhase ?? ("idle" as PhaseId),
+          phase: currentPhase,
           startBlock: startIndex,
           endBlock: endIndex,
           blockCount,
         });
 
-        currentPhase = nextPhase;
+        if (nextPhase !== null) {
+          currentPhase = nextPhase;
+        }
         startIndex = index;
       }
     }
@@ -365,8 +358,6 @@ export function useHotswapLab(): HotswapLabApi {
     );
   });
 
-  // Gains / labels
-
   const engineGains = computed<EngineGains>(() => {
     const frame = currentFrame.value;
     if (!frame) {
@@ -378,15 +369,11 @@ export function useHotswapLab(): HotswapLabApi {
     switch (phase) {
       case "crossfade":
         return gainsForCurve(crossfadeCurveId.value, frame.fadeProgress);
-
       case "retire":
         return { current: 0, next: 1 };
-
       case "idle":
         return hasTicket ? { current: 1, next: 0 } : { current: 0, next: 1 };
-
       default:
-        // spawn / prime / prewarm → current fully audible, next silent
         return { current: 1, next: 0 };
     }
   });
@@ -430,26 +417,19 @@ export function useHotswapLab(): HotswapLabApi {
           return { current: "done", next: "active" };
         }
         return { current: "running", next: "idle" };
-
       case "spawn":
       case "prime":
         return { current: "running", next: "idle" };
-
       case "prewarm":
         return { current: "running", next: "prewarm" };
-
       case "crossfade":
         return { current: "fading", next: "fading" };
-
       case "retire":
         return { current: "retire", next: "active" };
-
       default:
         return { current: "idle", next: "idle" };
     }
   });
-
-  // Paths: sum + per-engine gains
 
   function buildSumGainPath(
     segment: PhaseSegment | null,
@@ -526,8 +506,6 @@ export function useHotswapLab(): HotswapLabApi {
     buildFullGainPath(crossfadeSegment.value, "next", crossfadeCurveId.value),
   );
 
-  // Trace generation
-
   function buildTicket(): SwapTicketRT<EngineKind> {
     return {
       ticketId: createTicketId(1),
@@ -549,7 +527,7 @@ export function useHotswapLab(): HotswapLabApi {
       (frame) => frame.state.phase === "crossfade",
     );
     if (crossIndex >= 0) {
-      return crossIndex; // start of crossfade
+      return crossIndex;
     }
 
     const firstNonIdle = rawFrames.findIndex(
@@ -595,15 +573,15 @@ export function useHotswapLab(): HotswapLabApi {
       if (!last) {
         return;
       }
+
       const padding: SwapTraceFrame<EngineKind>[] = [];
       const needed = TARGET_VIEW_BLOCKS - rawFrames.length;
 
       for (let index = 1; index <= needed; index += 1) {
-        const padded: SwapTraceFrame<EngineKind> = {
+        padding.push({
           ...last,
           blockIndex: last.blockIndex + index,
-        };
-        padding.push(padded);
+        });
       }
 
       nextFrames = [...rawFrames, ...padding];
@@ -625,8 +603,6 @@ export function useHotswapLab(): HotswapLabApi {
 
     stopPlayback();
   }
-
-  // Playback engine
 
   function stopPlayback(): void {
     isPlaying.value = false;
@@ -651,7 +627,6 @@ export function useHotswapLab(): HotswapLabApi {
     }
 
     if (lastPlaybackTimestamp === null) {
-      // First tick after starting/resuming: establish baseline
       lastPlaybackTimestamp = timestamp;
       playbackRafId = requestAnimationFrame(playbackLoop);
       return;

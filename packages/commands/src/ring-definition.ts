@@ -2,52 +2,36 @@ import type { CommandCodec } from "./codec";
 import type { SwsrRingLayout } from "@seqlok/primitives";
 
 /**
- * Layout for a command/event ring.
+ * Layout for a `@seqlok/commands` ring-backed mailbox.
  *
- * Thin alias over the low-level SWSR ring layout.
+ * @remarks
+ * This is a thin alias over the low-level SWSR ring layout.
  */
 export type RingLayout = SwsrRingLayout;
 
+/**
+ * Pure-data definition for a ring-backed mailbox.
+ *
+ * @remarks
+ * This shape is intentionally used for both:
+ * - host -> RT command mailboxes
+ * - RT -> host event mailboxes
+ *
+ * The "direction" is defined by how you wire the backing:
+ * producer pushes into the ring, consumer drains it.
+ */
 export interface RingDefinition<T> {
   readonly mailboxId: string;
   readonly layout: RingLayout;
   readonly codec: CommandCodec<T>;
 }
 
-export type CommandRingDefinition<Command> = RingDefinition<Command>;
-export type EventRingDefinition<EventPayload> = RingDefinition<EventPayload>;
-
-export interface DefineRingConfig<T> {
-  readonly mailboxId: string;
-  readonly layout: RingLayout;
-  readonly codec: CommandCodec<T>;
-}
-
 /**
- * Generic ring definition helper.
+ * Define a mailbox ring.
  *
- * Used by both `defineCommandRing` and `defineEventRing`.
+ * @remarks
+ * Identity helper that keeps literal types intact and makes inference pleasant.
  */
-export function defineRing<T>(config: DefineRingConfig<T>): RingDefinition<T> {
+export function defineRing<T>(config: RingDefinition<T>): RingDefinition<T> {
   return config;
-}
-
-/**
- * Define a ring that carries structured commands.
- */
-export function defineCommandRing<Command>(
-  config: DefineRingConfig<Command>,
-): CommandRingDefinition<Command> {
-  return defineRing(config);
-}
-
-/**
- * Define a ring that carries structured event payloads.
- *
- * Uses the same underlying codec abstraction as commands.
- */
-export function defineEventRing<EventPayload>(
-  config: DefineRingConfig<EventPayload>,
-): EventRingDefinition<EventPayload> {
-  return defineRing(config);
 }

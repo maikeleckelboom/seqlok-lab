@@ -33,9 +33,9 @@ export interface PlanOptions {
 
 /** Per-plane total byte lengths in a computed plan. */
 export interface PlaneByteLengths {
-  readonly PF32: number; // params f32   (Float32Array)
+  readonly PF32: number; // params f32 (Float32Array)
   readonly PI32: number; // params i32 & enum indices (Int32Array)
-  readonly PB: number; // params bool   (Uint8Array)
+  readonly PB: number; // params bool (Uint8Array)
 
   /**
    * Params seqlock plane (PU), in BYTES.
@@ -107,7 +107,7 @@ export interface Plan<S extends SpecInput> {
   readonly meters: Readonly<{ [K in keyof S["meters"]]: EntrySlot }>;
 
   /**
-   * Seqlock pair indices (pair per domain).
+   * Seqlock pair indices (pair per domains).
    *
    * These are indices *within* the PU/MU planes as Uint32Array views:
    *   - `locks.PU.lock` / `locks.PU.seq`

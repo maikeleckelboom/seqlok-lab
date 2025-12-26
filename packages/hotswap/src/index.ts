@@ -5,7 +5,7 @@
  * - RT protocol (`spec.ts`)
  * - Command codec for transport (`commands.ts`)
  * - Host-side scheduling (`schedule-swap.ts`)
- * - Error domain (`errors/hotswap.ts`)
+ * - Error domains (`errors/hotswap.ts`)
  */
 
 export type {

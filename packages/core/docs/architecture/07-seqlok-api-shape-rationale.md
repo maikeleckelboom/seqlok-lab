@@ -193,7 +193,7 @@ If ergonomics are needed, they should be layered above, in simple helpers that c
 Another tempting shortcut:
 
 ```ts
-// REJECTED: collapses the plan domain
+// REJECTED: collapses the plan domains
 const handoff = buildHandoff(spec, backing);
 ```
 

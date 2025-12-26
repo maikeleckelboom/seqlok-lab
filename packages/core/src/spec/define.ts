@@ -1,11 +1,14 @@
 /**
  * @fileoverview
- * Spec definition DSL and type-safe builders.
+ * Spec definition entrypoint.
  *
- * @remarks
- * - Provides `defineSpec()` for declaring params and meters with type inference.
- * - Builders preserve literal types and array lengths for precise type checking.
- * - Handles validation of min/max ranges and enum values at definition time.
+ * Author-time specs (`SpecAstInput`) are designed to be ergonomic and JSON-friendly:
+ * namespaces may be nested and `id` may be omitted. At runtime we normalize into a
+ * flat `SpecInput` shape (dot-path keys, validated numeric ranges, stable defaults).
+ *
+ * Two things are intentionally “touchy” here:
+ * 1) Enum builders must preserve literal tuples (do not refactor overloads into unions).
+ * 2) With `exactOptionalPropertyTypes`, optional fields must be omitted (not set to `undefined`).
  */
 
 import {
@@ -16,351 +19,491 @@ import {
   parseArrayLen,
 } from "./validate";
 
-import type { SpecInput } from "./types";
-import type { ScalarRangeInput } from "./validate";
+import type {
+  MeterDef,
+  ParamDef,
+  ResolvedSpec,
+  ScalarRange,
+  SpecAstInput,
+  SpecInput,
+  SpecNamespace,
+} from "./types";
+
+/*
+ * Constants and Helpers
+ */
+
+type LenArg<Len extends number> = Len | Readonly<{ length: Len }>;
+type ScalarRangeDefaults = Readonly<{ min: number; max: number }>;
+
+const F32_MAX = 3.4028234663852886e38;
+
+const DEFAULT_F32_RANGE: ScalarRangeDefaults = { min: -F32_MAX, max: F32_MAX };
+const DEFAULT_I32_RANGE: ScalarRangeDefaults = {
+  min: -2147483648,
+  max: 2147483647,
+};
+const DEFAULT_U32_RANGE: ScalarRangeDefaults = { min: 0, max: 4294967295 };
 
 /**
- * Scalar param builders.
- *
- * Overloads capture literal min/max so `typeof spec` can see them, while
- * still being assignable to the wider ScalarParamDef (`min?: number`, etc.).
+ * Internal range-validation switches used during normalization.
  */
-interface F32Builder {
-  (): { readonly kind: "f32" };
-
-  <TMin extends number>(range: {
-    readonly min: TMin;
-  }): {
-    readonly kind: "f32";
-    readonly min: TMin;
-  };
-
-  <TMax extends number>(range: {
-    readonly max: TMax;
-  }): {
-    readonly kind: "f32";
-    readonly max: TMax;
-  };
-
-  <TMin extends number, TMax extends number>(range: {
-    readonly min: TMin;
-    readonly max: TMax;
-  }): {
-    readonly kind: "f32";
-    readonly min: TMin;
-    readonly max: TMax;
-  };
-
-  array<TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ): {
-    readonly kind: "f32.array";
-    readonly length: TLen;
-  };
-}
-
-interface I32Builder {
-  (): { readonly kind: "i32" };
-
-  <TMin extends number>(range: {
-    readonly min: TMin;
-  }): {
-    readonly kind: "i32";
-    readonly min: TMin;
-  };
-
-  <TMax extends number>(range: {
-    readonly max: TMax;
-  }): {
-    readonly kind: "i32";
-    readonly max: TMax;
-  };
-
-  <TMin extends number, TMax extends number>(range: {
-    readonly min: TMin;
-    readonly max: TMax;
-  }): {
-    readonly kind: "i32";
-    readonly min: TMin;
-    readonly max: TMax;
-  };
-
-  array<TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ): {
-    readonly kind: "i32.array";
-    readonly length: TLen;
-  };
-}
-
-interface BoolBuilder {
-  (): { readonly kind: "bool" };
-
-  array<TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ): {
-    readonly kind: "bool.array";
-    readonly length: TLen;
-  };
-}
+type RangeValidateOpts = Readonly<{
+  integer?: boolean;
+  unsigned?: boolean;
+}>;
 
 /**
- * Enum builder — `<const V>` keeps tuples, array overload preserves length.
+ * Applies defaults, normalizes, then validates a scalar range.
  *
- * We use *overloads* instead of a union parameter type so that
- * `param.enum(['a','b','c'])` doesn't get its tuple widened to
- * `readonly string[]` by contextual typing.
- *
- * NOTE: ESLint may suggest combining these overloads into one signature
- * with a union type. DO NOT do this — the union causes TypeScript to
- * widen literal tuples to `readonly string[]` during inference.
+ * @remarks
+ * `context` is included in spec errors and should be stable and human-readable.
  */
-interface EnumBuilder {
-  <const V extends readonly string[]>(
-    values: V,
-  ): {
-    readonly kind: "enum";
-    readonly values: V;
+const normalizeRange = (
+  input: ScalarRange | undefined,
+  defaults: ScalarRangeDefaults,
+  context: string,
+  opts: RangeValidateOpts = {},
+): ScalarRangeDefaults => {
+  const min = input?.min ?? defaults.min;
+  const max = input?.max ?? defaults.max;
+
+  // Preserve legacy normalization surface.
+  const range = createRangeInput(min, max);
+
+  // With `exactOptionalPropertyTypes`, we must OMIT keys rather than pass `undefined`.
+  const validateOpts = {
+    ...(opts.integer === true ? { integer: true } : {}),
+    ...(opts.unsigned === true ? { unsigned: true } : {}),
   };
 
-  // eslint-disable-next-line @typescript-eslint/unified-signatures
-  <const V extends readonly string[]>(config: {
-    readonly values: V;
-  }): {
-    readonly kind: "enum";
-    readonly values: V;
-  };
+  assertValidateScalarRange(context, range, validateOpts);
 
-  array<const V extends readonly string[], TLen extends number>(opts: {
-    readonly values: V;
-    readonly length: TLen;
-  }): {
-    readonly kind: "enum.array";
-    readonly values: V;
-    readonly length: TLen;
-  };
+  return { min: range.min, max: range.max };
+};
+
+const makeLen = (length: LenArg<number>, context: string): number => {
+  return parseArrayLen(length, context);
+};
+
+const isArray = (value: unknown): value is readonly unknown[] => {
+  return Array.isArray(value);
+};
+
+const isNamespaceObject = (
+  value: unknown,
+): value is Record<string, unknown> => {
+  return isPlainObject(value);
+};
+
+const isLeafDef = (value: unknown): value is { kind: string } => {
+  if (!isNamespaceObject(value)) {
+    return false;
+  }
+  return typeof value.kind === "string";
+};
+
+/*
+ * Builder Type Definitions
+ */
+
+interface NumericBuilder<K extends string, KArr extends string> {
+  (): Readonly<{ kind: K }>;
+  <const R extends ScalarRange>(range: R): Readonly<{ kind: K } & R>;
+  array<const Len extends number>(
+    length: LenArg<Len>,
+  ): Readonly<{ kind: KArr; length: Len }>;
 }
+
+export type F32ParamBuilder = NumericBuilder<"f32", "f32.array">;
+export type I32ParamBuilder = NumericBuilder<"i32", "i32.array">;
+export type U32ParamBuilder = NumericBuilder<"u32", "u32.array">;
+
+export interface BoolParamBuilder {
+  (): Readonly<{ kind: "bool" }>;
+  array<const Len extends number>(
+    length: LenArg<Len>,
+  ): Readonly<{ kind: "bool.array"; length: Len }>;
+}
+
+interface SimpleArrayBuilder<K extends string> {
+  array<const Len extends number>(
+    length: LenArg<Len>,
+  ): Readonly<{ kind: K; length: Len }>;
+}
+
+export type BytesParamBuilder = SimpleArrayBuilder<"u8.array">;
+export type I8ParamBuilder = SimpleArrayBuilder<"i8.array">;
+export type I16ParamBuilder = SimpleArrayBuilder<"i16.array">;
+export type U16ParamBuilder = SimpleArrayBuilder<"u16.array">;
 
 /**
- * Meter builders — arrays get literal-preserving length as well.
+ * Enum overload preservation note.
+ *
+ * @remarks
+ * Do not combine the enum overloads into a union parameter.
+ * ESLint may suggest this via `@typescript-eslint/unified-signatures`, but the
+ * union form frequently causes TypeScript to widen literal tuples to
+ * `readonly string[]`, breaking downstream inference and type tests.
+ *
+ * Keep the overloads, suppress the lint rule on the object-form overload.
  */
-interface MeterF32Builder {
-  (): { readonly kind: "f32" };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type EnumOverloadPreservationNote = never;
 
-  array<TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ): {
-    readonly kind: "f32.array";
-    readonly length: TLen;
-  };
-}
+/**
+ * Enum parameter builder.
+ *
+ * @remarks
+ * {@link EnumOverloadPreservationNote}
+ */
+export interface EnumParamBuilder {
+  <const Values extends readonly string[]>(
+    values: Values,
+  ): Readonly<{ kind: "enum"; values: Values }>;
 
-interface MeterF64Builder {
-  (): { readonly kind: "f64" };
+  <const Values extends readonly string[]>(
+    // eslint-disable-next-line @typescript-eslint/unified-signatures
+    config: Readonly<{ values: Values }>,
+  ): Readonly<{ kind: "enum"; values: Values }>;
 
-  array<TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ): {
-    readonly kind: "f64.array";
-    readonly length: TLen;
-  };
-}
-
-interface MeterU32Builder {
-  (): { readonly kind: "u32" };
-
-  array<TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ): {
-    readonly kind: "u32.array";
-    readonly length: TLen;
-  };
-}
-
-type MeterBoolBuilder = () => { readonly kind: "bool" };
-
-export interface ParamBuilders {
-  readonly f32: F32Builder;
-  readonly i32: I32Builder;
-  readonly bool: BoolBuilder;
-  readonly enum: EnumBuilder;
-}
-
-export interface MeterBuilders {
-  readonly f32: MeterF32Builder;
-  readonly f64: MeterF64Builder;
-  readonly u32: MeterU32Builder;
-  readonly bool: MeterBoolBuilder;
+  array<const Values extends readonly string[], const Len extends number>(
+    opts: Readonly<{ values: Values; length: LenArg<Len> }>,
+  ): Readonly<{ kind: "enum.array"; values: Values; length: Len }>;
 }
 
 /**
- * Create a spec either from a plain object or via builders.
+ * Enum meter builder.
  *
- * - Builder form (preferred):
- *     const spec = defineSpec(({ param, meter }) => ({ ... }));
- *   here we use `const S` so nested literals are preserved.
- *
- * - Plain object form (power users / tests):
- *     const spec = defineSpec({ id: 'foo', params: { ... } });
- *   here we enforce `S extends SpecInput`.
+ * @remarks
+ * {@link EnumOverloadPreservationNote}
  */
-export function defineSpec<const S>(
-  build: (api: {
-    readonly param: ParamBuilders;
-    readonly meter: MeterBuilders;
-  }) => S,
-): S;
+export interface MeterEnumBuilder {
+  <const Values extends readonly string[]>(
+    values: Values,
+  ): Readonly<{ kind: "enum"; values: Values }>;
 
-export function defineSpec<S extends SpecInput>(spec: S): S;
+  <const Values extends readonly string[]>(
+    // eslint-disable-next-line @typescript-eslint/unified-signatures
+    config: Readonly<{ values: Values }>,
+  ): Readonly<{ kind: "enum"; values: Values }>;
 
-export function defineSpec<S>(
-  arg:
-    | S
-    | ((api: {
-        readonly param: ParamBuilders;
-        readonly meter: MeterBuilders;
-      }) => S),
-): S {
-  if (typeof arg !== "function") {
-    return arg;
+  array<const Values extends readonly string[], const Len extends number>(
+    opts: Readonly<{ values: Values; length: LenArg<Len> }>,
+  ): Readonly<{ kind: "enum.array"; values: Values; length: Len }>;
+}
+
+export type ParamBuilders = Readonly<{
+  f32: F32ParamBuilder;
+  i32: I32ParamBuilder;
+  u32: U32ParamBuilder;
+  bool: BoolParamBuilder;
+  u8: BytesParamBuilder;
+  i8: I8ParamBuilder;
+  i16: I16ParamBuilder;
+  u16: U16ParamBuilder;
+  enum: EnumParamBuilder;
+}>;
+
+interface MeterNumericBuilder<K extends string, KArr extends string> {
+  (): Readonly<{ kind: K }>;
+  array<const Len extends number>(
+    length: LenArg<Len>,
+  ): Readonly<{ kind: KArr; length: Len }>;
+}
+
+export type MeterF32Builder = MeterNumericBuilder<"f32", "f32.array">;
+export type MeterF64Builder = MeterNumericBuilder<"f64", "f64.array">;
+export type MeterI32Builder = MeterNumericBuilder<"i32", "i32.array">;
+export type MeterU32Builder = MeterNumericBuilder<"u32", "u32.array">;
+
+/**
+ * Meter bool builder (includes `.array(...)`).
+ */
+export interface MeterBoolBuilder {
+  (): Readonly<{ kind: "bool" }>;
+  array<const Len extends number>(
+    length: LenArg<Len>,
+  ): Readonly<{ kind: "bool.array"; length: Len }>;
+}
+
+export type MeterBuilders = Readonly<{
+  f32: MeterF32Builder;
+  f64: MeterF64Builder;
+  i32: MeterI32Builder;
+  u32: MeterU32Builder;
+  bool: MeterBoolBuilder;
+  enum: MeterEnumBuilder;
+}>;
+
+/*
+ * Builder Implementations
+ */
+
+const createNumericParam = <K extends string, KArr extends string>(
+  kind: K,
+  arrayKind: KArr,
+): NumericBuilder<K, KArr> => {
+  function scalar(): Readonly<{ kind: K }>;
+  function scalar<const R extends ScalarRange>(
+    range: R,
+  ): Readonly<{ kind: K } & R>;
+  function scalar<const R extends ScalarRange>(range?: R) {
+    if (range == null) {
+      return { kind } as Readonly<{ kind: K }>;
+    }
+    return { kind, ...range } as Readonly<{ kind: K } & R>;
   }
 
-  const f32 = ((input?: ScalarRangeInput) => {
-    const min = input?.min;
-    const max = input?.max;
+  const array = <const Len extends number>(length: LenArg<Len>) =>
+    ({
+      kind: arrayKind,
+      length: makeLen(length, `param.${arrayKind}.length`),
+    }) as Readonly<{ kind: KArr; length: Len }>;
 
-    if (min !== undefined || max !== undefined) {
-      assertValidateScalarRange("param.f32", createRangeInput(min, max));
-    }
+  return Object.assign(scalar, { array });
+};
 
-    if (min !== undefined && max !== undefined) {
-      return { kind: "f32" as const, min, max };
-    }
-    if (min !== undefined) {
-      return { kind: "f32" as const, min };
-    }
-    if (max !== undefined) {
-      return { kind: "f32" as const, max };
-    }
-    return { kind: "f32" as const };
-  }) as F32Builder;
+const createBoolParam = (): BoolParamBuilder => {
+  const scalar = () => ({ kind: "bool" as const });
 
-  f32.array = <TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ) => ({
-    kind: "f32.array" as const,
-    length: parseArrayLen(length) as TLen,
-  });
+  const array = <const Len extends number>(length: LenArg<Len>) =>
+    ({
+      kind: "bool.array" as const,
+      length: makeLen(length, "param.bool.array.length"),
+    }) as Readonly<{ kind: "bool.array"; length: Len }>;
 
-  const i32 = ((r?: ScalarRangeInput) => {
-    const min = r?.min;
-    const max = r?.max;
+  return Object.assign(scalar, { array });
+};
 
-    if (min !== undefined || max !== undefined) {
-      assertValidateScalarRange("param.i32", createRangeInput(min, max), {
-        integer: true,
-      });
-    }
+/**
+ * ✅ Bool meter builder with `.array(...)`.
+ */
+const createBoolMeter = (): MeterBoolBuilder => {
+  const scalar = () => ({ kind: "bool" as const });
 
-    if (min !== undefined && max !== undefined) {
-      return { kind: "i32" as const, min, max };
-    }
-    if (min !== undefined) {
-      return { kind: "i32" as const, min };
-    }
-    if (max !== undefined) {
-      return { kind: "i32" as const, max };
-    }
-    return { kind: "i32" as const };
-  }) as I32Builder;
+  const array = <const Len extends number>(length: LenArg<Len>) =>
+    ({
+      kind: "bool.array" as const,
+      length: makeLen(length, "meter.bool.array.length"),
+    }) as Readonly<{ kind: "bool.array"; length: Len }>;
 
-  i32.array = <TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ) => ({
-    kind: "i32.array" as const,
-    length: parseArrayLen(length) as TLen,
-  });
+  return Object.assign(scalar, { array });
+};
 
-  const bool = (() => ({ kind: "bool" as const })) as BoolBuilder;
+const createSimpleArrayParam = <K extends string>(
+  kind: K,
+): SimpleArrayBuilder<K> => ({
+  array: <const Len extends number>(length: LenArg<Len>) =>
+    ({
+      kind,
+      length: makeLen(length, `param.${kind}.length`),
+    }) as Readonly<{ kind: K; length: Len }>,
+});
 
-  bool.array = <TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ) => ({
-    kind: "bool.array" as const,
-    length: parseArrayLen(length) as TLen,
-  });
+/**
+ * Runtime implementation for enum builders.
+ *
+ * @remarks
+ * The overloads that preserve literal inference live on the public interfaces
+ * (`EnumParamBuilder` / `MeterEnumBuilder`). This function keeps the runtime code
+ * single-path while still benefiting from those interface types at call sites.
+ */
+const createEnumBuilder = (scope: "param" | "meter") => {
+  const scalar = <const Values extends readonly string[]>(
+    valuesOrOpts: Values | Readonly<{ values: Values }>,
+  ): Readonly<{ kind: "enum"; values: Values }> => {
+    const values: Values = isArray(valuesOrOpts)
+      ? valuesOrOpts
+      : valuesOrOpts.values;
 
-  const scalarEnum = <const V extends readonly string[]>(
-    argEnum: V | { readonly values: V },
-  ) => {
-    const raw: V = isPlainObject(argEnum)
-      ? (argEnum as { readonly values: V }).values
-      : argEnum;
-    return { kind: "enum" as const, values: asNonEmpty(raw) };
+    return {
+      kind: "enum" as const,
+      values: asNonEmpty(values, `${scope}.enum.values`),
+    };
   };
 
-  const arrayEnum = <
-    const V extends readonly string[],
-    TLen extends number,
-  >(opts: {
-    readonly values: V;
-    readonly length: TLen;
-  }) => ({
-    kind: "enum.array" as const,
-    values: asNonEmpty(opts.values),
-    length: parseArrayLen(opts.length) as TLen,
-  });
+  const array = <
+    const Values extends readonly string[],
+    const Len extends number,
+  >(
+    opts: Readonly<{ values: Values; length: LenArg<Len> }>,
+  ) =>
+    ({
+      kind: "enum.array" as const,
+      values: asNonEmpty(opts.values, `${scope}.enum.array.values`),
+      length: makeLen(opts.length, `${scope}.enum.array.length`),
+    }) as Readonly<{ kind: "enum.array"; values: Values; length: Len }>;
 
-  const enumBuilder = scalarEnum as EnumBuilder;
-  enumBuilder.array = arrayEnum;
+  return Object.assign(scalar, { array });
+};
 
-  const meterF32 = (() => ({ kind: "f32" as const })) as MeterF32Builder;
+const paramBuilder: ParamBuilders = {
+  f32: createNumericParam("f32", "f32.array"),
+  i32: createNumericParam("i32", "i32.array"),
+  u32: createNumericParam("u32", "u32.array"),
+  bool: createBoolParam(),
+  u8: createSimpleArrayParam("u8.array"),
+  i8: createSimpleArrayParam("i8.array"),
+  i16: createSimpleArrayParam("i16.array"),
+  u16: createSimpleArrayParam("u16.array"),
+  enum: createEnumBuilder("param"),
+};
 
-  meterF32.array = <TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ) => ({
-    kind: "f32.array" as const,
-    length: parseArrayLen(length) as TLen,
-  });
+const createNumericMeter = <K extends string, KArr extends string>(
+  kind: K,
+  arrayKind: KArr,
+): MeterNumericBuilder<K, KArr> => {
+  const scalar = () => ({ kind });
 
-  const meterF64 = (() => ({ kind: "f64" as const })) as MeterF64Builder;
+  const array = <const Len extends number>(length: LenArg<Len>) =>
+    ({
+      kind: arrayKind,
+      length: makeLen(length, `meter.${arrayKind}.length`),
+    }) as Readonly<{ kind: KArr; length: Len }>;
 
-  meterF64.array = <TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ) => ({
-    kind: "f64.array" as const,
-    length: parseArrayLen(length) as TLen,
-  });
+  return Object.assign(scalar, { array });
+};
 
-  const meterU32 = (() => ({ kind: "u32" as const })) as MeterU32Builder;
+const meterBuilder: MeterBuilders = {
+  f32: createNumericMeter("f32", "f32.array"),
+  f64: createNumericMeter("f64", "f64.array"),
+  i32: createNumericMeter("i32", "i32.array"),
+  u32: createNumericMeter("u32", "u32.array"),
+  bool: createBoolMeter(),
+  enum: createEnumBuilder("meter"),
+};
 
-  meterU32.array = <TLen extends number>(
-    length: TLen | { readonly length: TLen },
-  ) => ({
-    kind: "u32.array" as const,
-    length: parseArrayLen(length) as TLen,
-  });
+/*
+ * Runtime Normalization
+ */
 
-  const meterBool: MeterBoolBuilder = () => ({ kind: "bool" as const });
+/**
+ * Flattens a nested namespace object into dot-path keys.
+ *
+ * @remarks
+ * Leaf nodes are detected by the presence of a string `kind` field.
+ * If authors create ambiguous shapes (a namespace and a leaf sharing a key path),
+ * later entries win by object iteration order.
+ */
+const flattenNamespace = <T>(
+  ns: SpecNamespace<T>,
+  prefix: string,
+  out: Record<string, T>,
+): void => {
+  for (const [key, value] of Object.entries(ns)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
 
-  const param = {
-    f32,
-    i32,
-    bool,
-    enum: enumBuilder,
-  } as const;
+    if (isNamespaceObject(value) && !isLeafDef(value)) {
+      flattenNamespace(value, fullKey, out);
+    } else {
+      out[fullKey] = value as T;
+    }
+  }
+};
 
-  const meter = {
-    f32: meterF32,
-    f64: meterF64,
-    u32: meterU32,
-    bool: meterBool,
-  } as const;
+/**
+ * Normalizes numeric scalar parameters in-place.
+ *
+ * @remarks
+ * Only parameter scalars carry `{ min, max }`. Meters do not have ranges.
+ */
+const normalizeNumericParamsInPlace = (
+  params: Record<string, ParamDef>,
+): void => {
+  for (const [key, def] of Object.entries(params)) {
+    const context = `spec.params.${key}`;
 
-  const build = arg as (api: {
-    readonly param: ParamBuilders;
-    readonly meter: MeterBuilders;
-  }) => S;
+    if (def.kind === "f32") {
+      params[key] = {
+        kind: "f32",
+        ...normalizeRange(def, DEFAULT_F32_RANGE, context),
+      };
+      continue;
+    }
 
-  return build({ param, meter });
+    if (def.kind === "i32") {
+      params[key] = {
+        kind: "i32",
+        ...normalizeRange(def, DEFAULT_I32_RANGE, context, { integer: true }),
+      };
+      continue;
+    }
+
+    if (def.kind === "u32") {
+      params[key] = {
+        kind: "u32",
+        ...normalizeRange(def, DEFAULT_U32_RANGE, context, {
+          integer: true,
+          unsigned: true,
+        }),
+      };
+    }
+  }
+};
+
+/**
+ * Converts `SpecAstInput` into the normalized runtime `SpecInput`.
+ *
+ * @remarks
+ * With `exactOptionalPropertyTypes`, empty objects must not be attached as optional
+ * properties. We only attach `params`/`meters` when non-empty.
+ */
+const normalizeAst = (ast: SpecAstInput): SpecInput => {
+  const paramsOut: Record<string, ParamDef> = {};
+  const metersOut: Record<string, MeterDef> = {};
+
+  if (ast.params) {
+    flattenNamespace(ast.params, "", paramsOut);
+  }
+  if (ast.meters) {
+    flattenNamespace(ast.meters, "", metersOut);
+  }
+
+  if (Object.keys(paramsOut).length > 0) {
+    normalizeNumericParamsInPlace(paramsOut);
+  }
+
+  const result: {
+    id: string;
+    params?: typeof paramsOut;
+    meters?: typeof metersOut;
+  } = {
+    id: ast.id ?? "spec",
+  };
+
+  if (Object.keys(paramsOut).length > 0) {
+    result.params = paramsOut;
+  }
+  if (Object.keys(metersOut).length > 0) {
+    result.meters = metersOut;
+  }
+
+  return result as SpecInput;
+};
+
+/*
+ * Public API
+ */
+
+/**
+ * Defines a spec from either an AST object or a builder callback.
+ *
+ * @remarks
+ * The return type is `ResolvedSpec<T>` to reflect the AST → normalized transformation:
+ * - namespaces are flattened
+ * - numeric ranges are validated and defaulted
+ * - optional properties are omitted when empty
+ */
+export function defineSpec<const T extends SpecAstInput>(
+  buildOrAst:
+    | T
+    | ((api: Readonly<{ param: ParamBuilders; meter: MeterBuilders }>) => T),
+): ResolvedSpec<T> {
+  if (typeof buildOrAst === "function") {
+    const ast = buildOrAst({ param: paramBuilder, meter: meterBuilder });
+    return normalizeAst(ast) as ResolvedSpec<T>;
+  }
+
+  return normalizeAst(buildOrAst) as ResolvedSpec<T>;
 }

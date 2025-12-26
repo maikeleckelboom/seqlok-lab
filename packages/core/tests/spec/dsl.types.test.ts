@@ -39,7 +39,6 @@ describe("DSL: type inference & validation", () => {
       params: {
         mode: param.enum(["a", "b"]),
       },
-      meters: {},
     }));
 
     const spec2 = defineSpec(({ param }) => ({
@@ -47,7 +46,6 @@ describe("DSL: type inference & validation", () => {
       params: {
         mode: param.enum({ values: ["a", "b"] }),
       },
-      meters: {},
     }));
 
     expect(spec1.params.mode.values).toEqual(["a", "b"]);
@@ -61,7 +59,6 @@ describe("DSL: type inference & validation", () => {
         params: {
           gain: param.f32({ min: 10, max: 1 }), // Invalid: min > max.
         },
-        meters: {},
       }));
     }).toThrow(/range|min|max/i);
   });
@@ -73,7 +70,6 @@ describe("DSL: type inference & validation", () => {
         params: {
           steps: param.i32({ min: 1.5, max: 10 }), // Invalid: Fractional min.
         },
-        meters: {},
       }));
     }).toThrow(); // spec.rangeInvalid is enough; message tested elsewhere
   });
@@ -85,7 +81,6 @@ describe("DSL: type inference & validation", () => {
         params: {
           invalid: param.f32.array(0), // Invalid: Zero length.
         },
-        meters: {},
       }));
     }).toThrow(); // spec.arrayInvalid
 
@@ -95,7 +90,6 @@ describe("DSL: type inference & validation", () => {
         params: {
           invalid: param.f32.array(-5), // Invalid: Negative length.
         },
-        meters: {},
       }));
     }).toThrow(); // spec.arrayInvalid
   });
@@ -107,7 +101,6 @@ describe("DSL: type inference & validation", () => {
         params: {
           mode: param.enum([]),
         },
-        meters: {},
       }));
     }).toThrow(/enum|value|empty/i);
   });
@@ -119,7 +112,6 @@ describe("DSL: type inference & validation", () => {
         params: {
           mode: param.enum(["valid", "", "another"]),
         },
-        meters: {},
       }));
     }).toThrow(); // spec.enumInvalid
   });
@@ -200,7 +192,6 @@ describe("DSL: type inference & validation", () => {
   it("validates meter bool kind (new in v1)", () => {
     const spec = defineSpec(({ meter }) => ({
       id: "meter-bool",
-      params: {},
       meters: {
         active: meter.bool(),
       },

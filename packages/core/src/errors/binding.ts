@@ -5,7 +5,7 @@
  * @remarks
  * - Covers controller/processor param validation and range violations.
  * - Includes snapshot/hydrate/stage and snapshotInto buffer mismatches.
- * - Registered into the global error registry as the `binding.*` domain.
+ * - Registered into the global error registry as the `binding.*` domains.
  */
 
 import {
@@ -40,7 +40,7 @@ export interface BindingUnknownKeyDetails extends ErrorDetails {
  *
  * @remarks
  * This duplicates the generic "range" vocabulary but is kept
- * local to the binding domain to avoid cross-module aliases.
+ * local to the binding domains to avoid cross-module aliases.
  */
 export interface BindingParamRangeDetails extends ErrorDetails {
   readonly key: string;

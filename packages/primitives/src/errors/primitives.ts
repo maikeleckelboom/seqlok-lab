@@ -1,6 +1,6 @@
 /**
  * @fileoverview
- * Error codes, detail types, and factory for the `primitives.*` domain.
+ * Error codes, detail types, and factory for the `primitives.*` domains.
  *
  * @remarks
  * - Uses `defineErrorDomain` from @seqlok/base so code/message/meta live in a
@@ -28,7 +28,7 @@ import {
  *
  * @remarks
  * These codes are stable and safe to persist in logs and diagnostics.
- * They are derived from the domain definition via `defineErrorDomain`.
+ * They are derived from the domains definition via `defineErrorDomain`.
  */
 export type PrimitivesErrorCode = ErrorCodeOf<PrimitivesDomain>;
 
@@ -166,7 +166,7 @@ const PRIMITIVES_DEFS: PrimitivesDomainDefs = {
 };
 
 /**
- * Logical primitives error domain, including registry and factory.
+ * Logical primitives error domains, including registry and factory.
  */
 export const PRIMITIVES_DOMAIN: ErrorDomainWithFactory<
   "primitives",
@@ -174,16 +174,16 @@ export const PRIMITIVES_DOMAIN: ErrorDomainWithFactory<
 > = defineErrorDomain("primitives", PRIMITIVES_DEFS);
 
 /**
- * Convenience alias for the domain type.
+ * Convenience alias for the domains type.
  */
 export type PrimitivesDomain = typeof PRIMITIVES_DOMAIN;
 
 /**
- * Registry type for the primitives domain.
+ * Registry type for the primitives domains.
  *
  * @remarks
  * This stays compatible with the previous `PrimitivesErrorsMap` shape and is
- * what domain descriptors (`domains.ts`) consume.
+ * what domains descriptors (`domains.ts`) consume.
  */
 export type PrimitivesErrorsMap = DomainRegistry<
   "primitives",
@@ -197,7 +197,7 @@ export const PRIMITIVES_ERRORS: PrimitivesErrorsMap =
   PRIMITIVES_DOMAIN.registry as PrimitivesErrorsMap;
 
 /**
- * Compile-time check: codes derived from the domain defs match the expected
+ * Compile-time check: codes derived from the domains defs match the expected
  * string literal union.
  */
 type ExpectedPrimitivesErrorCode =
@@ -228,7 +228,7 @@ export interface PrimitivesErrorDetailsByKey {
 }
 
 /**
- * Compile-time check: detail mapping keys match the domain's local keys.
+ * Compile-time check: detail mapping keys match the domains's local keys.
  * @internal
  */
 export type _PrimitivesDetailKeysMatch = AssertTrue<
@@ -239,7 +239,7 @@ export type _PrimitivesDetailKeysMatch = AssertTrue<
  * Domain-local factory type for `primitives.*` errors.
  *
  * @remarks
- * Built on top of the generic domain factory, but specializes `details`
+ * Built on top of the generic domains factory, but specializes `details`
  * per key via `PrimitivesErrorDetailsByKey`.
  */
 export type PrimitivesErrorFactory = KeyedErrorFactoryOf<
@@ -262,7 +262,7 @@ export const createPrimitivesError: PrimitivesErrorFactory = (
 ) => PRIMITIVES_DOMAIN.createError(key, details, cause);
 
 /**
- * Sanity check: explicit `PrimitivesErrorKey` type matches the domain keys.
+ * Sanity check: explicit `PrimitivesErrorKey` type matches the domains keys.
  */
 type DomainKeys = ErrorKeyOf<PrimitivesDomain>;
 type KeysEqual = IsExact<PrimitivesErrorKey, DomainKeys>;

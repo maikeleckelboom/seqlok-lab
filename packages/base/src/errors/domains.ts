@@ -1,13 +1,13 @@
 /**
  * @fileoverview
- * Numeric domain ids and descriptors for Seqlok error codes.
+ * Numeric domains ids and descriptors for Seqlok error codes.
  *
  * @remarks
  * This module is the cross-language ABI for error domains:
  *
  * - Domain ids are 8-bit (0–255).
- * - High 8 bits of the numeric error code (32-bit) encode the domain id.
- * - Low 24 bits are a domain-local ordinal (1–16_777_215, 0 reserved).
+ * - High 8 bits of the numeric error code (32-bit) encode the domains id.
+ * - Low 24 bits are a domains-local ordinal (1–16_777_215, 0 reserved).
  *
  * The table below is deliberately small and explicit so it can be
  * mirrored in Rust / C++ without ambiguity.
@@ -16,14 +16,14 @@
 import type { ErrorNumericCode } from "./numeric";
 
 /**
- * Single error code entry within a domain.
+ * Single error code entry within a domains.
  *
  * @remarks
- * - `key` is the domain-local identifier (e.g. "unsupported")
+ * - `key` is the domains-local identifier (e.g. "unsupported")
  * - `code` is the fully-qualified string (e.g. "env.unsupported")
  * - `numericCode` is the encoded numeric value derived from:
- *   - domain id (high byte)
- *   - domain-local ordinal (low 24 bits)
+ *   - domains id (high byte)
+ *   - domains-local ordinal (low 24 bits)
  */
 export interface DomainEntry {
   /**
@@ -41,19 +41,19 @@ export interface DomainEntry {
   readonly code: string;
 
   /**
-   * Encoded numeric error code derived from the domain id
-   * and a domain-local ordinal.
+   * Encoded numeric error code derived from the domains id
+   * and a domains-local ordinal.
    */
   readonly numericCode: ErrorNumericCode;
 }
 
 /**
- * Descriptor for a single error domain.
+ * Descriptor for a single error domains.
  *
  * @remarks
- * - `prefix` is the domain prefix (e.g. "env", "backing")
+ * - `prefix` is the domains prefix (e.g. "env", "backing")
  * - `domainId` is the numeric high byte used by `encodeNumeric`
- * - `entries` are the concrete codes in this domain
+ * - `entries` are the concrete codes in this domains
  */
 export interface DomainDescriptor {
   /**
@@ -62,7 +62,7 @@ export interface DomainDescriptor {
   readonly prefix: string;
 
   /**
-   * Numeric domain id (0–255).
+   * Numeric domains id (0–255).
    *
    * @remarks
    * This is the "high byte" component in the numeric encoding.
@@ -70,15 +70,15 @@ export interface DomainDescriptor {
   readonly domainId: DomainId;
 
   /**
-   * Concrete error codes belonging to this domain.
+   * Concrete error codes belonging to this domains.
    */
   readonly entries: readonly DomainEntry[];
 }
 
 /**
- * Canonical domain ID allocation for Seqlok.
+ * Canonical domains ID allocation for Seqlok.
  *
- * 8-bit domain IDs (0–255) with reserved ranges:
+ * 8-bit domains IDs (0–255) with reserved ranges:
  *
  * - 0:        unknown / unregistered (fallback)
  * - 1–9:      @seqlok/base
@@ -87,6 +87,7 @@ export interface DomainDescriptor {
  * - 60–69:    @seqlok/commands
  * - 70–79:    @seqlok/streambuf
  * - 80–89:    @seqlok/hotswap
+ * - 90–99:    @seqlok/coprocessor-runtime
  * - 200–254:  user / extension domains (3rd-party engines, plugins)
  * - 255:      reserved sentinel (never assign)
  */
@@ -117,6 +118,9 @@ export interface DomainIdsTable {
 
   // @seqlok/hotswap (80–89)
   readonly hotswap: 80;
+
+  // @seqlok/coprocessor-runtime (90–99)
+  readonly coprocessorRuntime: 90;
 
   // Reserved sentinel (never assign)
   readonly reserved: 255;
@@ -150,12 +154,15 @@ export const DOMAIN_IDS: DomainIdsTable = {
   // @seqlok/hotswap (80–89)
   hotswap: 80,
 
+  // @seqlok/coprocessor-runtime (90–99)
+  coprocessorRuntime: 90,
+
   // Reserved
   reserved: 255,
 };
 
 /**
- * String name of a domain id as used in this table.
+ * String name of a domains id as used in this table.
  *
  * @remarks
  * Includes sentinel entries (`unknown`, `reserved`) so you can round-trip
@@ -164,7 +171,7 @@ export const DOMAIN_IDS: DomainIdsTable = {
 export type DomainIdName = keyof DomainIdsTable;
 
 /**
- * Numeric domain id for built-in domains.
+ * Numeric domains id for built-in domains.
  *
  * @remarks
  * Does not attempt to model the user range (200–254); third-party code
@@ -202,6 +209,7 @@ export interface DomainRangesTable {
   readonly commands: DomainRange;
   readonly streambuf: DomainRange;
   readonly hotswap: DomainRange;
+  readonly coprocessorRuntime: DomainRange;
   readonly user: DomainRange;
 }
 
@@ -212,11 +220,15 @@ export const DOMAIN_RANGES: Readonly<DomainRangesTable> = {
   commands: { min: DOMAIN_IDS.commands, max: DOMAIN_IDS.commands },
   streambuf: { min: DOMAIN_IDS.streambuf, max: DOMAIN_IDS.streambuf },
   hotswap: { min: DOMAIN_IDS.hotswap, max: DOMAIN_IDS.hotswap },
+  coprocessorRuntime: {
+    min: DOMAIN_IDS.coprocessorRuntime,
+    max: DOMAIN_IDS.coprocessorRuntime,
+  },
   user: { min: 200, max: 254 },
 } as const;
 
 /**
- * Type guard for built-in domain ids (as opposed to user / extension ids).
+ * Type guard for built-in domains ids (as opposed to user / extension ids).
  *
  * @remarks
  * Intended for tooling and guardrails in introspect / schema export.

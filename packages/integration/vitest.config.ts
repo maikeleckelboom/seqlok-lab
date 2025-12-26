@@ -5,5 +5,7 @@ import { createSharedTestConfig } from "../../scripts/vitest/shared-config";
 
 export default defineConfig({
   resolve: { alias: createSeqlokWorkspaceAliases() },
-  test: createSharedTestConfig(),
+  test: createSharedTestConfig({
+    // environment: "happy-dom",
+  }),
 });

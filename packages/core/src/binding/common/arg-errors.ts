@@ -6,7 +6,7 @@
  * These helpers are used when a caller selects an overload shape but fails to provide
  * required arguments (e.g. missing backing in the (spec, plan, backing) form).
  *
- * These are API misuse errors and should be surfaced as typed binding-domain errors.
+ * These are API misuse errors and should be surfaced as typed binding-domains errors.
  */
 import { createBindingError } from "../../errors/binding";
 

@@ -78,7 +78,7 @@ function buildLayerRestrictions() {
     );
   }
 
-  // primitives: bottom layer — cannot import domain layers
+  // primitives: bottom layer — cannot import domains layers
   const layersAbovePrimitives = [
     "types",
     "spec",
@@ -96,7 +96,7 @@ function buildLayerRestrictions() {
     );
   }
 
-  // types: cannot import any domain layer or primitives/errors
+  // types: cannot import any domains layer or primitives/errors
   const layersAboveTypes = [
     "spec",
     "plan",
@@ -150,7 +150,7 @@ function buildLayerRestrictions() {
     );
   }
 
-  // Prevent imports from central type files (use domain-owned types instead)
+  // Prevent imports from central type files (use domains-owned types instead)
   const centralTypeFiles = [
     {
       file: "src/types/backing.ts",
@@ -221,7 +221,6 @@ export default createPackageEslintConfig({
   scripts: ["scripts/**/*.{ts,tsx}"],
   config: ["*.config.ts", "vite.config.ts", "rollup.*.config.{js,ts,mts}"],
   packageDirs: [HERE],
-  // Inject the architectural boundaries
   extraBaseRules: {
     "import/no-restricted-paths": [
       "error",

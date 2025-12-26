@@ -34,6 +34,7 @@ interface AssertionErrorShape {
 
 describe("observer binding - coverage edges", () => {
   const spec = defineSpec(({ param, meter }) => ({
+    id: "test",
     params: {
       rate: param.f32({ min: 0, max: 2 }),
       active: param.bool(),
@@ -199,11 +200,12 @@ describe("observer binding - coverage edges", () => {
 
   it("rejects undersized shared backings", () => {
     const bigSpec = defineSpec(({ param, meter }) => ({
+      id: "test",
       params: {
-        a: param.f32(),
-        b: param.f32(),
-        c: param.f32(),
-        d: param.f32(),
+        a: param.f32({ min: 0, max: 1 }),
+        b: param.f32({ min: 0, max: 1 }),
+        c: param.f32({ min: 0, max: 1 }),
+        d: param.f32({ min: 0, max: 1 }),
       },
       meters: {
         m0: meter.f32(),
@@ -231,7 +233,8 @@ describe("observer binding - coverage edges", () => {
 
   it("validates partitioned backing capacity", () => {
     const partitionedSpec = defineSpec(({ param, meter }) => ({
-      params: { a: param.f32() },
+      id: "test",
+      params: { a: param.f32({ min: 0, max: 1 }) },
       meters: { m: meter.f32() },
     }));
 

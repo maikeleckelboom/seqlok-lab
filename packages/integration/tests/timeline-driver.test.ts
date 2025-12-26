@@ -19,7 +19,6 @@ import type {
   TicketId,
 } from "@seqlok/hotswap";
 
-// For these tests we use a fixed engine-kind domain.
 type EngineKind = 0;
 
 type StubHotswapSlot = HotswapSlotDriver<EngineKind> & {
@@ -55,8 +54,6 @@ function createStubHotswapSlot(): StubHotswapSlot {
       _nextKind: EngineKind,
       noneKindSentinel: EngineKind,
     ): SwapStepDecisionRT<EngineKind> {
-      // Timeline tests focus on render/command sequencing, so we keep the
-      // hotswap behavior trivially idle here.
       return {
         kind: "idle",
         status: {
@@ -65,6 +62,10 @@ function createStubHotswapSlot(): StubHotswapSlot {
           progress: 0,
           activeEngineKind: activeKind,
           nextEngineKind: noneKindSentinel,
+          fadeTotalFrames: 0,
+          fadeDoneFramesAtBlockStart: 0,
+          fadeDoneFramesAtBlockEnd: 0,
+          preWarmBlocksRemaining: 0,
         },
       };
     },

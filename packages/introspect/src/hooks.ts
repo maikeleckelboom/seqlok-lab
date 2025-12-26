@@ -54,11 +54,14 @@ let currentSink: CoreIntrospectSink | undefined;
  * @remarks
  * - Passing `undefined` disables introspect emission.
  * - Not thread-safe by design: this is dev/test/tooling only.
+ * - Returns the previous sink so callers can restore it.
  */
 export function installCoreIntrospectSink(
   sink: CoreIntrospectSink | undefined,
-): void {
+): CoreIntrospectSink | undefined {
+  const prev = currentSink;
   currentSink = sink;
+  return prev;
 }
 
 /**

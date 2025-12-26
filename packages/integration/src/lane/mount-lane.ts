@@ -3,27 +3,34 @@ import { bindObserver, bindProcessor } from "@seqlok/core";
 import { createLaneRuntimeCore } from "./runtime-core";
 
 import type { EngineInstance } from "./engine-bank";
-import type { LaneType } from "./lane-type";
+import type { LaneKind } from "./lane-kind";
 import type { LaneRuntimeCore } from "./runtime-core";
 import type {
+  Handoff,
   ObserverBinding,
   ProcessorBinding,
   ReceivedHandoff,
+  SharedContext,
   SpecInput,
 } from "@seqlok/core";
 
+export type LaneBindSource<S extends SpecInput> =
+  | ReceivedHandoff<S>
+  | Handoff<S>
+  | SharedContext<S>;
+
 /**
- * Options for mounting a lane in a worklet/worker.
+ * Options for mounting a lane kind on the RT side (AudioWorklet / worker).
  *
  * @remarks
  * - `mailboxId` is passed through to `createLaneRuntimeCore` so the lane
  *   can receive hotswap commands via the shared mailbox.
- * - `handoff` is the `ReceivedHandoff` for this lane, typically constructed
- *   from a `Handoff` built on the host side.
+ * - `source` may be a `Handoff`, `ReceivedHandoff`, or `SharedContext`.
+ *   We bind observer/processor directly from it (core handles normalization).
  */
 export interface MountLaneOptions<S extends SpecInput> {
   readonly mailboxId: string;
-  readonly handoff: ReceivedHandoff<S>;
+  readonly source: LaneBindSource<S>;
 }
 
 /**
@@ -38,7 +45,7 @@ export interface MountedLane<
   S extends SpecInput,
   EngineKindEnum extends number,
 > {
-  readonly laneTypeId: string;
+  readonly laneKindId: string;
 
   readonly runtime: LaneRuntimeCore<EngineKindEnum>;
   readonly observer: ObserverBinding<S>;
@@ -49,7 +56,7 @@ export interface MountedLane<
    *
    * @remarks
    * - All plugins see the same I/O buffers and can mutate them in-place.
-   * - In the common case there is a single processor plugin (e.g. stretch).
+   * - In the common case there is a single processor plugin.
    */
   readonly processBlock: (
     inputL: Float32Array,
@@ -75,15 +82,14 @@ interface ProcessorHandle {
 }
 
 /**
- * Mount a lane type against a `ReceivedHandoff` and mailbox id.
+ * Mount a lane kind against a bindable source and mailbox id.
  *
  * @remarks
  * - Intended to be called on the RT side (AudioWorklet / worker).
- * - Creates `ObserverBinding` + `ProcessorBinding` from the handoff.
+ * - Creates `ObserverBinding` + `ProcessorBinding` from the provided source.
  * - Wires all observer plugins once.
  * - Wires all processor plugins once and aggregates their `processBlock`.
- * - Creates a `LaneRuntimeCore` for this lane so transport/hotswap
- *   can be layered on top.
+ * - Creates a `LaneRuntimeCore` for this lane so transport/hotswap can be layered on top.
  */
 export function mountLane<
   S extends SpecInput,
@@ -93,7 +99,7 @@ export function mountLane<
   EventPayload,
   TInstance extends EngineInstance<EngineKindEnum>,
 >(
-  laneType: LaneType<
+  laneKind: LaneKind<
     S,
     TConfig,
     EngineKindEnum,
@@ -103,20 +109,18 @@ export function mountLane<
   >,
   options: MountLaneOptions<S>,
 ): MountedLane<S, EngineKindEnum> {
-  const { mailboxId, handoff } = options;
+  const { mailboxId, source } = options;
 
   const runtime = createLaneRuntimeCore<EngineKindEnum>(mailboxId);
 
-  const observer = bindObserver<S>(handoff);
-  const processor = bindProcessor<S>(handoff);
+  const observer = bindObserver<S>(source);
+  const processor = bindProcessor<S>(source);
 
-  // One-shot observer wiring
-  for (const plugin of laneType.plugins.observers) {
+  for (const plugin of laneKind.plugins.observers) {
     plugin.attachObserver?.(observer);
   }
 
-  // Processor plugin handles (RT side)
-  const processorHandles: ProcessorHandle[] = laneType.plugins.processors.map(
+  const processorHandles: ProcessorHandle[] = laneKind.plugins.processors.map(
     (plugin) => plugin.attachProcessor(processor),
   );
 
@@ -134,15 +138,12 @@ export function mountLane<
   const dispose = (): void => {
     for (let i = processorHandles.length - 1; i >= 0; i -= 1) {
       const handle = processorHandles[i];
-      if (handle?.dispose === undefined) {
-        continue;
-      }
-      handle.dispose();
+      handle?.dispose?.();
     }
   };
 
   return {
-    laneTypeId: laneType.id,
+    laneKindId: laneKind.id,
     runtime,
     observer,
     processor,

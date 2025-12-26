@@ -38,7 +38,7 @@ export function createTicketId(id: number): TicketId {
  *
  * Must be kept in sync with:
  * - C++ enum `SwapPhase` in `include/seqlok/hotswap_spec.reference.hpp`
- * - TLA+ `phase` domain in `HotSwapProtocol.tla`
+ * - TLA+ `phase` domains in `HotSwapProtocol.tla`
  */
 export type SwapPhase =
   | "idle"
@@ -64,45 +64,12 @@ export type SwapStepKind =
 /**
  * Compact RT ticket: description of a swap that is safe to copy into
  * an audio-thread-owned slot (no heap, all numeric).
- *
- * @remarks
- * - This type is the host/RT contract; it is safe to pass by value.
- * - `atFrame` is carried on the ticket, but not interpreted by
- *   {@link stepSwapStateRT}. Callers are responsible for only
- *   installing tickets (via {@link initSwapStateRT}) once the
- *   scheduled time has been reached (e.g. via a transport / slicer).
  */
 export interface SwapTicketRT<EngineKind extends number> {
-  /**
-   * Host-chosen numeric ID. 0 means "no ticket". Host can map this
-   * back to a string / UUID out of band.
-   *
-   * Enforced at the type level via `TicketId` and at runtime via
-   * `createTicketId` and `initSwapStateRT`.
-   */
   readonly ticketId: TicketId;
-
-  /**
-   * Enum-like numeric kind for the next engine to activate.
-   */
   readonly engineKind: EngineKind;
-
-  /**
-   * Absolute frame index (in the global timebase) where the crossfade
-   * should start. The protocol itself does not enforce this; it is
-   * exposed so the caller can align fades to musical / transport time.
-   */
   readonly atFrame: number;
-
-  /**
-   * Crossfade length in frames. Must be >= 1.
-   */
   readonly fadeFrames: number;
-
-  /**
-   * Number of pre-warm blocks to run on the next engine before its
-   * output is ever mixed into the final signal. Must be >= 0.
-   */
   readonly preWarmBlocks: number;
 }
 
@@ -113,14 +80,38 @@ export interface SwapTicketRT<EngineKind extends number> {
 export interface SwapStatusRT<EngineKind extends number> {
   readonly phase: SwapPhase;
   readonly ticketId: number; // 0 = none
-  readonly progress: number; // 0..1 over the lifecycle
+
+  /**
+   * Coarse 0..1 lifecycle progress (UI/telemetry only).
+   * Do NOT use for audio-rate ramps.
+   */
+  readonly progress: number;
+
+  /**
+   * The engine kind the caller should treat as "active output" *for this step*.
+   *
+   * Important: during `retireNow`, this is the newly-committed engine
+   * (the former "next") to avoid a one-block snap/pop at the boundary.
+   */
   readonly activeEngineKind: EngineKind;
-  readonly nextEngineKind: EngineKind; // the caller chooses a sentinel for "none"
+
+  /**
+   * Next engine kind while a swap is in-flight.
+   * Caller chooses a sentinel for "none".
+   */
+  readonly nextEngineKind: EngineKind;
+
+  // 0 outside crossfade.
+  readonly fadeTotalFrames: number;
+  readonly fadeDoneFramesAtBlockStart: number;
+  readonly fadeDoneFramesAtBlockEnd: number;
+
+  // Useful for telemetry/debug (0 if no ticket)
+  readonly preWarmBlocksRemaining: number;
 }
 
 /**
- * Internal RT state for the protocol. This is mirrored in C++ as
- * `SwapStateRT` and in the TLA+ spec as state variables.
+ * Internal RT state for the protocol.
  */
 export interface SwapStateRT<EngineKind extends number> {
   phase: SwapPhase;
@@ -145,15 +136,6 @@ export interface SwapStepDecisionRT<EngineKind extends number> {
   readonly status: SwapStatusRT<EngineKind>;
 }
 
-/**
- * Initialize RT swap state when the audio thread accepts a ticket and
- * the next engine is ready to be used.
- *
- * The caller owns the actual engine handle / pointer; this
- * state machine only tracks protocol phase and counters.
- *
- * Violations of ticket preconditions are reported as `hotswap.invalidTicket`.
- */
 export function initSwapStateRT<EngineKind extends number>(
   ticket: SwapTicketRT<EngineKind>,
 ): SwapStateRT<EngineKind> {
@@ -208,19 +190,36 @@ export function initSwapStateRT<EngineKind extends number>(
   };
 }
 
-/**
- * Pure RT state machine step.
- *
- * - Mutates `state` in-place.
- * - Does not allocate.
- * - Does not know about engines or audio; caller interprets `kind`.
- *
- * @param state              RT state for a single slot
- * @param blockFrames        number of frames in this block
- * @param activeKind         kind of the current engine
- * @param nextKind           kind of the next engine (or sentinel)
- * @param noneKindSentinel   sentinel representing "no next engine"
- */
+interface FadeGeometry {
+  readonly total: number;
+  readonly doneStart: number;
+  readonly doneEnd: number;
+}
+
+function fadeNone(): FadeGeometry {
+  return { total: 0, doneStart: 0, doneEnd: 0 };
+}
+
+function clampNonNegativeInt(n: number): number {
+  if (!Number.isFinite(n)) {
+    return 0;
+  }
+  return n <= 0 ? 0 : Math.floor(n);
+}
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) {
+    return 0;
+  }
+  if (n <= 0) {
+    return 0;
+  }
+  if (n >= 1) {
+    return 1;
+  }
+  return n;
+}
+
 export function stepSwapStateRT<EngineKind extends number>(
   state: SwapStateRT<EngineKind>,
   blockFrames: number,
@@ -228,108 +227,131 @@ export function stepSwapStateRT<EngineKind extends number>(
   nextKind: EngineKind,
   noneKindSentinel: EngineKind,
 ): SwapStepDecisionRT<EngineKind> {
+  const safeBlockFrames = clampNonNegativeInt(blockFrames);
+
   const ticketId: number = state.hasTicket ? state.ticket.ticketId : 0;
-  const activeEngineKind = activeKind;
-  const nextEngineKind: EngineKind =
-    state.phase === "idle" || !state.hasTicket ? noneKindSentinel : nextKind;
+  const progress =
+    state.stepTotal > 0 ? clamp01(state.stepIndex / state.stepTotal) : 0;
 
-  const progress = state.stepTotal > 0 ? state.stepIndex / state.stepTotal : 0;
-
-  const mkStatus = (phase: SwapPhase): SwapStatusRT<EngineKind> => ({
+  const mkStatus = (
+    phase: SwapPhase,
+    activeEngineKind: EngineKind,
+    nextEngineKind: EngineKind,
+    fade: FadeGeometry,
+    preWarmBlocksRemaining: number,
+  ): SwapStatusRT<EngineKind> => ({
     phase,
     ticketId,
     progress,
     activeEngineKind,
     nextEngineKind,
+    fadeTotalFrames: fade.total,
+    fadeDoneFramesAtBlockStart: fade.doneStart,
+    fadeDoneFramesAtBlockEnd: fade.doneEnd,
+    preWarmBlocksRemaining,
   });
 
   if (!state.hasTicket || state.phase === "idle") {
     return {
       kind: "idle",
-      status: mkStatus("idle"),
+      status: mkStatus("idle", activeKind, noneKindSentinel, fadeNone(), 0),
     };
   }
 
   switch (state.phase) {
     case "spawn": {
-      // The new engine is already constructed and associated with this slot
-      // by the caller; we simply advance the protocol.
       state.phase = "prime";
       state.stepIndex += 1;
-
       return {
         kind: "runCurrentOnly",
-        status: mkStatus("spawn"),
+        status: mkStatus(
+          "spawn",
+          activeKind,
+          nextKind,
+          fadeNone(),
+          state.preWarmBlocksRemaining,
+        ),
       };
     }
 
     case "prime": {
-      // First-time setup of the next engine happens in the caller when
-      // this step is observed.
       state.phase = state.preWarmBlocksRemaining > 0 ? "prewarm" : "crossfade";
       state.stepIndex += 1;
-
       return {
         kind: "runCurrentOnly",
-        status: mkStatus("prime"),
+        status: mkStatus(
+          "prime",
+          activeKind,
+          nextKind,
+          fadeNone(),
+          state.preWarmBlocksRemaining,
+        ),
       };
     }
 
     case "prewarm": {
-      // Caller should:
-      // - run the current engine normally for output
-      // - run the next engine in "prewarm" mode and discard its output
-      state.preWarmBlocksRemaining -= 1;
+      const remainingAtStart = state.preWarmBlocksRemaining;
+      state.preWarmBlocksRemaining = Math.max(0, remainingAtStart - 1);
       state.stepIndex += 1;
 
-      if (state.preWarmBlocksRemaining <= 0) {
+      if (state.preWarmBlocksRemaining === 0) {
         state.phase = "crossfade";
       }
 
       return {
         kind: "runCurrentAndPrewarmNext",
-        status: mkStatus("prewarm"),
+        status: mkStatus(
+          "prewarm",
+          activeKind,
+          nextKind,
+          fadeNone(),
+          state.preWarmBlocksRemaining,
+        ),
       };
     }
 
     case "crossfade": {
-      // Caller should:
-      // - run both engines
-      // - mix outputs according to a fade curve derived from fadeFramesRemaining
-      state.fadeFramesRemaining = Math.max(
-        0,
-        state.fadeFramesRemaining - blockFrames,
-      );
+      const total = state.totalFadeFrames;
+      const remainingAtStart = state.fadeFramesRemaining;
+      const doneStart = Math.max(0, total - remainingAtStart);
+
+      const remainingAfter = Math.max(0, remainingAtStart - safeBlockFrames);
+      state.fadeFramesRemaining = remainingAfter;
+
+      const doneEnd = Math.max(0, total - remainingAfter);
+
       state.stepIndex += 1;
 
-      if (state.fadeFramesRemaining <= 0) {
+      if (state.fadeFramesRemaining === 0) {
         state.phase = "retire";
       }
 
       return {
         kind: "runBothForCrossfade",
-        status: mkStatus("crossfade"),
+        status: mkStatus(
+          "crossfade",
+          activeKind,
+          nextKind,
+          { total, doneStart, doneEnd },
+          state.preWarmBlocksRemaining,
+        ),
       };
     }
 
     case "retire": {
-      // Caller should:
-      // - keep running current engine this block
-      // - after the block, swap handles (next → current, retire current)
-      // - ensure proper memory ordering before reclamation
+      // Commit boundary: for this step, the newly-activated engine is the one
+      // the caller should treat as "active output". This avoids a one-block snap.
       state.phase = "idle";
       state.hasTicket = false;
       state.stepIndex += 1;
 
       return {
         kind: "retireNow",
-        status: mkStatus("retire"),
+        status: mkStatus("retire", nextKind, noneKindSentinel, fadeNone(), 0),
       };
     }
 
     default: {
-      // Exhaustiveness guard: if a new phase is added to `SwapPhase`
-      // but not handled here, this assignment will fail to type-check.
       const _exhaustive: never = state.phase;
       panic(`Unhandled swap phase: ${String(_exhaustive)}`);
     }

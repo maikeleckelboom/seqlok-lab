@@ -1,44 +1,36 @@
 /**
- * @fileoverview
- * Public surface for the `@seqlok/commands` package.
+ * @fileoverview Public surface for the `@seqlok/commands` package.
  *
  * @remarks
- * This package currently exposes:
- *
- * - The `commands.*` error domain for command transport.
- * - Core contracts for command codecs and logical mailboxes.
- * - A SWSR ring-backed command mailbox and fan-in bus.
+ * This package defines the transport-agnostic mailbox contracts and provides
+ * a SWSR ring-backed implementation using `@seqlok/primitives`.
  */
 
 export {
-  COMMANDS,
-  COMMANDS_ERRORS,
-  createCommandsError,
-} from "./errors/commands";
+  createCommandMailbox,
+  attachCommandProducer,
+  attachCommandConsumer,
+  type CommandMailbox,
+  type CommandMailboxConfig,
+} from "./swsr-mailbox";
+
+export {
+  isDecodeError,
+  type CommandCodec,
+  type DecodeError,
+  type DecodeErrorInvalidPayload,
+  type DecodeErrorUnknownCommand,
+  type DecodeResult,
+} from "./codec";
 
 export type {
   CommandsError,
   CommandsErrorCode,
-  CommandsErrorDetailsByKey,
-  CommandsErrorFactory,
   CommandsErrorKey,
-  CommandsInvalidPayloadDetails,
-  CommandsMailboxClosedDetails,
-  CommandsRingOverflowDetails,
-  CommandsUnknownCommandDetails,
+  CommandsErrorFactory,
 } from "./errors/commands";
+export { COMMANDS_ERRORS, createCommandsError } from "./errors/commands";
 
-export type {
-  CommandCodec,
-  DecodeError,
-  DecodeErrorInvalidPayload,
-  DecodeErrorUnknownCommand,
-  DecodeResult,
-} from "./codec";
-
-export { isDecodeError } from "./codec";
-
-// Transport-agnostic mailbox contracts
 export type {
   BaseCommandMailboxConfig,
   CommandConsumer,
@@ -48,30 +40,13 @@ export type {
   CommandPushResult,
 } from "./mailbox";
 
-// SWSR-backed mailbox types and functions
-export type { CommandMailboxConfig, CommandMailbox } from "./swsr-mailbox";
-
 export {
-  createCommandMailbox,
-  attachCommandProducer,
-  attachCommandConsumer,
-} from "./swsr-mailbox";
+  createCommandBus,
+  type CommandBus,
+  type CommandBusDrainStats,
+  type CommandBusHooks,
+  type SourceId,
+} from "./bus";
 
-// Command bus over multiple consumers
-export type { CommandBus, CommandBusDrainStats, CommandBusHooks } from "./bus";
-
-export { createCommandBus } from "./bus";
-
-// Ring definition helpers
-export type {
-  RingLayout,
-  RingDefinition,
-  CommandRingDefinition,
-  EventRingDefinition,
-  DefineRingConfig,
-} from "./ring-definition";
-export {
-  defineRing,
-  defineCommandRing,
-  defineEventRing,
-} from "./ring-definition";
+export { defineRing } from "./ring-definition";
+export type { RingDefinition, RingLayout } from "./ring-definition";

@@ -4,7 +4,7 @@
  *
  * @remarks
  * - Pulls registries from @seqlok/base, @seqlok/core, @seqlok/primitives,
- *   and the local `introspect.*` domain.
+ *   and the local `introspect.*` domains.
  * - Rebuilds numeric-code descriptors here so this remains the single
  *   canonical view used by diagnostics, health, and schema tooling.
  */
@@ -34,12 +34,12 @@ export type DomainName = DomainDescriptor["prefix"];
  *
  * @remarks
  * - `code` is the fully-qualified string code (e.g. "env.unsupported")
- * - `domain` is the prefix (e.g. "env")
- * - `key` is the domain-local key (e.g. "unsupported")
+ * - `domains` is the prefix (e.g. "env")
+ * - `key` is the domains-local key (e.g. "unsupported")
  * - `numericCode` is the encoded numeric value
  *
- * For `message` / `meta`, join this with the per-domain registry from
- * `getRegistryForDomain(domain)`, whose values are `ErrorDescriptor`
+ * For `message` / `meta`, join this with the per-domains registry from
+ * `getRegistryForDomain(domains)`, whose values are `ErrorDescriptor`
  * from `@seqlok/base`.
  */
 export interface ErrorIndexEntry {
@@ -50,11 +50,11 @@ export interface ErrorIndexEntry {
 }
 
 /**
- * Build domain entries from a registry map.
+ * Build domains entries from a registry map.
  *
  * @remarks
  * The registry map supplies `code`/`message`/`meta`; we derive the
- * numeric code from the domain id and a stable key order.
+ * numeric code from the domains id and a stable key order.
  */
 function entriesFromRegistry(
   registry: ReturnType<typeof getRegistryForDomain>,
@@ -78,8 +78,8 @@ function entriesFromRegistry(
 }
 
 /**
- * Build a full domain descriptor from the global registry map and
- * a numeric domain id.
+ * Build a full domains descriptor from the global registry map and
+ * a numeric domains id.
  */
 function buildDomainDescriptor(
   prefix: DomainName,
@@ -160,6 +160,9 @@ const HOTSWAP_DOMAIN_DESCRIPTOR: DomainDescriptor = buildDomainDescriptor(
   DOMAIN_IDS.hotswap,
 );
 
+const COPROCESSOR_RUNTIME_DOMAIN_DESCRIPTOR: DomainDescriptor =
+  buildDomainDescriptor("coprocessorRuntime", DOMAIN_IDS.coprocessorRuntime);
+
 /**
  * All error domains exported by Seqlok.
  *
@@ -180,6 +183,7 @@ export const ALL_DOMAINS: readonly DomainDescriptor[] = [
   COMMANDS_DOMAIN_DESCRIPTOR,
   STREAMBUF_DOMAIN_DESCRIPTOR,
   HOTSWAP_DOMAIN_DESCRIPTOR,
+  COPROCESSOR_RUNTIME_DOMAIN_DESCRIPTOR,
 ];
 
 /**
@@ -221,7 +225,7 @@ export function computeNumericCode(code: string): ErrorNumericCode | undefined {
 }
 
 /**
- * Extracts the domain prefix from a fully-qualified error code.
+ * Extracts the domains prefix from a fully-qualified error code.
  *
  * @example
  * extractDomainPrefix("env.unsupported") === "env"

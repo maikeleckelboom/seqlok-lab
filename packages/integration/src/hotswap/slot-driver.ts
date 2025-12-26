@@ -1,13 +1,3 @@
-/**
- * @fileoverview
- * Thin RT helper for driving a single hotswap slot.
- *
- * @remarks
- * Wraps {@link initSwapStateRT} and {@link stepSwapStateRT} into a small
- * driver object so integration code does not have to manage SwapStateRT
- * directly.
- */
-
 import {
   initSwapStateRT,
   stepSwapStateRT,
@@ -17,42 +7,10 @@ import {
 } from "@seqlok/hotswap";
 
 export interface HotswapSlotDriver<EngineKind extends number> {
-  /**
-   * Whether there is an active swap state for this slot.
-   */
   readonly hasState: boolean;
-
-  /**
-   * Current RT state for this slot.
-   *
-   * @remarks
-   * - When {@link hasState} is false, this will be `null`.
-   * - Callers should treat this as read-only and use {@link stepBlock}
-   *   to advance the protocol.
-   */
   readonly state: SwapStateRT<EngineKind> | null;
-
-  /**
-   * Accept a new swap ticket for this slot.
-   *
-   * @remarks
-   * The ticket is assumed to have been validated off the audio thread.
-   */
   acceptTicket(ticket: SwapTicketRT<EngineKind>): void;
-
-  /**
-   * Clear any active swap state and return to idle.
-   */
   clear(): void;
-
-  /**
-   * Advance the swap protocol by one audio block.
-   *
-   * @param blockFrames      Number of frames in this block.
-   * @param activeKind       Kind of the current engine.
-   * @param nextKind         Kind of the next engine.
-   * @param noneKindSentinel Sentinel representing "no next engine".
-   */
   stepBlock(
     blockFrames: number,
     activeKind: EngineKind,
@@ -61,9 +19,6 @@ export interface HotswapSlotDriver<EngineKind extends number> {
   ): SwapStepDecisionRT<EngineKind>;
 }
 
-/**
- * Create a new hotswap slot driver.
- */
 export function createHotswapSlotDriver<
   EngineKind extends number,
 >(): HotswapSlotDriver<EngineKind> {
@@ -80,17 +35,9 @@ export function createHotswapSlotDriver<
     },
 
     acceptTicket(ticket: SwapTicketRT<EngineKind>): void {
-      // Reject While Busy:
-      // - If there is an active ticket in any non-idle phase, we do NOT
-      //   overwrite it. The second ticket is effectively ignored.
-      // - Once the protocol reaches `retire` and steps to `idle`, it clears
-      //   `state.hasTicket`, and new tickets are allowed again.
       if (hasState && state?.hasTicket) {
-        // Busy: keep the existing swap; ignore the overlapping ticket.
         return;
       }
-
-      // Idle (no state or no active ticket): accept a new swap.
       state = initSwapStateRT(ticket);
       hasState = true;
     },
@@ -115,6 +62,10 @@ export function createHotswapSlotDriver<
             progress: 0,
             activeEngineKind: activeKind,
             nextEngineKind: noneKindSentinel,
+            fadeTotalFrames: 0,
+            fadeDoneFramesAtBlockStart: 0,
+            fadeDoneFramesAtBlockEnd: 0,
+            preWarmBlocksRemaining: 0,
           },
         };
       }

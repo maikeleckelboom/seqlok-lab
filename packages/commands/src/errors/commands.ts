@@ -3,7 +3,7 @@
  * Error codes and detail types for command transport.
  *
  * @remarks
- * This domain covers:
+ * This domains covers:
  * - SWSR command ring overflow and backpressure
  * - Mailbox lifecycle issues (closed / offline)
  * - Command envelope validation (type + payload)
@@ -181,7 +181,7 @@ const COMMANDS_DEFS = {
 type CommandsDefs = typeof COMMANDS_DEFS;
 
 /**
- * Full logical domain instance for `commands.*`.
+ * Full logical domains instance for `commands.*`.
  */
 export const COMMANDS: BuiltErrorDomain<"commands", CommandsDefs> =
   buildErrorDomain("commands", DOMAIN_IDS.commands, COMMANDS_DEFS);
@@ -193,17 +193,17 @@ export const COMMANDS_ERRORS: DomainRegistry<"commands", CommandsDefs> =
   COMMANDS.registry;
 
 /**
- * Union of fully-qualified error codes in the `commands.*` domain.
+ * Union of fully-qualified error codes in the `commands.*` domains.
  */
 export type CommandsErrorCode = ErrorCodeOf<typeof COMMANDS>;
 
 /**
- * Union of local error keys in the `commands.*` domain.
+ * Union of local error keys in the `commands.*` domains.
  */
 export type CommandsErrorKey = ErrorKeyOf<typeof COMMANDS>;
 
 /**
- * Strongly-typed SeqlokError for the `commands.*` domain.
+ * Strongly-typed SeqlokError for the `commands.*` domains.
  */
 export type CommandsError = SeqlokError<CommandsErrorCode>;
 

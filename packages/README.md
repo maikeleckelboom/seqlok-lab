@@ -15,6 +15,10 @@ Each package is a node in a strict one-way dependency graph.
 - `@seqlok/primitives`  
   Seqlock, SWSR rings, atomics and low level memory tools
 
+- `@seqlok/diagnostics`  
+  RT-safe telemetry primitives  
+  Shared-memory snapshot schemas + SAB rings (writers in RT, readers on host)
+
 - `@seqlok/core`  
   Shared state engine  
   Spec definition, layout planning, backing allocation, bindings and handoff
@@ -30,19 +34,37 @@ Each package is a node in a strict one-way dependency graph.
 - `@seqlok/hotswap`  
   Engine lifecycle and swap protocol built on top of core and commands
 
-### Host
-
-- `@seqlok/integration`  
-  Host and topology wiring that composes the full stack into an application
-
-- `@seqlok/playground`  
-  Scratch space that exercises the stack in one place
+- `@seqlok/coprocessor-runtime`  
+  A first-class runtime for AudioWorklet/WASM coprocessors  
+  Mount/protocol/kernel helpers used by lane processors
 
 ### Tooling
 
 - `@seqlok/introspect`  
-  System observatory  
-  Error registry, counters, environment probing, view describers and health lenses
+  Observability and analysis tools  
+  Health counters, lenses, tracing helpers, UI-friendly decoding
+
+### Host / Apps
+
+- `@seqlok/integration`  
+  Host-side glue and higher-level adapters  
+  Wiring examples for worklets, nodes, demos and host policies
+
+- `@seqlok/playground`  
+  Interactive UI labs  
+  Visualizers, debug panels and example surfaces
+
+## Diagnostics
+
+Diagnostics is split into two parts:
+
+- **`@seqlok/diagnostics` (Runtime):** RT-safe data structures and SharedArrayBuffer rings for telemetry.  
+  Runtime code may _publish_ snapshots here with bounded work and zero allocations.
+- **`@seqlok/introspect` (Tooling):** analysis, health lenses, counters, and UI-friendly decoding/aggregation.  
+  Introspect may consume diagnostics rings, but runtime packages never import introspect.
+
+This keeps `@seqlok/primitives` **schema-free**: primitives provide mechanisms (Atomics, rings, memory helpers),
+while diagnostics owns the meaning (snapshot schemas and layouts).
 
 ## Dependency graph
 
@@ -50,6 +72,7 @@ Arrows show allowed imports between packages.
 `A --> B` means **package `A` may import `@seqlok/B`**.
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"textColor":"#ffffff","primaryTextColor":"#ffffff","lineColor":"#94a3b8","primaryColor":"#111827","secondaryColor":"#0f172a","tertiaryColor":"#0b1220","clusterBkg":"#0f172a","clusterBorder":"#334155","primaryBorderColor":"#94a3b8"}} }%%
 flowchart LR
 %% Layering left → right: Base → Runtime → Tooling → Host
   subgraph Base
@@ -58,26 +81,28 @@ flowchart LR
 
   subgraph Runtime
     direction TB
-    hotswap
-    commands
-    core
-    streambuf
     primitives
+    diagnostics
+    core
+    commands
+    streambuf
+    hotswap
+    coprocessorRuntime
   end
 
   subgraph Tooling
-    direction TB
     introspect
   end
 
   subgraph Host
-    direction TB
     integration
     playground
   end
 
 %% Runtime
   primitives --> base
+  diagnostics --> primitives
+  diagnostics --> base
   core --> primitives
   core --> base
   commands --> core
@@ -86,20 +111,29 @@ flowchart LR
   streambuf --> base
   hotswap --> commands
   hotswap --> core
+  coprocessorRuntime --> base
+  coprocessorRuntime --> diagnostics
+
 %% Host
   integration --> hotswap
   integration --> commands
   integration --> core
   integration --> streambuf
+  integration --> coprocessorRuntime
+  integration --> diagnostics
   integration --> introspect
   playground --> integration
   playground --> introspect
+
 %% Tooling (observatory above Runtime)
   introspect --> base
   introspect --> primitives
+  introspect --> diagnostics
   introspect --> core
   introspect --> commands
+  introspect --> streambuf
   introspect --> hotswap
+  introspect --> coprocessorRuntime
 ```
 
 ## Rules
@@ -108,13 +142,5 @@ flowchart LR
   If an arrow does not exist, that import is not allowed.
 
 - Cross-package imports always use the public `@seqlok/*` entrypoints.
-  Relative paths stay inside a single package.
 
-- The graph must remain acyclic (no cycles between packages).
-
-- Runtime packages do not import tooling.
-  Observability flows outward via hooks and domain descriptors into `@seqlok/introspect`.
-
-- New packages must declare their position in this graph before gaining dependencies.
-
-- If a change would add a new arrow, update this diagram and the package-level docs in the same pull request.
+- If you add a new package, update both this diagram and the package-level docs in the same pull request.

@@ -23,7 +23,7 @@ import type { ErrorMeta, ErrorNumericCode } from "@seqlok/base";
  *
  * @remarks
  * This intentionally mirrors a subset of `AggregatedErrorDescriptor`
- * and does not include the `domain` field (it is implicit via the
+ * and does not include the `domains` field (it is implicit via the
  * containing `ExportedDomain`).
  */
 export interface ExportedError {

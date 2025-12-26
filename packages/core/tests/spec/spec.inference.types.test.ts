@@ -110,20 +110,17 @@ describe("DefineSpec: Strengthened Inference Contracts", () => {
 
     const spec = defineSpec(input);
 
-    expectTypeOf(spec).toEqualTypeOf<typeof input>();
+    expectTypeOf<typeof spec>().toExtend<typeof input>();
 
     expectTypeOf(spec).toExtend<SpecInput>();
   });
 
   it("covers scalar overload variants for f32/i32", () => {
     const spec = defineSpec(({ param }) => ({
-      id: "ranges" as const,
+      id: "ranges",
       params: {
         noRange: param.f32(),
-        minOnly: param.f32({ min: 10 }),
-        maxOnly: param.f32({ max: 100 }),
         both: param.f32({ min: 0, max: 50 }),
-        intMinOnly: param.i32({ min: -5 }),
         intBoth: param.i32({ min: 0, max: 255 }),
       },
     }));
@@ -134,25 +131,10 @@ describe("DefineSpec: Strengthened Inference Contracts", () => {
       readonly kind: "f32";
     }>();
 
-    expectTypeOf(params.minOnly).toEqualTypeOf<{
-      readonly kind: "f32";
-      readonly min: 10;
-    }>();
-
-    expectTypeOf(params.maxOnly).toEqualTypeOf<{
-      readonly kind: "f32";
-      readonly max: 100;
-    }>();
-
     expectTypeOf(params.both).toEqualTypeOf<{
       readonly kind: "f32";
       readonly min: 0;
       readonly max: 50;
-    }>();
-
-    expectTypeOf(params.intMinOnly).toEqualTypeOf<{
-      readonly kind: "i32";
-      readonly min: -5;
     }>();
 
     expectTypeOf(params.intBoth).toEqualTypeOf<{

@@ -11,9 +11,14 @@
  *
  * Design:
  * - `Plan<S>` is the single source of truth for layout/spec metadata.
- * - The handoff envelope carries only `{ version, packing, backing, plan }`.
+ * - The handoff envelope carries only `{ version, packing, sab|planes, plan }`.
  * - No duplicated header fields, no derived lengths stored twice.
- * - Consumers bind from `ReceivedHandoff<S>`, never raw `(Plan<S>, Backing)`.
+ *
+ * Binding guidance:
+ * - Across a boundary (e.g. `postMessage`), consumers SHOULD validate with
+ *   `receiveHandoff(...)` and bind using a `Handoff<S>` or `ReceivedHandoff<S>`.
+ * - For local wiring / tests / custom hosts, binding from `SharedContext<S>` or
+ *   explicit `(spec, plan, backing)` is supported by the binding layer.
  */
 
 import { ALL_PLANES, type PlaneKey } from "@seqlok/primitives";
@@ -34,7 +39,7 @@ import type { SpecInput } from "../spec/types";
  * - Checked by `receiveHandoff` at the boundary.
  * - Increment when introducing breaking changes to the handoff shape/semantics.
  */
-const SUPPORTED_HANDOFF_VERSION = 1 as const;
+const SUPPORTED_HANDOFF_VERSION = 1;
 
 /**
  * Check whether a value is a `SharedArrayBuffer`.
@@ -110,8 +115,12 @@ function isObject(value: unknown): value is Record<string, unknown> {
  *   - `backing.kind: 'shared'` → `packing: 'shared'` with a single `sab`.
  *   - `backing.kind: 'shared-partitioned'` → `packing: 'shared-partitioned'`
  *     with per-plane SABs keyed by `PlaneKey`.
- *   - `backing.kind: 'wasm-shared'` is **not** serializable via handoff yet
- *     and will throw a descriptive error.
+ *   - `backing.kind: 'wasm-shared'` → `packing: 'shared'` using the underlying
+ *     `memory.buffer` (must be a `SharedArrayBuffer`). The handoff envelope does
+ *     not transfer a `WebAssembly.Memory` object; it transfers the shared bytes.
+ *
+ *     After building the handoff, the `WebAssembly.Memory` MUST be treated as
+ *     fixed-size (no growth) to keep the backing buffer identity stable.
  */
 
 /**
@@ -148,21 +157,28 @@ export function buildHandoff<S extends SpecInput>(
     backing = arg2!;
   }
 
-  if (backing.kind === "shared") {
-    if (!isSharedArrayBuffer(backing.sab)) {
+  if (backing.kind === "shared" || backing.kind === "wasm-shared") {
+    const sabCandidate =
+      backing.kind === "shared" ? backing.sab : backing.memory.buffer;
+
+    if (!isSharedArrayBuffer(sabCandidate)) {
       throw createHandoffError("invalidArtifact", {
         where: "handoff.buildHandoff",
-        detail: "backing.sab",
+        detail:
+          backing.kind === "shared" ? "backing.sab" : "backing.memory.buffer",
       });
     }
 
     const requiredBytes = plan.bytesTotal >>> 0;
-    const actualBytes = backing.sab.byteLength >>> 0;
+    const actualBytes = sabCandidate.byteLength >>> 0;
 
     if (actualBytes < requiredBytes) {
       throw createHandoffError("invalidArtifact", {
         where: "handoff.buildHandoff",
-        detail: "shared.undersized",
+        detail:
+          backing.kind === "shared"
+            ? "shared.undersized"
+            : "wasm-shared.undersized",
         expectedBytes: requiredBytes,
         receivedBytes: actualBytes,
       });
@@ -172,11 +188,12 @@ export function buildHandoff<S extends SpecInput>(
     return {
       version: SUPPORTED_HANDOFF_VERSION,
       packing: "shared",
-      sab: backing.sab,
+      sab: sabCandidate,
       plan,
     } as unknown as Handoff<S>;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (backing.kind === "shared-partitioned") {
     // View plan.planes through the same key-space as the backing.
     const planeLengths = plan.planes as Record<PlaneKey, number>;
@@ -210,15 +227,7 @@ export function buildHandoff<S extends SpecInput>(
       packing: "shared-partitioned",
       planes,
       plan,
-    } as unknown as Handoff<S>;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (backing.kind === "wasm-shared") {
-    throw createHandoffError("invalidArtifact", {
-      where: "handoff.buildHandoff",
-      detail: "kind=wasm-shared",
-    });
+    } as Handoff<S>;
   }
 
   const kind = (backing as { kind?: unknown }).kind;

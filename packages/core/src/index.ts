@@ -14,7 +14,7 @@ export {
   type ParamBuilders,
   type MeterBuilders,
 } from "./spec/define";
-export type { SpecInput } from "./spec/types";
+export type { SpecInput, SpecAstInput, ResolvedSpec } from "./spec/types";
 
 // PLAN
 export { planLayout } from "./plan/layout";
@@ -60,7 +60,6 @@ export type {
   ObserverOptions,
   RangePolicy,
 } from "./binding/common/types";
-
 // HANDOFF
 export { buildHandoff, receiveHandoff, verifyHandoff } from "./handoff/handoff";
 export type { Handoff, HandoffPacking, ReceivedHandoff } from "./handoff/types";

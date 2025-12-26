@@ -17,7 +17,7 @@ import { encodeNumeric } from "./numeric";
 import type { DomainDescriptor, DomainEntry, DomainId } from "./domains";
 
 /**
- * A domain extended with numeric codes and a descriptor.
+ * A domains extended with numeric codes and a descriptor.
  *
  * @typeParam Prefix - The string literal prefix for error codes (e.g., "backing")
  * @typeParam Defs - The error definitions record mapping keys to DomainDef
@@ -31,21 +31,21 @@ export type BuiltErrorDomain<
 };
 
 /**
- * Build a complete error domain with numeric codes and descriptor.
+ * Build a complete error domains with numeric codes and descriptor.
  *
  * @remarks
  * This wraps defineErrorDomain and adds:
  *
- * - domainId: The numeric domain ID from DOMAIN_IDS
+ * - domainId: The numeric domains ID from DOMAIN_IDS
  * - descriptor: A DomainDescriptor ready for introspect aggregation
  *
  * @typeParam Prefix - The string literal prefix for error codes
  * @typeParam Defs - The error definitions record
  *
  * @param prefix - Domain prefix string (e.g., "backing")
- * @param domainId - Numeric domain ID from DOMAIN_IDS
+ * @param domainId - Numeric domains ID from DOMAIN_IDS
  * @param defs - Error definitions mapping keys to message + meta
- * @returns A complete error domain with factory, registry, and descriptor
+ * @returns A complete error domains with factory, registry, and descriptor
  *
  * @example
  * ```ts

@@ -110,7 +110,7 @@ export function planLayout<S extends SpecInput>(
   }
 
   return {
-    id: inputSpec.id ?? `anon:${hash.slice(0, 8)}`,
+    id: inputSpec.id,
     hash,
     bytesTotal,
     planes,

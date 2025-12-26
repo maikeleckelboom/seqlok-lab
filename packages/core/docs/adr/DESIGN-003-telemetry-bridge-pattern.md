@@ -43,7 +43,7 @@ import { bindObserver } from "@seqlok/core";
 
 // 1. Setup
 const socket = dgram.createSocket("udp4");
-const observer = bindObserver(receivedHandoff); // swarm domain
+const observer = bindObserver(receivedHandoff); // swarm domains
 
 // Example shape: vec4 per agent: [x, y, z, w]
 const DRONE_COUNT = MAX_AGENTS;

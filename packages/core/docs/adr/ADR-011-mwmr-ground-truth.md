@@ -138,7 +138,7 @@ These rules are **hard constraints**. Any violation is an architectural defect:
 ### 4.1 Multiple Controller Bindings
 
 ```ts
-// ❌ WRONG: Multiple controllers for same domain
+// ❌ WRONG: Multiple controllers for same domains
 const ctrlUI = bindController(spec, backing); // UI thread
 const ctrlMIDI = bindController(spec, backing); // MIDI thread
 

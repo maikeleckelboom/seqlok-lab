@@ -3,10 +3,10 @@
  * Runtime invariant helper for Seqlok.
  *
  * @remarks
- * - Stays domain-agnostic: it does not know about specific error codes.
+ * - Stays domains-agnostic: it does not know about specific error codes.
  * - Callers provide a lazy factory that builds a SeqlokError for this site.
  * - Matches how native ports will implement invariants (closure / lambda that
- *   constructs a domain error when violated).
+ *   constructs a domains error when violated).
  */
 
 import type { SeqlokError } from "./error";

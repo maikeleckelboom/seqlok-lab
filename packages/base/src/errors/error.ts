@@ -1,15 +1,13 @@
+/**
+ * @fileoverview Core error primitives shared across all Seqlok packages.
+ *              Intentionally small and stable.
+ *           - Knows nothing about specific domains (spec/backing/env/etc).
+ *        - Higher layers define registries and factories using these primitives.
+ */
+
 import { panic } from "./panic";
 
 import type { JsonValue } from "./json";
-
-/**
- * @fileoverview
- * Core error primitives shared across all Seqlok packages.
- *
- * This layer is intentionally small and stable:
- * - It knows nothing about specific domains like spec/backing/env.
- * - Higher layers define registries and factories using these primitives.
- */
 
 /**
  * Typed array constructor names used in introspect and metadata.
@@ -31,9 +29,9 @@ export type TypedArrayName =
  * Coarse severity classification for errors.
  *
  * @remarks
- * - "warning"   → recoverable, usually non-fatal
- * - "error"     → operation failed, but process may continue
- * - "fatal"     → unrecoverable, process or worker should be torn down
+ * - "warning" -> recoverable, usually non-fatal
+ * - "error"   -> operation failed, but process may continue
+ * - "fatal"   -> unrecoverable, process or worker should be torn down
  */
 export type ErrorSeverity = "warning" | "error" | "fatal";
 
@@ -61,8 +59,8 @@ export interface ErrorMeta {
    * Whether it is safe to surface this error across trust boundaries.
    *
    * @remarks
-   * - `true`  → safe to expose to user-facing UIs or external callers
-   * - `false` → keep confined to logs / internal telemetry
+   * - `true`  -> safe to expose to user-facing UIs or external callers
+   * - `false` -> keep confined to logs / internal telemetry
    */
   readonly boundarySafe: boolean;
 
@@ -116,7 +114,7 @@ export interface ErrorEnvelope {
  * Extract the local key type from a fully qualified error code.
  *
  * @example
- * "env.unsupported" → "unsupported"
+ * "env.unsupported" -> "unsupported"
  */
 export type ErrorKeyFromCode<Code extends string> =
   Code extends `${string}.${infer Key}` ? Key : never;
@@ -296,7 +294,7 @@ export type ErrorCodeOf<D extends ErrorDomain<string, ErrorRegistry>> =
   D["registry"][keyof D["registry"]]["code"];
 
 /**
- * Union of *local* keys for a given domain (e.g. "counterInvalid").
+ * Union of local keys for a given domain (e.g. "counterInvalid").
  *
  *   "counterInvalid" | "featureInvalid" | ...
  */
@@ -315,7 +313,7 @@ export type ErrorFactoryOf<D extends ErrorDomain<string, ErrorRegistry>> = <
 ) => SeqlokError<ErrorCodeOf<D>>;
 
 /**
- * Factory type that *does* distinguish per-key detail types.
+ * Factory type that does distinguish per-key detail types.
  * (Used by `primitives.*` style domains.)
  */
 export type KeyedErrorFactoryOf<

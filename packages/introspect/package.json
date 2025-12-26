@@ -46,7 +46,8 @@
     "@seqlok/core": "workspace:*",
     "@seqlok/commands": "workspace:*",
     "@seqlok/hotswap": "workspace:*",
-    "@seqlok/streambuf": "workspace:*"
+    "@seqlok/streambuf": "workspace:*",
+    "@seqlok/coprocessor-runtime": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

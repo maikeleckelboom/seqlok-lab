@@ -15,7 +15,12 @@
  * - **Branded Types**: `Handoff<S>` uses a phantom brand to ensure that only
  *   envelopes created by `buildHandoff` can be passed to typed consumers, preventing
  *   accidental usage of raw objects.
- * - Processors bind from {@link ReceivedHandoff}, not from `(Plan, Backing)`.
+ *
+ * Binding guidance:
+ * - Across a boundary (e.g. `postMessage`), consumers SHOULD validate with
+ *   `receiveHandoff(...)` and bind from a `Handoff<S>` or `ReceivedHandoff<S>`.
+ * - For local wiring / tests / custom hosts, binding from `SharedContext<S>` or
+ *   explicit `(spec, plan, backing)` is supported by the binding layer.
  */
 
 import type { Plan } from "../plan/types";
@@ -37,8 +42,10 @@ declare const HandoffBrand: unique symbol;
  * - v1 supports:
  *   - `'shared'` – single contiguous `SharedArrayBuffer` backing all planes.
  *   - `'shared-partitioned'` – separate `SharedArrayBuffer` per plane.
- * - Future versions may introduce additional packing modes
- *   (e.g. shared Wasm memory or hybrid layouts).
+ * - Future versions may introduce additional packing modes (e.g. hybrid layouts).
+ * - `wasm-shared` backings are represented as `'shared'` because the envelope
+ *   transports the underlying `SharedArrayBuffer` (`memory.buffer`), not the
+ *   `WebAssembly.Memory` object itself.
  *
  * This value is consumed by `receiveHandoff` and interpreted by bindings;
  * it is not meant to be inspected by most application code.
@@ -283,11 +290,13 @@ interface ReceivedSharedPartitionedHandoff<S extends SpecInput = SpecInput> {
  *   - and transfers it across the boundary.
  * - Processor:
  *   - calls `receiveHandoff(handoff)` and obtains `ReceivedHandoff<S>`,
- *   - then binds via `bindProcessor(received)`.
+ *   - then typically binds via `bindProcessor(received)`.
  *
- * Processors do **not** bind directly from `(Plan<S>, Backing)`.
- * `ReceivedHandoff<S>` is the only supported input to `bindProcessor`,
- * preserving the separation between memory ownership and capability.
+ * Binding guidance:
+ * - Across a boundary, `ReceivedHandoff<S>` (or a {@link Handoff}) is the
+ *   recommended capability form.
+ * - For local wiring / tests / custom hosts, the binding layer may also accept
+ *   `SharedContext<S>` or explicit `(spec, plan, backing)` inputs.
  */
 export type ReceivedHandoff<S extends SpecInput = SpecInput> =
   | ReceivedSharedHandoff<S>

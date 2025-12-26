@@ -3,7 +3,7 @@ import type { LanePluginPack } from "./lane-plugins";
 import type { EngineDefinition } from "../engine/definition";
 import type { SpecInput } from "@seqlok/core";
 
-export interface LaneTypeConfig<
+export interface LaneKindConfig<
   S extends SpecInput,
   TConfig,
   EngineKindEnum extends number,
@@ -21,7 +21,7 @@ export interface LaneTypeConfig<
     TInstance
   >;
   /**
-   * Optional plugin pack. If omitted, the lane has no plugins.
+   * Optional plugin pack. If omitted, the lane kind has no plugins.
    */
   readonly plugins?: LanePluginPack<S>;
 }
@@ -30,9 +30,9 @@ export interface LaneTypeConfig<
  * Static description of a lane kind (e.g. "stretch", "deck", "bus", "analyzer").
  *
  * This lives purely in the host / topology layer. It does not know about
- * AudioWorklet, stretch contracts, etc.
+ * AudioWorklet, coprocessor contracts, or shared-memory ABI.
  */
-export interface LaneType<
+export interface LaneKind<
   S extends SpecInput,
   TConfig,
   EngineKindEnum extends number,
@@ -53,17 +53,9 @@ export interface LaneType<
 }
 
 /**
- * Define a lane type for a given engine family and plugin pack.
- *
- * Example (in seqlok-stretch):
- *
- *   export const StretchLaneType = defineLaneType({
- *     id: "dekzer.lane.stretch",
- *     engine: stretchEngine,
- *     plugins: stretchPlugins,
- *   });
+ * Define a lane kind for a given engine family and plugin pack.
  */
-export function defineLaneType<
+export function defineLaneKind<
   S extends SpecInput,
   TConfig,
   EngineKindEnum extends number,
@@ -71,7 +63,7 @@ export function defineLaneType<
   EventPayload,
   TInstance extends EngineInstance<EngineKindEnum>,
 >(
-  config: LaneTypeConfig<
+  config: LaneKindConfig<
     S,
     TConfig,
     EngineKindEnum,
@@ -79,7 +71,7 @@ export function defineLaneType<
     EventPayload,
     TInstance
   >,
-): LaneType<S, TConfig, EngineKindEnum, Command, EventPayload, TInstance> {
+): LaneKind<S, TConfig, EngineKindEnum, Command, EventPayload, TInstance> {
   const { id, engine, plugins } = config;
 
   const effectivePlugins: LanePluginPack<S> = plugins ?? {

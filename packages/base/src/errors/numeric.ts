@@ -3,9 +3,9 @@
  * Numeric error code representation shared across all Seqlok packages.
  *
  * @remarks
- * - Encodes a domain id and local id into a 32-bit integer.
+ * - Encodes a domains id and local id into a 32-bit integer.
  * - Layout is intentionally tiny and stable so native bindings can mirror it.
- * - Higher layers decide which domain ids and local ids to assign and validate.
+ * - Higher layers decide which domains ids and local ids to assign and validate.
  */
 
 /**
@@ -33,7 +33,7 @@ export interface ErrorNumericParts {
 
 const TOTAL_BITS = 32;
 
-// High 8 bits → domain id, low 24 bits → local id.
+// High 8 bits → domains id, low 24 bits → local id.
 const DOMAIN_BITS = 8;
 const LOCAL_BITS = TOTAL_BITS - DOMAIN_BITS;
 

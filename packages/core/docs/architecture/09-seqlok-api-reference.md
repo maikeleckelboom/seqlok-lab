@@ -788,8 +788,8 @@ Budget/degrade knobs are provided by `ObserverOptions.params` / `ObserverOptions
 Key public types (simplified):
 
 ```ts
-export type PUSeq = number; // param-domain seqlock sequence
-export type MUSeq = number; // meter-domain seqlock sequence
+export type PUSeq = number; // param-domains seqlock sequence
+export type MUSeq = number; // meter-domains seqlock sequence
 
 export type RangePolicy = "clamp" | "reject";
 ```

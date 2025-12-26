@@ -691,7 +691,7 @@ export function controllerImpl<const S extends SpecInput>(
        *   bumping `MU.SEQ`.
        * - This reader observes that commit via an SC atomic load on the MU
        *   `Int32Array`.
-       * - The value is returned in the u32 domain (`>>> 0`) to model wraparound
+       * - The value is returned in the u32 domains (`>>> 0`) to model wraparound
        *   precisely.
        * - No parity checks are needed for a version read: it is a pure commit
        *   counter.

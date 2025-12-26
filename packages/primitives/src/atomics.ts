@@ -41,7 +41,7 @@ function atomicsFailed(
  *
  * @remarks
  * This is a simple wrapper so that any thrown error is normalized into our
- * error domain rather than leaking raw JS exceptions.
+ * error domains rather than leaking raw JS exceptions.
  */
 export function loadU32(plane: Uint32Array, index: number): number {
   try {

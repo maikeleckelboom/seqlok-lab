@@ -1,209 +1,168 @@
-/**
- * @fileoverview
- * Hashing utilities for spec definitions.
- *
- * @remarks
- * - Implements FNV-1a 64-bit hashing for spec fingerprints.
- * - Provides canonicalization for deterministic hashing of equivalent specs.
- * - Used for versioning, cache keys, and change detection.
- */
+// File: packages/core/src/spec/hash.ts
 
 import type { MeterDef, ParamDef, SpecHash, SpecInput } from "./types";
 
+// Default ranges for canonicalization
+const F32_MAX = 3.4028234663852886e38;
+const DEFAULT_F32_RANGE = { min: -F32_MAX, max: F32_MAX };
+const DEFAULT_I32_RANGE = { min: -2147483648, max: 2147483647 };
+const DEFAULT_U32_RANGE = { min: 0, max: 4294967295 };
+
 /**
- * FNV-1a 64-bit, encoded as lowercase base36.
- *
- * @remarks
- * Not cryptographic. Intended for spec fingerprints and cache keys.
+ * Canonicalize a ParamDef for stable hashing.
+ * CRITICAL: Fill in missing min/max with defaults.
  */
-function fnv1aHash(input: string): string {
-  let offsetBasis = 0xcbf29ce484222325n;
-  const fnvPrime = 0x100000001b3n;
-
-  for (let i = 0; i < input.length; i++) {
-    offsetBasis ^= BigInt(input.charCodeAt(i) & 0xff);
-    offsetBasis = (offsetBasis * fnvPrime) & 0xffffffffffffffffn;
-  }
-
-  return offsetBasis.toString(36);
-}
-
-function canonicalizeParam(def: ParamDef) {
+function canonParam(def: ParamDef): ParamDef {
   switch (def.kind) {
     case "f32":
-    case "i32": {
-      const hasMin = "min" in def;
-      const hasMax = "max" in def;
-
-      if (hasMin && hasMax) {
-        return { kind: def.kind, min: def.min, max: def.max };
-      }
-
-      if (hasMin) {
-        return { kind: def.kind, min: def.min };
-      }
-
-      if (hasMax) {
-        return { kind: def.kind, max: def.max };
-      }
-
-      return { kind: def.kind };
-    }
-
-    case "bool":
-      return { kind: def.kind };
-
+      return {
+        kind: "f32",
+        min: def.min ?? DEFAULT_F32_RANGE.min,
+        max: def.max ?? DEFAULT_F32_RANGE.max,
+      };
+    case "i32":
+      return {
+        kind: "i32",
+        min: def.min ?? DEFAULT_I32_RANGE.min,
+        max: def.max ?? DEFAULT_I32_RANGE.max,
+      };
+    case "u32":
+      return {
+        kind: "u32",
+        min: def.min ?? DEFAULT_U32_RANGE.min,
+        max: def.max ?? DEFAULT_U32_RANGE.max,
+      };
     case "enum":
-      // Values-order matters, so we preserve order
-      return { kind: def.kind, values: [...def.values] };
-
-    case "f32.array":
-    case "i32.array":
-    case "bool.array":
-      return { kind: def.kind, length: def.length };
-
+      return { kind: "enum", values: [...def.values] };
     case "enum.array":
       return {
-        kind: def.kind,
-        length: def.length,
+        kind: "enum.array",
         values: [...def.values],
+        length: def.length,
       };
-  }
-}
-
-function canonicalizeMeter(def: MeterDef) {
-  switch (def.kind) {
-    case "f32":
-    case "f64":
-    case "u32":
-    case "bool":
-      return { kind: def.kind };
-
-    case "f32.array":
-    case "f64.array":
-    case "bool.array":
-    case "u32.array":
-      return { kind: def.kind, length: def.length };
+    default:
+      // Arrays and other types don't need canonicalization
+      return def;
   }
 }
 
 /**
- * Returns sorted `[key, value]` tuples without relying on object property order.
+ * Canonicalize a MeterDef for stable hashing.
  */
-function sortedEntries(
-  obj?: Readonly<Record<string, unknown>>,
-): readonly (readonly [string, unknown])[] {
-  if (!obj) {
-    return [];
+function canonMeter(def: MeterDef): MeterDef {
+  switch (def.kind) {
+    case "enum":
+      return { kind: "enum", values: [...def.values] };
+    case "enum.array":
+      return {
+        kind: "enum.array",
+        values: [...def.values],
+        length: def.length,
+      };
+    default:
+      return def;
   }
-
-  const keys = Object.keys(obj).sort();
-  const out: (readonly [string, unknown])[] = [];
-
-  for (const k of keys) {
-    out.push([k, obj[k]]);
-  }
-
-  return out;
 }
 
 /**
- * Deterministic stringification for canonical spec / plan structures.
- *
- * @remarks
- * - Recursively sorts object keys to avoid engine-dependent ordering.
- * - Preserves array order.
- * - Assumes input is a plain data tree (no functions, Symbols, etc.).
+ * Canonicalize entire spec for stable hashing.
+ */
+function canonSpec(spec: SpecInput): SpecInput {
+  const paramsIn = spec.params ?? {};
+  const metersIn = spec.meters ?? {};
+
+  const params: Record<string, ParamDef> = {};
+  for (const [k, v] of Object.entries(paramsIn)) {
+    params[k] = canonParam(v);
+  }
+
+  const meters: Record<string, MeterDef> = {};
+  for (const [k, v] of Object.entries(metersIn)) {
+    meters[k] = canonMeter(v);
+  }
+
+  const result: {
+    id: string;
+    params?: Record<string, ParamDef>;
+    meters?: Record<string, MeterDef>;
+  } = { id: spec.id };
+
+  if (Object.keys(params).length > 0) {
+    result.params = params;
+  }
+  if (Object.keys(meters).length > 0) {
+    result.meters = meters;
+  }
+
+  return result as SpecInput;
+}
+
+/**
+ * Stable JSON stringification (sorted keys).
  */
 function stableStringify(value: unknown): string {
   if (value === null) {
     return "null";
   }
-
-  const t = typeof value;
-
-  if (t === "number" || t === "boolean") {
+  if (typeof value === "string") {
     return JSON.stringify(value);
   }
-
-  if (t === "string") {
-    return JSON.stringify(value);
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "null";
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
   }
 
   if (Array.isArray(value)) {
-    const inner = value.map((item) => stableStringify(item));
-    return `[${inner.join(",")}]`;
+    return `[${value.map(stableStringify).join(",")}]`;
   }
 
-  if (t === "object") {
-    const record = value as Record<string, unknown>;
-    const keys = Object.keys(record).sort();
-    const parts: string[] = [];
-
-    for (const key of keys) {
-      const v = record[key];
-      parts.push(`${JSON.stringify(key)}:${stableStringify(v)}`);
-    }
-
-    return `{${parts.join(",")}}`;
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const keys = Object.keys(obj).sort();
+    const entries = keys.map(
+      (k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`,
+    );
+    return `{${entries.join(",")}}`;
   }
 
-  // Fallback – should not be reached for well-formed SpecInput trees.
   return "null";
 }
 
 /**
- * Canonical structural representation of a spec as a pure data tree.
- *
- * @remarks
- * - Ignores `spec.id` on purpose.
- * - Includes:
- *   - param keys and canonical param shape (kind, min/max, length, enum values)
- *   - meter keys and canonical meter shape (kind, length)
+ * Simple 64-bit hash mix (no BigInt dependency).
  */
-function canonicalizeSpecObject(spec: SpecInput): {
-  params: Record<string, unknown>;
-  meters: Record<string, unknown>;
-} {
-  const params: Record<string, unknown> = {};
-  const meters: Record<string, unknown> = {};
+function mix64(
+  seedHi: number,
+  seedLo: number,
+  data: string,
+): Readonly<{ hi: number; lo: number }> {
+  let h1 = seedHi >>> 0;
+  let h2 = seedLo >>> 0;
 
-  const paramEntries = sortedEntries(spec.params);
-  for (const [key, value] of paramEntries) {
-    params[key] = canonicalizeParam(value as ParamDef);
+  for (let i = 0; i < data.length; i += 1) {
+    const c = data.charCodeAt(i) >>> 0;
+    h1 = Math.imul(h1 ^ c, 0x85ebca6b) >>> 0;
+    h2 = Math.imul(h2 ^ c, 0xc2b2ae35) >>> 0;
+    h1 = (h1 ^ (h1 >>> 13)) >>> 0;
+    h2 = (h2 ^ (h2 >>> 16)) >>> 0;
   }
 
-  const meterEntries = sortedEntries(spec.meters);
-  for (const [key, value] of meterEntries) {
-    meters[key] = canonicalizeMeter(value as MeterDef);
-  }
-
-  return { params, meters };
+  return { hi: h1 >>> 0, lo: h2 >>> 0 };
 }
 
 /**
- * Stable structural hash for a spec.
- *
- * @remarks
- * - Does not include `spec.id` (renaming a spec does not break compatibility).
- * - Keys are sorted for determinism.
- * - Arrays include only length and, for enums, the ordered values.
- * - FNV-1a 64 over canonical JSON, encoded as base36.
+ * Hash a spec into a stable SpecHash string.
  */
 export function hashSpec(spec: SpecInput): SpecHash {
-  const tree = canonicalizeSpecObject(spec);
-  const canonical = stableStringify(tree);
-  return fnv1aHash(canonical);
-}
+  const canon = canonSpec(spec);
+  const json = stableStringify(canon);
+  const mixed = mix64(0x12345678, 0x9abcdef0, json);
 
-/**
- * Canonical spec source for dev-mode introspect and handoff debugging.
- *
- * @remarks
- * Intended for use in `_debugSource` fields on handoff payloads and for
- * deep structural comparisons in development builds.
- */
-export function getCanonicalSpecSource(spec: SpecInput): string {
-  const tree = canonicalizeSpecObject(spec);
-  return stableStringify(tree);
+  const hi = mixed.hi.toString(16).padStart(8, "0");
+  const lo = mixed.lo.toString(16).padStart(8, "0");
+
+  // Return as branded SpecHash
+  return `${hi}${lo}` as SpecHash;
 }

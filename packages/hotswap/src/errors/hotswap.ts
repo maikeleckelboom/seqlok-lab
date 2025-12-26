@@ -4,7 +4,7 @@
  *
  * @remarks
  * - Covers invalid tickets and protocol misuse at the hotswap layer.
- * - Registered into the global error registry as the `hotswap.*` domain.
+ * - Registered into the global error registry as the `hotswap.*` domains.
  */
 
 import {
@@ -54,7 +54,7 @@ export interface HotswapInvalidTicketDetails extends ErrorDetails {
 }
 
 /**
- * Mapping from error keys in this domain to their detail payloads.
+ * Mapping from error keys in this domains to their detail payloads.
  */
 interface HotswapDetailsByKey {
   readonly invalidTicket: HotswapInvalidTicketDetails;
@@ -74,10 +74,10 @@ const HOTSWAP_DEFS = {
 type HotswapDefs = typeof HOTSWAP_DEFS;
 
 /**
- * Canonical domain descriptor for `hotswap.*`.
+ * Canonical domains descriptor for `hotswap.*`.
  *
  * @remarks
- * Uses the reserved numeric domain id from `DOMAIN_IDS`.
+ * Uses the reserved numeric domains id from `DOMAIN_IDS`.
  */
 export const HOTSWAP: BuiltErrorDomain<"hotswap", HotswapDefs> =
   buildErrorDomain("hotswap", DOMAIN_IDS.hotswap, HOTSWAP_DEFS);

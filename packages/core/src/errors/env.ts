@@ -5,7 +5,7 @@
  * @remarks
  * - Models hard requirements like SharedArrayBuffer availability.
  * - Used by env helpers and allocation guards to gate SAB usage.
- * - Registered into the global error registry as the `env.*` domain.
+ * - Registered into the global error registry as the `env.*` domains.
  */
 
 import {

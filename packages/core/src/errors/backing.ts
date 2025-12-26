@@ -40,10 +40,16 @@ export interface BackingIntoLengthMismatchDetails extends ErrorDetails {
   readonly receivedLength: number;
 }
 
+export interface BackingInvalidBaseOffsetDetails extends ErrorDetails {
+  readonly baseOffsetBytes: number;
+  readonly alignmentBytes: number;
+}
+
 interface BackingDetailsByKey {
   readonly allocFailed: BackingPlaneDetails;
   readonly allocUndersized: BackingPlaneDetails;
   readonly wasmMemoryNotShared: BackingWasmMemoryDetails;
+  readonly invalidBaseOffset: BackingInvalidBaseOffsetDetails;
   readonly intoTypeMismatch: BackingIntoTypeMismatchDetails;
   readonly intoLengthMismatch: BackingIntoLengthMismatchDetails;
 }
@@ -60,6 +66,10 @@ const BACKING_DEFS = {
   wasmMemoryNotShared: {
     message: "WebAssembly.Memory is not shared",
     meta: { severity: "error", recoverable: true, boundarySafe: true },
+  },
+  invalidBaseOffset: {
+    message: "Invalid wasm-shared base offset for Seqlok view mapping",
+    meta: { severity: "error", recoverable: false, boundarySafe: true },
   },
   intoTypeMismatch: {
     message: "Into buffer typed array constructor mismatch",

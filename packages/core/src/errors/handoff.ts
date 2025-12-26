@@ -5,7 +5,7 @@
  * @remarks
  * - Covers invalid/mismatched plan/backing/spec combinations in handoffs.
  * - Used when validating handoff payloads at controller/processor boundaries.
- * - Registered into the global error registry as the `handoff.*` domain.
+ * - Registered into the global error registry as the `handoff.*` domains.
  */
 
 import {

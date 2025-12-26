@@ -167,7 +167,7 @@ The `decision.kind` tells the caller what to do.
 //   - Run current engine, use its output.
 //   - Run next engine's process() (output discarded).
 //
-// Rationale: time-domain effects (reverb, lookahead, FIR filters) need multiple
+// Rationale: time-domains effects (reverb, lookahead, FIR filters) need multiple
 // blocks to reach a stable state before their output sounds correct.
 //
 // Duration: ticket.preWarmBlocks blocks.

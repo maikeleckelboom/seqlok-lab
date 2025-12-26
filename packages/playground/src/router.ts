@@ -4,8 +4,8 @@ import {
   type RouteRecordRaw,
 } from "vue-router";
 
-import CommandRingLab from "./domain/commands/CommandRingLab.vue";
-import HotswapLab from "./domain/hotswap/HotswapLab.vue";
+import CommandRingLab from "./domains/commands/CommandRingLab.vue";
+import HotswapLab from "./domains/hotswap/HotswapLab.vue";
 
 declare module "vue-router" {
   interface RouteMeta {
@@ -55,7 +55,7 @@ const routes: RouteRecordRaw[] = [
   //       path: "timeline-lab",
   //       name: "integration-timeline-lab",
   //       component: IntegrationTimelineLab,
-  //       meta: { domain: "integration", label: "Integration Timeline Lab" },
+  //       meta: { domains: "integration", label: "Integration Timeline Lab" },
   //     },
   //   ],
   // },

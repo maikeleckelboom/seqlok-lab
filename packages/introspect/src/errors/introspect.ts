@@ -5,7 +5,7 @@
  * @remarks
  * - Covers invalid counters/metrics and unknown introspect features.
  * - Intended for debug/observability paths, not normal API misuse.
- * - Registered into the global error registry as the `introspect.*` domain.
+ * - Registered into the global error registry as the `introspect.*` domains.
  */
 
 import {
@@ -50,7 +50,7 @@ interface IntrospectDefs {
 }
 
 /**
- * Local domain definitions: keys → message/meta.
+ * Local domains definitions: keys → message/meta.
  *
  * Codes are derived as `introspect.${key}` by the base helper.
  */
@@ -74,11 +74,11 @@ const INTROSPECT_DEFS: IntrospectDefs = {
 };
 
 /**
- * Strong domain type for `introspect.*`.
+ * Strong domains type for `introspect.*`.
  *
  * @remarks
  * Using the shared `ErrorDomainWithFactory` ensures we see `.createError`
- * on the domain value and keeps `--isolatedDeclarations` happy.
+ * on the domains value and keeps `--isolatedDeclarations` happy.
  */
 export type IntrospectDomain = ErrorDomainWithFactory<
   "introspect",
@@ -86,7 +86,7 @@ export type IntrospectDomain = ErrorDomainWithFactory<
 >;
 
 /**
- * Concrete domain instance.
+ * Concrete domains instance.
  */
 export const INTROSPECT_DOMAIN: IntrospectDomain = defineErrorDomain(
   "introspect",
@@ -111,7 +111,7 @@ export const INTROSPECT_ERRORS: IntrospectErrorsMap =
 export type IntrospectErrorCode = ErrorCodeOf<IntrospectDomain>;
 
 /**
- * Runtime error type for this domain.
+ * Runtime error type for this domains.
  */
 export type IntrospectError = SeqlokError<IntrospectErrorCode>;
 
@@ -119,14 +119,14 @@ export type IntrospectError = SeqlokError<IntrospectErrorCode>;
  * Domain-local factory type for `introspect.*` errors.
  *
  * @remarks
- * For this domain we treat all details as generic `ErrorDetails`. If/when you
+ * For this domains we treat all details as generic `ErrorDetails`. If/when you
  * want per-key narrowing, introduce a `DetailsByKey` map and wrap the base
  * factory (similar to `primitives.*`).
  */
 export type IntrospectErrorFactory = ErrorFactoryOf<IntrospectDomain>;
 
 /**
- * Runtime factory – already correctly typed via the domain helper.
+ * Runtime factory – already correctly typed via the domains helper.
  *
  * @example
  * ```ts

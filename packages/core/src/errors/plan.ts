@@ -5,7 +5,7 @@
  * @remarks
  * - Covers plan failures and soft-limit overflow risk for `planLayout`.
  * - Used by planners and allocators before backing memory is committed.
- * - Registered into the global error registry as the `plan.*` domain.
+ * - Registered into the global error registry as the `plan.*` domains.
  */
 
 import {

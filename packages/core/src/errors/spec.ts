@@ -1,3 +1,5 @@
+// File: packages/core/src/errors/spec.ts
+
 /**
  * @fileoverview
  * Error codes and detail types for spec-time validation.
@@ -22,11 +24,6 @@ import {
 
 /**
  * Details for invalid parameter ranges.
- *
- * @remarks
- * - `reason: "inverted"` means min > max.
- * - `reason: "nan"` means one or both bounds are NaN.
- * - `reason: "infinite"` means one or both bounds are infinite.
  */
 export interface SpecRangeDetails extends ErrorDetails {
   readonly key: string;
@@ -48,10 +45,6 @@ export interface SpecEnumDetails extends ErrorDetails {
 
 /**
  * Details for invalid array specifications.
- *
- * @remarks
- * - `reason: "nonPositive"` means length <= 0.
- * - `reason: "fractional"` means length is not an integer.
  */
 export interface SpecArrayDetails extends ErrorDetails {
   readonly key: string;
@@ -69,10 +62,6 @@ export interface SpecDuplicateKeyDetails extends ErrorDetails {
 
 /**
  * Details for high-level builder failures.
- *
- * @remarks
- * `planFailed`, `alignmentFailed`, and `overflowRisk` are reserved for cases
- * where the spec is structurally valid but cannot be turned into a safe plan.
  */
 export interface SpecBuilderDetails extends ErrorDetails {
   readonly key?: string;
@@ -80,6 +69,7 @@ export interface SpecBuilderDetails extends ErrorDetails {
     | "invalidKind"
     | "missingId"
     | "emptyParams"
+    | "missingMinMax"
     | "planFailed"
     | "alignmentFailed"
     | "overflowRisk";

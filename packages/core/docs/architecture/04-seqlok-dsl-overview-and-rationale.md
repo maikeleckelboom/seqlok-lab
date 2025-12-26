@@ -273,10 +273,10 @@ Usage:
 
 ```ts
 controller.params.set("voices", 8); // ✅
-controller.params.set("voices", 2.5); // ❌ logically invalid (integer domain)
+controller.params.set("voices", 2.5); // ❌ logically invalid (integer domains)
 
 processor.params.within((p) => {
-  const voices = p.voices; // number (int domain), but logically integral
+  const voices = p.voices; // number (int domains), but logically integral
 });
 ```
 

@@ -6,7 +6,10 @@
   },
   "include": [
     "src/**/*",
+    "tests_legacy/**/*",
+    "tests_next/**/*",
     "tests/**/*",
+
     "bench/**/*",
     "scripts/**/*",
     "*.config.ts",

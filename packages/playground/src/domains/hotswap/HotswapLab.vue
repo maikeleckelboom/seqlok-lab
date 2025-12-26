@@ -98,21 +98,13 @@ const {
           </div>
 
           <!-- Right column: Inspector (sticky on desktop) -->
-          <div
-            class="flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-5rem)] lg:overflow-y-auto no-scrollbar"
-          >
-            <HotswapInspector
-              v-model:open="inspectorOpen"
-              :current-frame="currentFrame"
-              :current-step-kind="currentStepKind"
-              :engine-gains="engineGains"
-              :engine-activity="engineActivity"
-            />
-            <HotswapStateMachine
-              :current-phase="currentFrame?.state.phase ?? 'idle'"
-              :has-prewarm="preWarmBlocks > 0"
-            />
-          </div>
+          <HotswapInspector
+            v-model:open="inspectorOpen"
+            :current-frame="currentFrame"
+            :current-step-kind="currentStepKind"
+            :engine-gains="engineGains"
+            :engine-activity="engineActivity"
+          />
         </div>
       </div>
     </main>

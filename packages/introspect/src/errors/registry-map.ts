@@ -1,8 +1,8 @@
 /**
  * @fileoverview
- * Read-only view over domain registries from base/core/primitives/introspect.
+ * Read-only view over domains registries from base/core/primitives/introspect.
  *
- * This module normalizes all per-domain registries to a common
+ * This module normalizes all per-domains registries to a common
  * `RegistryEntry` shape so that higher-level tooling (JSON export,
  * native codegen, REPL helpers) can treat them uniformly.
  */
@@ -13,6 +13,7 @@ import {
   panic,
 } from "@seqlok/base";
 import { COMMANDS_ERRORS } from "@seqlok/commands";
+import { COPROCESSOR_RUNTIME_ERRORS } from "@seqlok/coprocessor-runtime";
 import {
   BACKING_ERRORS,
   BINDING_ERRORS,
@@ -37,20 +38,21 @@ import type { DomainName } from "./all-domains";
 export type RegistryEntry = BaseErrorDescriptor;
 
 type InternalRegistry = typeof INTERNAL_ERRORS;
-type EnvRegistry = typeof ENV_ERRORS;
-type BackingRegistry = typeof BACKING_ERRORS;
 type PrimitivesRegistry = typeof PRIMITIVES_ERRORS;
-type BindingRegistry = typeof BINDING_ERRORS;
+type EnvRegistry = typeof ENV_ERRORS;
 type SpecRegistry = typeof SPEC_ERRORS;
+type BackingRegistry = typeof BACKING_ERRORS;
+type BindingRegistry = typeof BINDING_ERRORS;
 type PlanRegistry = typeof PLAN_ERRORS;
 type HandoffRegistry = typeof HANDOFF_ERRORS;
 type CommandsRegistry = typeof COMMANDS_ERRORS;
 type IntrospectRegistry = typeof INTROSPECT_ERRORS;
 type HotswapRegistry = typeof HOTSWAP_ERRORS;
 type StreamBufRegistry = typeof STREAMBUF_ERRORS;
+type CoprocessorRuntimeRegistry = typeof COPROCESSOR_RUNTIME_ERRORS;
 
 /**
- * Registry map for a single domain.
+ * Registry map for a single domains.
  *
  * Each concrete registry is a mapping from a local error key
  * (e.g. `"allocFailed"`) to a {@link RegistryEntry}.
@@ -60,72 +62,55 @@ type StreamBufRegistry = typeof STREAMBUF_ERRORS;
  */
 export type DomainRegistry =
   | InternalRegistry
-  | EnvRegistry
-  | BackingRegistry
   | PrimitivesRegistry
-  | BindingRegistry
+  | EnvRegistry
   | SpecRegistry
   | PlanRegistry
+  | BackingRegistry
+  | BindingRegistry
   | HandoffRegistry
   | CommandsRegistry
+  | HotswapRegistry
   | StreamBufRegistry
-  | IntrospectRegistry
-  | HotswapRegistry;
+  | CoprocessorRuntimeRegistry
+  | IntrospectRegistry;
 
 /**
- * Safely access a registry entry by key.
- *
- * @remarks
- * `DomainRegistry` is a union of concrete registry types, each with
- * specific known keys. When iterating with `Object.keys()`, TypeScript
- * widens the key type to `string`, which cannot index the union.
- *
- * This helper encapsulates the necessary assertion, centralizing it
- * rather than scattering `as keyof ...` casts across call sites.
- *
- * @param registry - The domain registry to access.
- * @param key - The error key to look up.
- * @returns The registry entry, or `undefined` if not found.
+ * Returns the registry entry for a key in a well-typed way.
  */
 export function getRegistryEntry(
   registry: DomainRegistry,
   key: string,
 ): RegistryEntry | undefined {
-  return (registry as Record<string, RegistryEntry>)[key];
+  // All registries share the same value shape, so a simple lookup is enough.
+  return (registry as Record<string, RegistryEntry | undefined>)[key];
 }
 
 /**
- * Look up the registry for a given domain prefix.
- *
- * All registries share a common value shape:
- *
- *   { [localKey: string]: { code, message, numericCode, meta } }
- *
- * The return type is a union of concrete registry types; higher-level
- * code can treat it structurally (e.g., via `Object.entries`).
+ * Registry lookup for the given domains name.
  */
 export function getRegistryForDomain(domain: DomainName): DomainRegistry {
   switch (domain) {
     case "internal":
       return INTERNAL_ERRORS;
 
-    case "env":
-      return ENV_ERRORS;
-
-    case "backing":
-      return BACKING_ERRORS;
-
     case "primitives":
       return PRIMITIVES_ERRORS;
 
-    case "binding":
-      return BINDING_ERRORS;
+    case "env":
+      return ENV_ERRORS;
 
     case "spec":
       return SPEC_ERRORS;
 
     case "plan":
       return PLAN_ERRORS;
+
+    case "backing":
+      return BACKING_ERRORS;
+
+    case "binding":
+      return BINDING_ERRORS;
 
     case "handoff":
       return HANDOFF_ERRORS;
@@ -141,6 +126,9 @@ export function getRegistryForDomain(domain: DomainName): DomainRegistry {
 
     case "streambuf":
       return STREAMBUF_ERRORS;
+
+    case "coprocessorRuntime":
+      return COPROCESSOR_RUNTIME_ERRORS;
 
     default:
       // DomainName is currently just `string`,

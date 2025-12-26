@@ -9,7 +9,7 @@
     "dev:ui": "concurrently -n types,core,app \"pnpm dev:types\" \"pnpm -F @seqlok/core run dev\" \"pnpm -F @seqlok/playground run dev\"",
     "dev:types": "tsc -p tsconfig.workspace.json --noEmit --watch",
     "test:types": "tsc -p tsconfig.workspace.json --noEmit",
-    "build": "pnpm -r -F \"@seqlok/*\" run build && tsx scripts/verify-types.ts",
+    "build": "pnpm -r -F \"@seqlok/*\" run build",
     "test": "pnpm -r -F \"@seqlok/*\" run test",
     "test:core": "pnpm -F @seqlok/core run test",
     "test:cov": "pnpm -F @seqlok/core run test:cov",

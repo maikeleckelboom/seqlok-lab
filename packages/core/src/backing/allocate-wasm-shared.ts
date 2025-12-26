@@ -6,13 +6,14 @@
  * - Uses `WebAssembly.Memory` with `shared: true` for WASM-based runtimes.
  * - Derives byte requirements from the Plan.
  * - Bootstrapping growth:
- *   - If an existing `WebAssembly.Memory` is provided, it will be grown
- *     via `.grow()` until it can hold `plan.bytesTotal`, or an error is thrown.
- *   - If no memory is provided, a new `WebAssembly.Memory` is allocated
- *     with exactly enough pages for the plan.
+ * - If `options.backing` (or `options.memory`) is provided, it will be grown
+ * via `.grow()` until it can hold `plan.bytesTotal + baseOffsetBytes`.
+ * - If no memory is provided, a new `WebAssembly.Memory` is allocated.
  *
  * @internal
  */
+
+import { BYTES_PER_ELEM } from "@seqlok/primitives";
 
 import { createBackingError } from "../errors/backing";
 import { createEnvError } from "../errors/env";
@@ -23,6 +24,53 @@ import type { SpecInput } from "../spec/types";
 
 /** WebAssembly page size in bytes (64 KiB). */
 const WASM_PAGE_SIZE = 64 * 1024;
+
+/**
+ * Options for allocating or wrapping a shared WebAssembly memory.
+ *
+ * @remarks
+ * This is a discriminated union to ensure a single source of truth:
+ * - Pass `backing` to reuse an existing typed backing (inherits baseOffset).
+ * - Pass `memory` + `baseOffsetBytes` to wrap a raw WebAssembly.Memory.
+ */
+export type AllocateWasmSharedOptions = Readonly<
+  | {
+      /** Reuse an existing typed backing (baseOffsetBytes comes from it). */
+      backing: WasmSharedBacking;
+      memory?: never;
+      baseOffsetBytes?: never;
+    }
+  | {
+      /** Reuse a raw shared WebAssembly.Memory (baseOffsetBytes supplied here). */
+      backing?: never;
+      memory?: WebAssembly.Memory;
+      baseOffsetBytes?: number;
+    }
+>;
+
+function normalizeBaseOffsetBytes(
+  raw: number | undefined,
+  where: string,
+): number {
+  if (raw === undefined) {
+    return 0;
+  }
+  if (!Number.isSafeInteger(raw) || raw < 0) {
+    throw createBackingError("invalidBaseOffset", {
+      baseOffsetBytes: typeof raw === "number" ? raw : Number.NaN,
+      alignmentBytes: BYTES_PER_ELEM.MF64,
+      where,
+    });
+  }
+  if (raw % BYTES_PER_ELEM.MF64 !== 0) {
+    throw createBackingError("invalidBaseOffset", {
+      baseOffsetBytes: raw,
+      alignmentBytes: BYTES_PER_ELEM.MF64,
+      where,
+    });
+  }
+  return raw;
+}
 
 /**
  * Validates that a buffer is a SharedArrayBuffer.
@@ -83,16 +131,14 @@ function ensureWasmCapacity(
  * Allocate or wrap a shared WebAssembly.Memory for the given plan.
  *
  * @remarks
- * - If `existingMemory` is provided:
- *   - Validates it is shared.
- *   - Grows it if necessary to satisfy `plan.bytesTotal`.
- * - If `existingMemory` is not provided:
- *   - Allocates a new `WebAssembly.Memory` with
- *     `initial = maximum = ceil(bytesTotal / pageSize)`.
+ * - If `options.backing` is provided: reuses its memory and preserves its offset.
+ * - If `options.memory` is provided: wraps it and applies `options.baseOffsetBytes`.
+ * - In both cases, the memory is grown if necessary to satisfy requirements.
+ * - If neither is provided, a new `WebAssembly.Memory` is allocated.
  */
 export function allocateWasmShared<S extends SpecInput>(
   plan: Plan<S>,
-  existingMemory?: WebAssembly.Memory,
+  options?: AllocateWasmSharedOptions,
 ): WasmSharedBacking {
   if (
     typeof WebAssembly === "undefined" ||
@@ -104,17 +150,31 @@ export function allocateWasmShared<S extends SpecInput>(
     });
   }
 
+  // Resolve baseOffsetBytes from the correct source based on union state.
+  const rawBaseOffset =
+    options && "backing" in options
+      ? options.backing.baseOffsetBytes
+      : options?.baseOffsetBytes;
+
+  const baseOffsetBytes = normalizeBaseOffsetBytes(
+    rawBaseOffset,
+    "allocateWasmShared",
+  );
+
+  const totalBytes = plan.bytesTotal + baseOffsetBytes;
+
+  // Resolve existing memory from the correct source.
+  const existingMemory =
+    options && "backing" in options ? options.backing.memory : options?.memory;
+
   let memory: WebAssembly.Memory;
 
   if (existingMemory) {
     memory = existingMemory;
     toSharedBuffer(memory.buffer, "allocateWasmShared");
-    ensureWasmCapacity(plan.bytesTotal, memory, "allocateWasmShared.grow");
+    ensureWasmCapacity(totalBytes, memory, "allocateWasmShared.grow");
   } else {
-    const requiredPages = Math.max(
-      1,
-      Math.ceil(plan.bytesTotal / WASM_PAGE_SIZE),
-    );
+    const requiredPages = Math.max(1, Math.ceil(totalBytes / WASM_PAGE_SIZE));
 
     try {
       memory = new WebAssembly.Memory({
@@ -137,14 +197,16 @@ export function allocateWasmShared<S extends SpecInput>(
 
   const sharedBuf = toSharedBuffer(memory.buffer, "allocateWasmShared");
 
-  if (sharedBuf.byteLength < plan.bytesTotal) {
+  if (sharedBuf.byteLength < totalBytes) {
     throw createBackingError("allocUndersized", {
       plane: "all",
-      requestedBytes: plan.bytesTotal,
+      requestedBytes: totalBytes,
       allocatedBytes: sharedBuf.byteLength,
       where: "allocateWasmShared",
     });
   }
 
-  return { kind: "wasm-shared", memory };
+  return baseOffsetBytes === 0
+    ? { kind: "wasm-shared", memory }
+    : { kind: "wasm-shared", memory, baseOffsetBytes };
 }

@@ -3,7 +3,7 @@
  * Public entry point for @seqlok/primitives.
  *
  * @remarks
- * - Currently exposes the primitives error domain (codes + factory).
+ * - Currently exposes the primitives error domains (codes + factory).
  * - Future: this is also where seqlock/SWSR/etc. primitives will be exported.
  */
 

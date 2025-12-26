@@ -18,16 +18,17 @@
 
 import {
   type ErrorMeta,
+  getDocsUrl,
   type HealthInterpretation,
   interpretHealth,
-  getDocsUrl,
   isBoundarySafe,
   isSeqlokError,
   type SeqlokError,
 } from "@seqlok/base";
 
-import { resetCounters, snapshotCounters } from "./counters";
+import { incrementCounter, resetCounters, snapshotCounters } from "./counters";
 import { exportIntrospectCounters } from "./export";
+import { type CoreIntrospectSink, installCoreIntrospectSink } from "./hooks";
 import { endIntrospectSession, startIntrospectSession } from "./session";
 
 import type {
@@ -35,6 +36,13 @@ import type {
   IntrospectCountersSnapshot,
 } from "./counters";
 import type { IntrospectSession } from "./session";
+
+const CORE_COUNTER_SINK: CoreIntrospectSink = {
+  onCounterIncrement(name) {
+    // Minimal, bounded work: core hot paths can call this.
+    incrementCounter(name);
+  },
+};
 
 /**
  * Declarative thresholds for introspect counters.
@@ -334,12 +342,6 @@ function buildRunResult<T>(
 
 /**
  * Async variant: run an async scenario under introspect + health.
- *
- * @remarks
- * Use this for:
- * - stress / soak tests,
- * - CLIs and dev tools,
- * - scenarios that await I/O or timers.
  */
 export async function runWithIntrospect<T>(
   run: () => Promise<T>,
@@ -354,10 +356,12 @@ export async function runWithIntrospect<T>(
   } = options;
 
   resetCounters();
-
   const startedSession = startIntrospectSession(scenarioId, {
     ...metadata,
   });
+
+  // Automatically capture core-introspect emissions during this run.
+  const prevSink = installCoreIntrospectSink(CORE_COUNTER_SINK);
 
   let value: T | undefined;
   const errorState: ErrorState = {
@@ -368,11 +372,15 @@ export async function runWithIntrospect<T>(
   let completedSession: IntrospectSession | null;
 
   try {
-    value = await run();
-  } catch (caught: unknown) {
-    handleCaughtError(caught, errorState, onSeqlokError, onUnknownError);
+    try {
+      value = await run();
+    } catch (caught: unknown) {
+      handleCaughtError(caught, errorState, onSeqlokError, onUnknownError);
+    } finally {
+      completedSession = endIntrospectSession();
+    }
   } finally {
-    completedSession = endIntrospectSession();
+    installCoreIntrospectSink(prevSink);
   }
 
   return buildRunResult<T>({
@@ -390,12 +398,6 @@ export async function runWithIntrospect<T>(
 
 /**
  * Sync variant: run a synchronous scenario under introspect + health.
- *
- * @remarks
- * Use this for:
- * - benchmarks,
- * - property tests (fast-check),
- * - tight synchronous stress loops.
  */
 export function runWithIntrospectSync<T>(
   run: () => T,
@@ -410,10 +412,12 @@ export function runWithIntrospectSync<T>(
   } = options;
 
   resetCounters();
-
   const startedSession = startIntrospectSession(scenarioId, {
     ...metadata,
   });
+
+  // Option 2: automatically capture core-introspect emissions during this run.
+  const prevSink = installCoreIntrospectSink(CORE_COUNTER_SINK);
 
   let value: T | undefined;
   const errorState: ErrorState = {
@@ -424,11 +428,15 @@ export function runWithIntrospectSync<T>(
   let completedSession: IntrospectSession | null;
 
   try {
-    value = run();
-  } catch (caught: unknown) {
-    handleCaughtError(caught, errorState, onSeqlokError, onUnknownError);
+    try {
+      value = run();
+    } catch (caught: unknown) {
+      handleCaughtError(caught, errorState, onSeqlokError, onUnknownError);
+    } finally {
+      completedSession = endIntrospectSession();
+    }
   } finally {
-    completedSession = endIntrospectSession();
+    installCoreIntrospectSink(prevSink);
   }
 
   return buildRunResult<T>({

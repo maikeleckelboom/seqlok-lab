@@ -10,13 +10,14 @@ import {
 } from "../../src";
 
 describe("Controller: Hydrate Validation", () => {
-  const spec = defineSpec((b) => ({
+  const spec = defineSpec({
     id: "hydrate-hardening",
     params: {
-      arr: b.param.f32.array(4),
-      val: b.param.f32(),
+      arr: { kind: "f32.array", length: 4 },
+      val: { kind: "f32", min: 0, max: 1 },
     },
-  }));
+  });
+
   const plan = planLayout(spec);
 
   it("validates hydrate inputs rigorously against spec mismatch", () => {
@@ -25,7 +26,7 @@ describe("Controller: Hydrate Validation", () => {
 
     // 1. Unknown key check
     expect(() => {
-      // @ts-expect-error: Testing runtime validation for unknown keys
+      // @ts-expect-error: runtime validation should reject unknown keys
       ctrl.params.hydrate({ unknownKey: 123 });
     }).toThrow();
 
@@ -36,13 +37,13 @@ describe("Controller: Hydrate Validation", () => {
 
     // 3. Invalid type check (Scalar passed where Array expected)
     expect(() => {
-      // @ts-expect-error: Testing runtime validation for type mismatch
+      // @ts-expect-error: runtime validation should reject scalar for array param
       ctrl.params.hydrate({ arr: 123 });
     }).toThrow();
 
     // 4. Invalid type check (Array passed where Scalar expected)
     expect(() => {
-      // @ts-expect-error: Testing runtime validation for type mismatch
+      // @ts-expect-error: runtime validation should reject array for scalar param
       ctrl.params.hydrate({ val: new Float32Array(1) });
     }).toThrow();
   });

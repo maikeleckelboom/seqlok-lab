@@ -38,6 +38,19 @@ export interface SharedPartitionedBacking {
 export interface WasmSharedBacking {
   readonly kind: "wasm-shared";
   readonly memory: WebAssembly.Memory;
+  /**
+   * Optional byte offset applied to all plane bases when mapping views.
+   *
+   * Intended for guest/WASM layouts that want to reserve low memory (e.g. keep
+   * pointer 0 as a sentinel / "null") or place a guest-owned header before the
+   * Seqlok planes.
+   *
+   * Must be a non-negative safe integer and aligned to the largest plane
+   * element size (currently 8 bytes due to MF64).
+   *
+   * @default 0
+   */
+  readonly baseOffsetBytes?: number;
 }
 
 /** Union of all supported memory backing strategies. */

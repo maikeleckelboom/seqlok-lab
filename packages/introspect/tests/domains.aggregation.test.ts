@@ -8,7 +8,7 @@ import {
   listErrors,
 } from "../src/errors/all-domains";
 
-describe("Introspect: domain aggregation", () => {
+describe("Introspect: domains aggregation", () => {
   it("exposes a non-empty list of domains with unique prefixes", () => {
     expect(ALL_DOMAINS.length).toBeGreaterThan(0);
 
@@ -55,7 +55,7 @@ describe("Introspect: domain aggregation", () => {
     expect(numeric).toBe(first.numericCode);
   });
 
-  it("splits domain prefix and local code correctly", () => {
+  it("splits domains prefix and local code correctly", () => {
     expect(extractDomainPrefix("env.unsupported")).toBe("env");
     expect(extractLocalCode("env.unsupported")).toBe("unsupported");
 

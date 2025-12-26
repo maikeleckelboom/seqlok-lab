@@ -15,7 +15,22 @@
       "@seqlok/streambuf": ["packages/streambuf/src/index.ts"],
       "@seqlok/hotswap": ["packages/hotswap/src/index.ts"],
       "@seqlok/integration": ["packages/integration/src/index.ts"],
-      "@seqlok/playground": ["packages/playground/src/index.ts"]
+      "@seqlok/playground": ["packages/playground/src/index.ts"],
+      "@seqlok/coprocessor-runtime": [
+        "packages/coprocessor-runtime/src/index.ts"
+      ],
+      "@seqlok/coprocessor-runtime/protocol": [
+        "packages/coprocessor-runtime/src/protocol/index.ts"
+      ],
+      "@seqlok/coprocessor-runtime/mount": [
+        "packages/coprocessor-runtime/src/mount/index.ts"
+      ],
+      "@seqlok/coprocessor-runtime/kernel": [
+        "packages/coprocessor-runtime/src/kernel/index.ts"
+      ],
+      "@seqlok/coprocessor-runtime/worklet": [
+        "packages/coprocessor-runtime/src/worklet/index.ts"
+      ]
     },
     "strict": true,
     "noImplicitAny": true,

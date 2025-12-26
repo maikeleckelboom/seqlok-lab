@@ -81,7 +81,7 @@ export { defineEngine } from "./engine/definition";
 export type { LanePluginDefinition, PluginRegistry } from "./plugin/registry";
 export { definePlugin, createPluginRegistry } from "./plugin/registry";
 
-export type { LaneTypeConfig, LaneType } from "./lane/lane-type";
-export { defineLaneType } from "./lane/lane-type";
+export type { LaneKindConfig, LaneKind } from "./lane/lane-kind";
+export { defineLaneKind } from "./lane/lane-kind";
 export { mountLane } from "./lane/mount-lane";
 export { type MountLaneOptions, type MountedLane } from "./lane/mount-lane";

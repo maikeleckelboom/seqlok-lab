@@ -5,7 +5,7 @@
  * @remarks
  * - Models `internal.*` failures surfaced via `invariant(...)`.
  * - Reserved for "this should never happen" situations in core code.
- * - Registered into the global error registry as the `internal.*` domain.
+ * - Registered into the global error registry as the `internal.*` domains.
  */
 
 import {
@@ -58,7 +58,7 @@ export type InternalErrorKey = ErrorKeyFromCode<InternalErrorCode>;
  * Descriptor map keyed by local names.
  *
  * @remarks
- * - Keys are short, domain-local identifiers.
+ * - Keys are short, domains-local identifiers.
  * - `code` carries the fully-qualified error code string.
  */
 interface InternalErrorsMap {
@@ -73,7 +73,7 @@ interface InternalErrorsMap {
  * @remarks
  * Used by:
  * - Diagnostics / registry aggregation in @seqlok/introspect
- * - The domain-local `createInternalError(...)` factory
+ * - The domains-local `createInternalError(...)` factory
  */
 const INTERNAL_ERRORS_DEF = {
   assertionFailed: {

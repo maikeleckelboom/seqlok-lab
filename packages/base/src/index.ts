@@ -38,12 +38,7 @@ export type {
 export { encodeNumeric, decodeNumeric } from "./errors/numeric";
 export type { ErrorNumericCode, ErrorNumericParts } from "./errors/numeric";
 
-export {
-  DOMAIN_IDS,
-  DOMAIN_RANGES,
-  isBuiltinDomainId,
-  isUserDomainId,
-} from "./errors/domains";
+export { DOMAIN_IDS, DOMAIN_RANGES } from "./errors/domains";
 export type {
   DomainEntry,
   DomainDescriptor,

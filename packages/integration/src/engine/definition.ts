@@ -1,40 +1,65 @@
+/**
+ * @fileoverview
+ * Engine definition factory with type-safe spec resolution.
+ *
+ * @remarks
+ * - Uses `SpecAstInput` for author-time builder output (nested namespaces, optional id).
+ * - Uses `ResolvedSpec<S>` for runtime normalized form (flat dot-keys, required id).
+ * - The `defineSpec()` call transforms AST → Resolved, and this is explicit in the types.
+ */
+
 import {
   defineSpec,
   type ParamBuilders,
   type MeterBuilders,
-  type SpecInput,
+  type SpecAstInput,
+  type ResolvedSpec,
 } from "@seqlok/core";
 
 import type { EngineInstance } from "../lane/engine-bank";
-import type {
-  CommandRingDefinition,
-  EventRingDefinition,
-} from "@seqlok/commands";
+import type { RingDefinition } from "@seqlok/commands";
 
+/**
+ * Builders exposed to engine spec authors.
+ */
 export interface EngineSpecBuilders {
   readonly param: ParamBuilders;
   readonly meter: MeterBuilders;
 }
 
-export type EngineSpecBuilder<S extends SpecInput> = (
+/**
+ * Spec builder function.
+ *
+ * @typeParam S - The AST form returned by the builder (pre-normalization).
+ */
+export type EngineSpecBuilder<S extends SpecAstInput> = (
   builders: EngineSpecBuilders,
 ) => S;
 
-export interface EngineConstructorOptions<S extends SpecInput, TConfig> {
-  readonly spec: S;
+/**
+ * Options passed to engine constructors.
+ *
+ * @typeParam S - The AST form (used for type parameter threading).
+ * @typeParam TConfig - Engine-specific configuration shape.
+ *
+ * @remarks
+ * The `spec` field is the *resolved* form — flat dot-keys, validated ranges.
+ */
+export interface EngineConstructorOptions<S extends SpecAstInput, TConfig> {
+  readonly spec: ResolvedSpec<S>;
   readonly config: TConfig;
 }
 
 /**
- * Host-side engine constructor.
+ * Host-side engine constructor signature.
  *
- * - `S`: spec type (result of `defineSpec`)
- * - `TConfig`: structural/configuration type for this engine family
- * - `EngineKindEnum`: numeric enum representing engine kinds
- * - `TInstance`: concrete engine instance type
+ * @typeParam S - Spec AST type (result of builder, pre-normalization).
+ * @typeParam TConfig - Structural/configuration type for this engine family.
+ * @typeParam EngineKindEnum - Numeric enum representing engine kinds.
+ * @typeParam TInstance - Concrete engine instance type.
  */
 export type EngineConstructor<
-  S extends SpecInput,
+  S extends SpecAstInput,
   TConfig,
   EngineKindEnum extends number,
   TInstance extends EngineInstance<EngineKindEnum>,
@@ -43,8 +68,18 @@ export type EngineConstructor<
   options: EngineConstructorOptions<S, TConfig>,
 ) => TInstance;
 
+/**
+ * Configuration for defining an engine family.
+ *
+ * @typeParam S - Spec AST type.
+ * @typeParam TConfig - Engine configuration shape.
+ * @typeParam EngineKindEnum - Numeric enum for engine variants.
+ * @typeParam Command - Command ring payload type.
+ * @typeParam EventPayload - Event ring payload type.
+ * @typeParam TInstance - Concrete engine instance type.
+ */
 export interface DefineEngineConfig<
-  S extends SpecInput,
+  S extends SpecAstInput,
   TConfig,
   EngineKindEnum extends number,
   Command,
@@ -56,7 +91,11 @@ export interface DefineEngineConfig<
   readonly defaultKind: EngineKindEnum;
 
   /**
-   * Spec builder, used to materialize the shared-state spec via `defineSpec`.
+   * Spec builder — invoked lazily via `toSpecInput()`.
+   *
+   * @remarks
+   * The builder returns the AST form. `defineSpec()` normalizes it to the
+   * resolved form with flat dot-keys and validated ranges.
    */
   readonly buildSpec: EngineSpecBuilder<S>;
 
@@ -70,12 +109,29 @@ export interface DefineEngineConfig<
     TInstance
   >;
 
-  readonly commandRing?: CommandRingDefinition<Command>;
-  readonly eventRing?: EventRingDefinition<EventPayload>;
+  /**
+   * Optional command ring definition for host → processor messaging.
+   */
+  readonly commandRing?: RingDefinition<Command>;
+
+  /**
+   * Optional event ring definition for processor → host messaging.
+   */
+  readonly eventRing?: RingDefinition<EventPayload>;
 }
 
+/**
+ * Materialized engine definition.
+ *
+ * @typeParam S - Spec AST type.
+ * @typeParam TConfig - Engine configuration shape.
+ * @typeParam EngineKindEnum - Numeric enum for engine variants.
+ * @typeParam Command - Command ring payload type.
+ * @typeParam EventPayload - Event ring payload type.
+ * @typeParam TInstance - Concrete engine instance type.
+ */
 export interface EngineDefinition<
-  S extends SpecInput,
+  S extends SpecAstInput,
   TConfig,
   EngineKindEnum extends number,
   Command,
@@ -87,11 +143,13 @@ export interface EngineDefinition<
   readonly defaultKind: EngineKindEnum;
 
   /**
-   * Returns the spec input for this engine family.
+   * Returns the resolved spec for this engine family.
    *
-   * Lazily calls `defineSpec(buildSpec)` the first time and caches the result.
+   * @remarks
+   * Lazily calls `defineSpec(buildSpec)` on first access and caches the result.
+   * Returns `ResolvedSpec<S>` — the normalized, flat, validated form.
    */
-  readonly toSpecInput: () => S;
+  readonly toSpecInput: () => ResolvedSpec<S>;
 
   /**
    * Host-side engine constructor.
@@ -104,32 +162,57 @@ export interface EngineDefinition<
   >;
 
   /**
-   * Optional command ring definition for this engine family.
-   *
-   * When undefined, the engine does not use a command ring.
+   * Command ring definition, or undefined if unused.
    */
-  readonly commandRing: CommandRingDefinition<Command> | undefined;
+  readonly commandRing: RingDefinition<Command> | undefined;
 
   /**
-   * Optional event ring definition for this engine family.
-   *
-   * When undefined, the engine does not use an event ring.
+   * Event ring definition, or undefined if unused.
    */
-  readonly eventRing: EventRingDefinition<EventPayload> | undefined;
+  readonly eventRing: RingDefinition<EventPayload> | undefined;
 }
 
 /**
  * Define a host-side engine family.
  *
- * This layer is generic over:
- * - spec DSL (`buildSpec`)
- * - configuration (`TConfig`)
- * - engine kinds (`EngineKindEnum`)
- * - command / event shapes
- * - concrete engine instance type
+ * @typeParam S - Spec AST type (what the builder returns).
+ * @typeParam TConfig - Configuration shape for this engine family.
+ * @typeParam EngineKindEnum - Numeric enum representing engine kinds.
+ * @typeParam Command - Command ring payload type.
+ * @typeParam EventPayload - Event ring payload type.
+ * @typeParam TInstance - Concrete engine instance type.
+ *
+ * @param config - Engine family configuration.
+ * @returns Materialized engine definition with lazy spec resolution.
+ *
+ * @example
+ * ```typescript
+ * const stretchEngine = defineEngine({
+ *   id: "stretch",
+ *   kinds: [StretchKind.Signalsmith, StretchKind.Rubberband],
+ *   defaultKind: StretchKind.Signalsmith,
+ *   buildSpec: ({ param, meter }) => ({
+ *     id: "stretch-engine",
+ *     params: {
+ *       rate: param.f32({ min: 0.25, max: 4 }),
+ *       pitch: param.f32({ min: -12, max: 12 }),
+ *     },
+ *     meters: {
+ *       latency: meter.f32(),
+ *     },
+ *   }),
+ *   createInstance: (kind, { spec, config }) => {
+ *     // Factory logic here
+ *   },
+ * });
+ *
+ * // Later: get the resolved spec
+ * const spec = stretchEngine.toSpecInput();
+ * // spec.params.rate → { kind: "f32", min: 0.25, max: 4 }
+ * ```
  */
 export function defineEngine<
-  S extends SpecInput,
+  S extends SpecAstInput,
   TConfig,
   EngineKindEnum extends number,
   Command,
@@ -162,12 +245,15 @@ export function defineEngine<
     eventRing,
   } = config;
 
-  let cachedSpec: S | undefined;
+  // Lazy-initialized cache for the resolved spec
+  let cachedSpec: ResolvedSpec<S> | undefined;
 
-  const toSpecInput = (): S => {
+  const toSpecInput = (): ResolvedSpec<S> => {
     if (cachedSpec !== undefined) {
       return cachedSpec;
     }
+
+    // Transform AST → Resolved via defineSpec
     const spec = defineSpec(buildSpec);
     cachedSpec = spec;
     return spec;

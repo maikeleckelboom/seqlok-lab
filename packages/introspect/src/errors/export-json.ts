@@ -58,7 +58,7 @@ export interface ErrorCodeSchema {
 }
 
 /**
- * Per-domain entry in the rich schema export.
+ * Per-domains entry in the rich schema export.
  */
 export interface DomainSchema {
   readonly prefix: DomainName;
@@ -152,7 +152,7 @@ function computeStats(domains: readonly DomainSchema[]): RegistryStats {
  *
  * @remarks
  * - Pass `{}` for "everything".
- * - Use `SubsetSelectionCriteria` to restrict by domain, severity, etc.
+ * - Use `SubsetSelectionCriteria` to restrict by domains, severity, etc.
  */
 export function buildErrorRegistrySchema(
   criteria: SubsetSelectionCriteria = {},
@@ -203,7 +203,7 @@ export const ERROR_REGISTRY_JSON_SCHEMA: JsonSchemaDocument = {
   $id: "https://schema.seqlok.dev/error-registry.schema.json",
   title: "Seqlok Error Registry",
   description:
-    "Structured export of Seqlok error codes, metadata, and domain layout.",
+    "Structured export of Seqlok error codes, metadata, and domains layout.",
   type: "object",
   additionalProperties: false,
   properties: {},

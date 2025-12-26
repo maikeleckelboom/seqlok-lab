@@ -1,5 +1,6 @@
 export interface EngineInstance<K extends number = number> {
   readonly kind: K;
+  // TODO: This was removed, points to mismatch test<->code
   render(dst: Float32Array, frames: number): void;
 }
 

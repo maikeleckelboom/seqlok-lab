@@ -1,6 +1,6 @@
 /**
  * @fileoverview
- * Binding-domain public types shared by controller and processor bindings.
+ * Binding-domains public types shared by controller and processor bindings.
  *
  * @remarks
  * - Lifts spec-level param/meter definitions into concrete runtime shapes.
@@ -14,14 +14,16 @@ import type {
   ArrayMeterKeys,
   ArrayParamKeys,
   MeterKeys,
+  MetersOf,
   ParamKeys,
+  ParamsOf,
   ScalarMeterKeys,
   ScalarParamKeys,
   SpecInput,
 } from "../../spec/types";
 
 /**
- * Monotonic sequence number for param updates (PU domain).
+ * Monotonic sequence number for param updates (PU domains).
  *
  * @remarks
  * - Incremented on each successful param publish from the processor.
@@ -30,7 +32,7 @@ import type {
 export type PUSeq = number;
 
 /**
- * Monotonic sequence number for meter updates (MU domain).
+ * Monotonic sequence number for meter updates (MU domains).
  *
  * @remarks
  * - Incremented on each successful meter publish from the processor.
@@ -44,13 +46,6 @@ export type MUSeq = number;
 type Display<T> = T extends (...args: readonly unknown[]) => unknown
   ? T
   : { [K in keyof T]: T[K] } & {};
-
-type ParamsOf<S extends SpecInput> = S["params"] extends object
-  ? S["params"]
-  : object;
-type MetersOf<S extends SpecInput> = S["meters"] extends object
-  ? S["meters"]
-  : object;
 
 type ParamAt<
   S extends SpecInput,
@@ -404,12 +399,12 @@ export interface ControllerMeterPolicyOptions {
  */
 export interface ControllerOptions {
   /**
-   * Policies for the params (writer) domain.
+   * Policies for the params (writer) domains.
    */
   readonly params?: ControllerParamPolicyOptions;
 
   /**
-   * Policies for the meters (reader) domain.
+   * Policies for the meters (reader) domains.
    */
   readonly meters?: ControllerMeterPolicyOptions;
 }

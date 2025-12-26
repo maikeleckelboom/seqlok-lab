@@ -66,7 +66,7 @@ const stepKindColor = computed(() => {
 </script>
 
 <template>
-  <section class="space-y-4">
+  <section class="space-y-4 flex flex-col">
     <!-- Mobile toggle -->
     <button
       type="button"
@@ -89,7 +89,7 @@ const stepKindColor = computed(() => {
     <div :class="['space-y-4', openModel ? 'block' : 'hidden lg:block']">
       <!-- Current step card -->
       <div
-        class="space-y-4 border border-zinc-800 rounded-xl bg-zinc-900/70 px-4 py-4"
+        class="space-y-4 border-zinc-800 border rounded-md bg-zinc-950 px-4 py-4"
       >
         <!-- Header -->
         <div class="space-y-3">
@@ -246,82 +246,79 @@ const stepKindColor = computed(() => {
       </div>
 
       <!-- Engine state card -->
-      <div
-        class="space-y-4 border border-zinc-800 rounded-xl bg-zinc-900/70 px-4 py-4"
-      >
-        <div class="space-y-1">
-          <h2
-            class="text-xs font-semibold uppercase tracking-wider text-zinc-400"
-          >
-            Engine State
-          </h2>
-          <p class="text-[10px] text-zinc-500 leading-relaxed">
-            Current activity status per engine
-          </p>
-        </div>
+      <!--      <div class="space-y-4 border border-zinc-800 rounded-xl bg-zinc-900/70 px-4 py-4">-->
+      <!--        <div class="space-y-1">-->
+      <!--          <h2-->
+      <!--            class="text-xs font-semibold uppercase tracking-wider text-zinc-400"-->
+      <!--          >-->
+      <!--            Engine State-->
+      <!--          </h2>-->
+      <!--          <p class="text-[10px] text-zinc-500 leading-relaxed">-->
+      <!--            Current activity status per engine-->
+      <!--          </p>-->
+      <!--        </div>-->
+      <!--        <div class="space-y-3">-->
+      <!--          &lt;!&ndash; Engine A &ndash;&gt;-->
+      <!--          <div-->
+      <!--            class="flex items-center gap-3 p-2.5 rounded-lg bg-zinc-950/50 border border-zinc-800/50"-->
+      <!--          >-->
+      <!--            <div class="w-5 h-5 shrink-0">-->
+      <!--              <IconCircleLetterAFilled-->
+      <!--                class="w-full h-full transition-colors duration-150"-->
+      <!--                :class="[-->
+      <!--                  engineActivity.current === 'idle' ||-->
+      <!--                  engineActivity.current === 'done'-->
+      <!--                    ? 'text-zinc-700'-->
+      <!--                    : 'text-emerald-500',-->
+      <!--                ]"-->
+      <!--              />-->
+      <!--            </div>-->
+      <!--            <span class="text-sm text-zinc-200 flex-1 font-medium"-->
+      <!--              >Engine A</span-->
+      <!--            >-->
+      <!--            <span-->
+      <!--              class="text-[10px] px-2 py-1 rounded-md font-mono uppercase tracking-wider border transition-colors"-->
+      <!--              :class="[-->
+      <!--                engineActivity.current === 'idle' ||-->
+      <!--                engineActivity.current === 'done'-->
+      <!--                  ? 'bg-zinc-900 border-zinc-700 text-zinc-500'-->
+      <!--                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',-->
+      <!--              ]"-->
+      <!--            >-->
+      <!--              {{ engineActivity.current }}-->
+      <!--            </span>-->
+      <!--          </div>-->
 
-        <div class="space-y-3">
-          <!-- Engine A -->
-          <div
-            class="flex items-center gap-3 p-2.5 rounded-lg bg-zinc-950/50 border border-zinc-800/50"
-          >
-            <div class="w-5 h-5 shrink-0">
-              <IconCircleLetterAFilled
-                class="w-full h-full transition-colors duration-150"
-                :class="[
-                  engineActivity.current === 'idle' ||
-                  engineActivity.current === 'done'
-                    ? 'text-zinc-700'
-                    : 'text-emerald-500',
-                ]"
-              />
-            </div>
-            <span class="text-sm text-zinc-200 flex-1 font-medium"
-              >Engine A</span
-            >
-            <span
-              class="text-[10px] px-2 py-1 rounded-md font-mono uppercase tracking-wider border transition-colors"
-              :class="[
-                engineActivity.current === 'idle' ||
-                engineActivity.current === 'done'
-                  ? 'bg-zinc-900 border-zinc-700 text-zinc-500'
-                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
-              ]"
-            >
-              {{ engineActivity.current }}
-            </span>
-          </div>
-
-          <!-- Engine B -->
-          <div
-            class="flex items-center gap-3 p-2.5 rounded-lg bg-zinc-950/50 border border-zinc-800/50"
-          >
-            <div class="w-5 h-5 shrink-0">
-              <IconSquareLetterBFilled
-                class="w-full h-full transition-colors duration-150"
-                :class="[
-                  engineActivity.next === 'idle'
-                    ? 'text-zinc-700'
-                    : 'text-purple-500',
-                ]"
-              />
-            </div>
-            <span class="text-sm text-zinc-200 flex-1 font-medium"
-              >Engine B</span
-            >
-            <span
-              class="text-[10px] px-2 py-1 rounded-md font-mono uppercase tracking-wider border transition-colors"
-              :class="[
-                engineActivity.next === 'idle'
-                  ? 'bg-zinc-900 border-zinc-700 text-zinc-500'
-                  : 'bg-purple-500/10 border-purple-500/30 text-purple-400',
-              ]"
-            >
-              {{ engineActivity.next }}
-            </span>
-          </div>
-        </div>
-      </div>
+      <!--          &lt;!&ndash; Engine B &ndash;&gt;-->
+      <!--          <div-->
+      <!--            class="flex items-center gap-3 p-2.5 rounded-lg bg-zinc-950/50 border border-zinc-800/50"-->
+      <!--          >-->
+      <!--            <div class="w-5 h-5 shrink-0">-->
+      <!--              <IconSquareLetterBFilled-->
+      <!--                class="w-full h-full transition-colors duration-150"-->
+      <!--                :class="[-->
+      <!--                  engineActivity.next === 'idle'-->
+      <!--                    ? 'text-zinc-700'-->
+      <!--                    : 'text-purple-500',-->
+      <!--                ]"-->
+      <!--              />-->
+      <!--            </div>-->
+      <!--            <span class="text-sm text-zinc-200 flex-1 font-medium"-->
+      <!--              >Engine B</span-->
+      <!--            >-->
+      <!--            <span-->
+      <!--              class="text-[10px] px-2 py-1 rounded-md font-mono uppercase tracking-wider border transition-colors"-->
+      <!--              :class="[-->
+      <!--                engineActivity.next === 'idle'-->
+      <!--                  ? 'bg-zinc-900 border-zinc-700 text-zinc-500'-->
+      <!--                  : 'bg-purple-500/10 border-purple-500/30 text-purple-400',-->
+      <!--              ]"-->
+      <!--            >-->
+      <!--              {{ engineActivity.next }}-->
+      <!--            </span>-->
+      <!--          </div>-->
+      <!--        </div>-->
+      <!--      </div>-->
     </div>
   </section>
 </template>

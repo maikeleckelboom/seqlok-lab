@@ -8,6 +8,7 @@
   "files": [],
   "references": [
     { "path": "./packages/base" },
+    { "path": "./packages/coprocessor-runtime" },
     { "path": "./packages/primitives" },
     { "path": "./packages/introspect" },
     { "path": "./packages/core" },
