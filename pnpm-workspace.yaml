@@ -2,13 +2,13 @@ packages:
   - packages/*
 
 catalog:
-  "@commitlint/cli": ^20.1.0
-  "@commitlint/config-conventional": ^20.0.0
-  "@commitlint/types": ^20.0.0
-  "@tailwindcss/vite": 4.1.17
-  "@types/node": 24.10.1
-  "@vitejs/plugin-vue": 6.0.2
-  "@vitest/coverage-v8": 4.0.13
+  '@commitlint/cli': ^20.1.0
+  '@commitlint/config-conventional': ^20.0.0
+  '@commitlint/types': ^20.0.0
+  '@tailwindcss/vite': 4.1.17
+  '@types/node': 24.10.1
+  '@vitejs/plugin-vue': 6.0.2
+  '@vitest/coverage-v8': 4.0.13
   concurrently: ^9.2.1
   eslint: 9.38.0
   eslint-import-resolver-typescript: ^4.4.4
@@ -22,7 +22,7 @@ catalog:
   reka-ui: ^2.6.1
   rimraf: ^6.1.2
   rollup: ^4.53.3
-  rollup-plugin-dts: ^6.2.3
+  rollup-plugin-dts: 6.2.3
   simple-git-hooks: ^2.13.1
   tailwindcss: ^4.1.17
   tsx: ^4.20.6

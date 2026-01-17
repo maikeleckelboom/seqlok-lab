@@ -23,9 +23,17 @@ These properties are captured in the TLA⁺ specs:
 
 - **Base protocol:** `formal/policies/single/tla/HotSwapSingle.tla`
 - **Multi-swap (reject-while-busy):** `formal/policies/reject-busy/tla/HotSwapRejectBusy.tla`
-- **Multi-swap (mailbox-latest):** `formal/policies/mailbox-latest/tla/HotSwapMailboxLatest.tla`
+- **Multi-swap (mailbox-latest):** `formal/policies/mailbox-latest/tla/HotSwapMailboxLatest.tla` (**EXPERIMENTAL**)
 
 and are model-checked with TLC.
+
+**Supported levels:** This contract is normative for Levels 1–2:
+
+- **Level 1** = policy `single` (base single-swap protocol)
+- **Level 2** = policy `reject-busy` (overlap defined as “reject while busy”)
+
+Anything beyond that (including `mailbox-latest`) is **experimental/future** and
+is not part of the shipped contract surface.
 
 ## What the caller is responsible for
 
@@ -86,7 +94,7 @@ The protocol deliberately does **not** define:
 
 These are left to the surrounding host (Dekzer, native engine, etc).
 
-## Multi-swap behavior: reject-while-busy policy
+## Multi-swap behavior (Level 2): reject-while-busy policy
 
 For scenarios where multiple swap requests occur with the currently
 implemented policy:
@@ -97,8 +105,9 @@ implemented policy:
 This reject-while-busy policy is proven correct in
 `formal/policies/reject-busy/tla/HotSwapRejectBusy.tla`.
 
-Future policies (queued swaps, retargeting) are not yet
-implemented. See `adr/hotswap-advanced-multi-swap-exploratory.md` for vision.
+**Experimental / future policies:** `mailbox-latest` (latest-wins mailbox),
+Retarget/coalesce are intentionally **out of scope** for Levels 1–2. See
+`adr/hotswap-advanced-multi-swap-exploratory.md` for design context.
 
 ## Formal verification
 

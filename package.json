@@ -36,7 +36,7 @@
     "schema:errors:json": "pnpm -F @seqlok/introspect run errors:registry:schema",
     "schema:errors:snapshots": "pnpm -F @seqlok/introspect run errors:registry:schema:snapshots",
     "tsc": "echo \"Use 'pnpm dev:types' or 'pnpm -F @seqlok/<pkg> run build' – direct 'tsc' is disabled\" && exit 1",
-    "seqlok:support": "tsx scripts/seqlok-support.ts"
+    "support": "tsx scripts/support/seqlok-support.ts"
   },
   "simple-git-hooks": {
     "commit-msg": "pnpm commitlint --edit $1"

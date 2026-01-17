@@ -15,7 +15,7 @@ This directory explains the hot-swap protocol from three angles:
 ### Core docs
 
 - [CONTRACT.md](./CONTRACT.md)  
-  Normative contract between the hotswap driver and engines (Level 2.5).  
+  Normative contract between the hotswap driver and engines (Levels 1–2).  
   Read this first if you are changing protocol behavior or driver semantics.
 
 - [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)  
@@ -50,7 +50,7 @@ start there.
 ### ADRs and archive
 
 - [adr/hotswap-multi-swap-requirements.md](adr/hotswap-multi-swap-requirements.md)  
-  Requirements and constraints for multi-swap / Level 2.5 behavior.
+  Requirements and constraints for Level 2 (`reject-busy`) behavior.
 
 - [adr/hotswap-advanced-multi-swap-exploratory.md](adr/hotswap-advanced-multi-swap-exploratory.md)  
   Exploratory Level 3+ behavior (queues, retarget, fancy policies). Vision
@@ -89,18 +89,25 @@ start there.
 
 ## 3. Invariants and levels
 
-The protocol docs assume the Level 2.5 scope:
+This docs tree uses a small, *historical* level taxonomy for what is supported:
 
-- Single deck, at most one active swap ticket.
-- No queued or retargeted swaps (those live in Level 3 ADRs).
-- Strict "spawn + prime + prewarm + crossfade + retire" discipline
-  (no live configure on the active engine).
+- **Level 1 = policy `single`**  
+  Base single-swap protocol: at most one in-flight swap per lane/slot.
+
+- **Level 2 = policy `reject-busy`**  
+  Overlap is explicitly defined as: **reject while busy**. No queue, no retarget,
+  no coalesce.
+
+- **Level 3+ = Experimental / Future (not part of supported Levels 1–2)**  
+  Anything beyond “reject while busy” lives here. Today that includes:
+  - `mailbox-latest` (**EXPERIMENTAL**, treat as “Level 3” if you want a number)
+  - Retarget/coalesce concepts are future-only (Level 3+); see adr/hotswap-advanced-multi-swap-exploratory.md.
 
 For the full list of invariants (safety + liveness), see:
 
 - [formal/policies/single/HotSwapSingle.md](./formal/policies/single/HotSwapSingle.md) - Base protocol invariants
 - [formal/policies/reject-busy/HotSwapRejectBusy.md](./formal/policies/reject-busy/HotSwapRejectBusy.md) - Multi-swap invariants
-- [formal/policies/mailbox-latest/HotSwapMailboxLatest.md](./formal/policies/mailbox-latest/HotSwapMailboxLatest.md) - Latest-wins overlap handling
+- [formal/policies/mailbox-latest/HotSwapMailboxLatest.md](./formal/policies/mailbox-latest/HotSwapMailboxLatest.md) - Latest-wins overlap handling (**EXPERIMENTAL**)
 - The TLA+ specs in `formal/policies/**/tla/` contain formal definitions
 
 ---
@@ -117,6 +124,10 @@ pnpm tla:hotswap:full         # Full with liveness
 # Multi-swap with reject-while-busy
 pnpm tla:hotswap -- --policy reject-busy
 pnpm tla:hotswap:full -- --policy reject-busy
+
+# EXPERIMENTAL: mailbox-latest overlap handling (may currently fail invariants)
+pnpm tla:hotswap -- --policy mailbox-latest
+pnpm tla:hotswap:full -- --policy mailbox-latest
 ```
 
 See [formal/README.md](./formal/README.md) for detailed instructions.
@@ -129,13 +140,12 @@ The TLA+ specs use policy-based names instead of arbitrary level numbers:
 
 | Policy            | Spec                        | Level | Description                       |
 |------------------|-----------------------------|-------|-----------------------------------|
-| `single`         | HotSwapSingle.tla           | 2.0   | Base single-swap protocol         |
-| `reject-busy`    | HotSwapRejectBusy.tla       | 2.5   | Multi-swap with rejection         |
-| `mailbox-latest` | HotSwapMailboxLatest.tla    | 2.6   | Multi-swap with latest-wins inbox |
-| `queued`         | HotSwapQueued.tla (TBD)     | 3.0   | Queued swaps (future)             |
+| `single`         | HotSwapSingle.tla           | 1     | Base single-swap protocol         |
+| `reject-busy`    | HotSwapRejectBusy.tla       | 2     | Overlap defined as reject-while-busy |
+| `mailbox-latest` | HotSwapMailboxLatest.tla    | 3     | **EXPERIMENTAL**: latest-wins mailbox |
 
-ADRs still use level numbers for requirements tracking, but specs use
-descriptive policy names.
+Levels 1–2 are the supported taxonomy. Anything beyond that should be treated
+as **experimental/future**, not as a supported “Level 2.x”.
 
 ---
 

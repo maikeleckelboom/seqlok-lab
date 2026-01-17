@@ -658,7 +658,7 @@ function analyzeMissingKinds(
 function buildSupportReport(): SupportReport {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  const repoRoot = path.resolve(__dirname, "..");
+  const repoRoot = path.resolve(__dirname, "../../");
 
   const env = detectRuntimeSupport();
 

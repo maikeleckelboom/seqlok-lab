@@ -1,5 +1,3 @@
-// File: packages/core/src/backing/describe-views.ts
-
 /**
  * @fileoverview
  * Human-readable description of memory views and layout.

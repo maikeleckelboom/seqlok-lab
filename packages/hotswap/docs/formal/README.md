@@ -91,13 +91,18 @@ pnpm tla:hotswap:full         # Full verification with liveness
 # Multi-swap with reject-while-busy
 pnpm tla:hotswap -- --policy reject-busy
 pnpm tla:hotswap:full -- --policy reject-busy
+
+# EXPERIMENTAL: mailbox-latest overlap handling (may currently fail invariants)
+pnpm tla:hotswap -- --policy mailbox-latest
+pnpm tla:hotswap:full -- --policy mailbox-latest
 ```
 
 The script (`scripts/tla/run-hotswap.ts`) is responsible for:
 
-- Selecting the correct .tla file based on --policy flag
-- Choosing between full and invonly configs
-- Wiring log/output paths into the workspace
+- Selecting the correct `.tla` and `.cfg` based on `--policy` and mode (`invonly` vs `full`)
+- Ensuring `tools/tla/tla2tools.jar` exists (run `pnpm tla:fetch` if missing)
+- Forwarding any extra TLC CLI args (via pnpm `--`)
+- Running TLC via `java` with a fixed worker count
 
 ### 3.2 Manually with TLA+ Toolbox / CLI
 
@@ -157,18 +162,19 @@ The canonical list of safety / liveness properties lives in:
 
 ## 5. Policy-based naming
 
-The TLA+ specs use a **policy-based naming system** that aligns with
-requirements documents:
+The TLA+ specs use **policy-based names**.
+
+Supported levels:
+
+- **Level 1** = `single`
+- **Level 2** = `reject-busy`
+- **Level 3+** = experimental/future (not part of supported taxonomy)
 
 | Policy Name    | TLA+ Spec             | Requirements Doc | What It Proves                      |
 |----------------|-----------------------|------------------|-------------------------------------|
-| `single`       | HotSwapSingle.tla     | Level 2.0        | Base protocol for one swap          |
-| `reject-busy`  | HotSwapRejectBusy.tla | Level 2.5        | Multi-swap with immediate rejection |
-| `mailbox-latest` | HotSwapMailboxLatest.tla | Level 2.6     | Multi-swap with latest-wins mailbox |
-| `queued` (TBD) | HotSwapQueued.tla     | Level 3.0        | Queued swaps (future)               |
-
-This replaces the older "Level 2.5" naming in spec files, though ADRs still
-use level numbers for requirements tracking.
+| `single`         | HotSwapSingle.tla        | Level 1 | Base protocol for one in-flight swap |
+| `reject-busy`    | HotSwapRejectBusy.tla    | Level 2 | Overlap defined as reject-while-busy |
+| `mailbox-latest` | HotSwapMailboxLatest.tla | Level 3 | **EXPERIMENTAL**: latest-wins mailbox |
 
 ---
 

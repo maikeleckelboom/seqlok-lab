@@ -67,7 +67,7 @@ catalogs:
       specifier: ^4.53.3
       version: 4.53.3
     rollup-plugin-dts:
-      specifier: ^6.2.3
+      specifier: 6.2.3
       version: 6.2.3
     simple-git-hooks:
       specifier: ^2.13.1

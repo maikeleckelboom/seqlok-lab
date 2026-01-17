@@ -1,8 +1,12 @@
 # Hot-Swap Protocol: Mailbox Latest (Latest-Wins)
 
-**Status:** Implemented – TLA⁺ spec and configs present  
+**Status:** **EXPERIMENTAL** – TLA⁺ spec and configs present (not part of supported Levels 1–2)  
 **Scope:** Multi-swap behavior with *latest-wins mailbox* overlap handling for `@seqlok/hotswap`  
 **Audience:** Seqlok contributors, hotswap implementers, and TLA⁺ authors
+
+> **EXPERIMENTAL (Level 3+)**: This policy is intentionally **not** part of the
+> supported Level 1–2 taxonomy (`single`, `reject-busy`). Treat it as a future /
+> experimental policy model.
 
 This document describes the hot-swap protocol under the **mailbox-latest** policy:
 
@@ -69,7 +73,11 @@ Retarget / consume pending intent happens only at safe boundaries:
 
 ---
 
-## Proven properties (from the TLA+ model)
+## Target properties (experimental)
+
+This policy is still exploratory. **Do not assume the TLC configs are “green”**
+or that all invariants below currently hold; treat them as the intended contract
+to converge on if/when the policy is stabilized.
 
 ### Safety invariants
 

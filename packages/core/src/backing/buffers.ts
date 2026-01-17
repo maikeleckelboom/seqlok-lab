@@ -27,7 +27,7 @@ import type { PlaneKey } from "@seqlok/primitives";
  * - `wasm-shared`: Returns the WebAssembly.Memory buffer
  * - `shared-partitioned`: Throws (use {@link getPlaneBuffer} instead)
  *
- * @throws {SeqlokError<"internal.assertionFailed">}
+ * @throws {createInternalError<"internal.assertionFailed">}
  * If called with a partitioned backing
  *
  * @example

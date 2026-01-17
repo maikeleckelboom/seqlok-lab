@@ -1,8 +1,8 @@
-# Lane Hot-Swap Advanced Multi-Swap (Level 3 — Exploratory)
+# Lane Hot-Swap Advanced Multi-Swap (Level 3+ — Exploratory)
 
 **Status:** Exploratory design (non-binding vision doc)  
 **Date:** 2025-12-04  
-**Depends on:** Level 2.5 (multi-swap sanity, Reject-While-Busy implemented at host boundary)
+**Depends on:** Level 2 (`reject-busy`, reject-while-busy implemented at host boundary)
 
 ---
 
@@ -14,9 +14,9 @@ This document is a **parking lot for future fancy behavior** on top of a single 
 - Scheduled for implementation
 - A constraint on current work
 
-**Purpose:** Prevent Level 2.5 from accidentally smuggling Level 3 complexity through the side door.
+**Purpose:** Prevent Level 2 from accidentally smuggling Level 3+ complexity through the side door.
 
-**When this becomes "law":** After Level 2.5 is shipped, stable, and battle-tested in production.
+**When this becomes "law":** After Level 2 is shipped, stable, and battle-tested in production.
 
 > Host concepts like a “deck” are free to treat one lane as “the deck’s audio lane”, but Seqlok itself only knows
 > about **lanes** and engines.
@@ -32,16 +32,16 @@ Level 3 explores **expressive**, higher-order swap behavior on a single **lane**
 - **Richer perceptual constraints** (how it *feels* to a DJ/ghost planner sitting on top of the lane)
 - **Extended invariants** for formal models (beyond "1 ticket, 2 engines")
 
-This is explicitly **not** a commitment for v0.3.x. It’s a catalog of behaviors we deliberately exclude from Level 2.5.
+This is explicitly **not** a commitment for v0.3.x. It’s a catalog of behaviors we deliberately exclude from Level 2.
 
 ### Relationship to lower levels
 
 ```text
-Level 2: One swap is always sane
+Level 1: One swap is always sane
          ↓
-Level 2.5: Many swaps in a row are sane (sequential + reject-while-busy)
+Level 2: Many swaps in a row are sane (sequential + reject-while-busy)
          ↓
-Level 3: Fancy swap patterns (queue, retarget) without melting the audio thread
+Level 3+: Fancy swap patterns (queue, retarget) without melting the audio thread
 ````
 
 **Scope:** Single lane.
@@ -73,13 +73,13 @@ Level 3: Fancy swap patterns (queue, retarget) without melting the audio thread
 * ❌ Automatic "smart" behavior without explicit policy selection → too magical
 
 **Keep Level 3 about:** explicit, opt-in, composable **lane swap policies** with clear contracts, implemented at the
-host / scheduler layer on top of the Level 2.5 lane core.
+host / scheduler layer on top of the Level 2 lane core.
 
 ---
 
 ## 3. Feature Axis A: Queued Swaps
 
-At Level 2.5, overlapping policy is **Reject While Busy** (one active ticket per lane; host sees `"lane-busy"` from
+At Level 2, overlapping policy is **Reject While Busy** (one active ticket per lane; host sees `"lane-busy"` from
 `scheduleSwap`).
 
 Level 3 explores **Queue Until Idle** as an optional lane policy built on top of the same core protocol.
@@ -125,7 +125,7 @@ Two modes to consider:
 
 **Pros:**
 
-* ✅ Preserves Level 2 / 2.5 "max 2 engines per lane" invariant
+* ✅ Preserves Level 1 / 2 "max 2 engines per lane" invariant
 * ✅ No RT budget surprises
 * ✅ Simpler TLA+ model
 
@@ -292,7 +292,7 @@ Policy matrix (per lane):
 
 | Retarget mode | Queue mode | Behavior                            |
 |---------------|------------|-------------------------------------|
-| None          | None       | Reject D (Level 2.5 baseline)       |
+| None          | None       | Reject D (Level 2 baseline)         |
 | R2 (cancel)   | None       | Abort A→B, start A→D, discard B     |
 | None          | Queue      | Reject D (queue full with C)        |
 | R2 (cancel)   | Queue      | Abort A→B, start A→D, queue stays C |
@@ -361,7 +361,7 @@ For retarget / crossfade quality, consider offering a **curve plugin system** at
 
 ## 6. Extended Invariants & Modeling
 
-Level 3 extends the invariants from Level 2.5 at the **lane** level.
+Level 3 extends the invariants from Level 2 at the **lane** level.
 
 ### L3-I1: Bounded engines per lane
 
@@ -414,7 +414,7 @@ For **experimental 3-engine prewarm mode**:
 
 * Per-engine gain ≤ 1.0 + ε
 * Total gain across engines stays within a documented bound
-  (e.g. ≤ 2.5 + ε; exact value to be chosen when 3-engine mode is designed)
+  (e.g. ≤ 2 + 0.5 + ε; exact value to be chosen when 3-engine mode is designed)
 
 These are **test harness bounds** for constant engines (A=1, B=2, C=3), not psychoacoustic guarantees. For real music,
 these bounds would likely be expressed in terms of RMS or LUFS, but the constant-engine harness uses simple amplitude
@@ -464,7 +464,7 @@ Still out of scope:
 * ❌ Full retarget curve math (R1) → research problem
 * ❌ Perceptual quality metrics → not formally verifiable
 
-**Status:** TLA+ updates for Level 3 are blocked until Level 2.5 lane model is proven correct and stable.
+**Status:** TLA+ updates for Level 3 are blocked until the Level 2 lane model is proven correct and stable.
 
 ---
 
@@ -479,7 +479,7 @@ that wraps `scheduleSwap`:
 
 ```ts
 type SwapPolicy =
-  | "reject-while-busy"      // Level 2.5 baseline
+  | "reject-busy"            // Level 2 baseline
   | "queue-until-idle"       // Level 3, Queue mode
   | "retarget-latest"        // Level 3, Retarget mode (R1)
   | "cancel-and-restart";    // Level 3, Retarget mode (R2)
@@ -566,11 +566,11 @@ These are deliberately **unanswered** in this exploratory doc:
 
 ---
 
-## 9. Relationship to Level 2.5
+## 9. Relationship to Level 2
 
 **Clear boundary (per lane):**
 
-| Aspect                  | Level 2.5              | Level 3                              |
+| Aspect                  | Level 2                | Level 3                              |
 |-------------------------|------------------------|--------------------------------------|
 | Active tickets per lane | Exactly 1              | 1 active + 0–1 queued                |
 | Overlapping behavior    | Reject (RWB)           | Queue or Retarget (policy-dependent) |
@@ -580,19 +580,19 @@ These are deliberately **unanswered** in this exploratory doc:
 
 **Why this boundary matters:**
 
-* Level 2.5 is the **sanity layer**: it proves multi-swap isn’t fundamentally broken.
+* Level 2 is the **sanity layer**: it proves multi-swap isn’t fundamentally broken.
 * Level 3 is the **UX / expressiveness layer**: it makes multi-swap feel powerful and forgiving for humans + Ghost.
 
-You can’t do Level 3 safely until Level 2.5 lanes are rock-solid in production.
+You can’t do Level 3 safely until Level 2 lanes are rock-solid in production.
 
 ---
 
-## 10. Next Steps (When Level 2.5 is Done)
+## 10. Next Steps (When Level 2 is Done)
 
-0. **Re-validate:** Confirm Level 2.5 lanes are stable in production (logs, incidents, perf metrics).
+0. **Re-validate:** Confirm Level 2 lanes are stable in production (logs, incidents, perf metrics).
 1. **User research:** What swap patterns do real controllers / Ghost DJ actually need?
 2. **Pick one feature axis:** Queue **or** Retarget, not both initially.
-3. **Prototype:** Implement chosen feature as an experimental host-side policy on top of Level 2.5.
+3. **Prototype:** Implement chosen feature as an experimental host-side policy on top of Level 2.
 4. **Benchmark:** Prove RT budget works (especially for any 3-engine mode).
 5. **Test:** Extend the engine-bank harness to cover Level 3 scenarios and invariants.
 6. **Model:** Update TLA+ spec to prove L3-I1 through L3-I4.
@@ -600,8 +600,8 @@ You can’t do Level 3 safely until Level 2.5 lanes are rock-solid in production
 
 **Do NOT:**
 
-* ❌ Start implementing Level 3 behavior before Level 2.5 ships and stabilizes.
-* ❌ Mix Level 3 complexity into Level 2.5 PRs.
+* ❌ Start implementing Level 3 behavior before Level 2 ships and stabilizes.
+* ❌ Mix Level 3 complexity into Level 2 PRs.
 * ❌ Promise Level 3 features to users / hosts without clear caveats.
 
 ---
@@ -613,16 +613,16 @@ You can’t do Level 3 safely until Level 2.5 lanes are rock-solid in production
 It’s parked here so we can:
 
 * Reference it when someone asks "but what about retargeting / queues?"
-* Keep it out of Level 2.5 scope discussions
+* Keep it out of Level 2 scope discussions
 * Have a starting point when we’re actually ready to build it
 
 Litmus test for scope:
 
 > "Does a controller using only sequential swaps (A→B, wait, B→C) need this?"
 
-* If **yes** → that belongs in Level 2 / 2.5.
+* If **yes** → that belongs in Level 1 / 2.
 * If **no** → that belongs in Level 3 (or higher).
 
-That keeps Level 2.5 focused on **multi-swap sanity on a lane**, and Level 3 focused on **multi-swap fancy**—without
+That keeps Level 2 focused on **multi-swap sanity on a lane**, and Level 3 focused on **multi-swap fancy**—without
 letting “deck” leak into Seqlok’s core surface.
 

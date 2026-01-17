@@ -154,8 +154,8 @@ pnpm tla:hotswap -- --policy reject-busy
 pnpm tla:hotswap:full -- --policy reject-busy
 ```
 
-* `tla:hotswap` runs TLC with `HotSwapRejectBusy.invonly.cfg`.
-* `tla:hotswap:full` runs TLC with `HotSwapRejectBusy.cfg`.
+* With `-- --policy reject-busy`, `tla:hotswap` runs TLC with `HotSwapRejectBusy.invonly.cfg`.
+* With `-- --policy reject-busy`, `tla:hotswap:full` runs TLC with `HotSwapRejectBusy.cfg`.
 
 ### Direct TLC Invocation
 
@@ -335,15 +335,15 @@ The reject-while-busy protocol forms the basis for more advanced policies.
 
 Possible extensions include:
 
-* **Queued swaps:** accept a second swap while one is active, storing a pending
-  ticket that starts automatically after the current swap retires.
+* **Future overlap handling:** accept additional swaps while one is active,
+  with defined Level 3+ behavior.
 * **Cancellation:** introduce a host-level action that transitions an in-flight
   swap to a safe cancellation path.
 * **Additional engine identities:** expand `Engines` to four or more concrete
   values, with additional bounds to keep state space manageable.
 
 Such extensions would be modeled in separate TLA modules (for example
-`HotSwapQueued.tla`) that build on the same core invariants.
+future overlap-handling module(s) (Level 3+)) that build on the same core invariants.
 
 ---
 

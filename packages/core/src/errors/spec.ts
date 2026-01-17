@@ -1,5 +1,3 @@
-// File: packages/core/src/errors/spec.ts
-
 /**
  * @fileoverview
  * Error codes and detail types for spec-time validation.
@@ -12,8 +10,8 @@
 
 import {
   buildErrorDomain,
-  type BuiltErrorDomain,
   DOMAIN_IDS,
+  type BuiltErrorDomain,
   type DomainRegistry,
   type ErrorCodeOf,
   type ErrorDetails,
@@ -61,9 +59,40 @@ export interface SpecDuplicateKeyDetails extends ErrorDetails {
 }
 
 /**
- * Details for high-level builder failures.
+ * Details for builder overflow-risk failures.
+ *
+ * @remarks
+ * Used when an array length (or future size check) exceeds safety caps.
+ * This carries additional structured fields so logs/UIs can explain the limit.
  */
-export interface SpecBuilderDetails extends ErrorDetails {
+export interface SpecBuilderOverflowRiskDetails extends ErrorDetails {
+  readonly reason: "overflowRisk";
+  readonly key: string;
+
+  readonly maxArrayLength: number;
+  readonly receivedLength: number;
+
+  /**
+   * Conservative worst-case byte estimates (assumes 8 bytes/element).
+   * We report worst-case because the checker may not know the element kind.
+   */
+  readonly bytesWorstCaseMax: number;
+  readonly bytesWorstCaseReceived: number;
+
+  /**
+   * Human guidance for the fix (e.g. "use a ring/stream, not a giant spec array").
+   */
+  readonly hint: string;
+}
+
+/**
+ * Details for other high-level builder failures.
+ *
+ * @remarks
+ * Kept intentionally small; the specific "builderInvalid" reasons are used
+ * across spec validation and planning entrypoints.
+ */
+export interface SpecBuilderGeneralDetails extends ErrorDetails {
   readonly key?: string;
   readonly reason?:
     | "invalidKind"
@@ -71,11 +100,21 @@ export interface SpecBuilderDetails extends ErrorDetails {
     | "emptyParams"
     | "missingMinMax"
     | "planFailed"
-    | "alignmentFailed"
-    | "overflowRisk";
+    | "alignmentFailed";
   readonly totalBytes?: number;
   readonly maxSafeBytes?: number;
 }
+
+/**
+ * Details for high-level builder failures.
+ *
+ * @remarks
+ * Discriminated by `reason` so specific failure modes can demand richer fields
+ * without weakening typing for all builderInvalid errors.
+ */
+export type SpecBuilderDetails =
+  | SpecBuilderOverflowRiskDetails
+  | SpecBuilderGeneralDetails;
 
 interface SpecDetailsByKey {
   readonly rangeInvalid: SpecRangeDetails;

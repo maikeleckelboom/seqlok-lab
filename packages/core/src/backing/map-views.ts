@@ -1,5 +1,3 @@
-// File: packages/core/src/backing/map-views.ts
-
 /**
  * @fileoverview
  * Maps backing memory into typed views for all planes and lock arrays.

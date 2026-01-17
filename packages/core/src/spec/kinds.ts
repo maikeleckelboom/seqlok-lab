@@ -1,5 +1,3 @@
-// File: packages/core/src/spec/kinds.ts
-
 /**
  * @fileoverview
  * Kind catalogs: maps DSL kind strings to plane + element metadata.
@@ -10,7 +8,7 @@
  * error. Adding an entry here is the switch that “turns on” support for a kind.
  */
 
-import type { ParamDef, MeterDef } from "./types";
+import type { MeterDef, ParamDef } from "./types";
 import type { PlaneKey } from "@seqlok/primitives";
 
 export type ParamKind = ParamDef["kind"];
@@ -220,4 +218,58 @@ export function getMeterKindEntry(kind: string): KindCatalogEntry {
     throw new Error(`Unsupported meter kind: ${kind}`);
   }
   return entry;
+}
+
+// Runtime-enumerable spec kinds (authoritative list)
+//
+// Editing rule: only touch the string literals.
+// The compile-time gate below will fail the build if this list drifts from the schema unions.
+
+type MissingMembers<All extends string, T extends readonly All[]> = Exclude<
+  All,
+  T[number]
+>;
+
+type RequireNoMissing<All extends string, T extends readonly All[]> = [
+  MissingMembers<All, T>,
+] extends [never]
+  ? unknown
+  : { readonly __missing_kinds: MissingMembers<All, T> };
+
+function defineExactKindList<All extends string>() {
+  return <T extends readonly All[]>(kinds: T & RequireNoMissing<All, T>) =>
+    kinds;
+}
+
+const SPEC_COMMON_KINDS_TUPLE = defineExactKindList<ParamKind>()([
+  "bool",
+  "bool.array",
+  "enum",
+  "enum.array",
+  "f32",
+  "f32.array",
+  "i32",
+  "i32.array",
+  "i8.array",
+  "i16.array",
+  "u32",
+  "u32.array",
+  "u8.array",
+  "u16.array",
+] as const);
+
+const SPEC_METER_KINDS_TUPLE = defineExactKindList<MeterKind>()([
+  ...SPEC_COMMON_KINDS_TUPLE,
+  "f64",
+  "f64.array",
+] as const);
+
+export const SPEC_PARAM_KINDS: readonly ParamKind[] = SPEC_COMMON_KINDS_TUPLE;
+export const SPEC_METER_KINDS: readonly MeterKind[] = SPEC_METER_KINDS_TUPLE;
+
+export function listParamKinds(): readonly ParamKind[] {
+  return SPEC_PARAM_KINDS;
+}
+export function listMeterKinds(): readonly MeterKind[] {
+  return SPEC_METER_KINDS;
 }

@@ -1,5 +1,3 @@
-// File: packages/core/src/plan/validate.ts
-
 /**
  * @fileoverview
  * Validation and planning utilities for Seqlok memory layouts.
@@ -63,8 +61,10 @@ function alignUp(n: number, m: number): number {
   return r === 0 ? n : n + (m - r);
 }
 
-// TODO: Look into this and set the most reasonable value
-const MAX_ARRAY_LENGTH = 1_000_000;
+// Safety cap: Seqlok specs are control-plane layouts, not bulk-data transport.
+// 256 Ki elements keeps any single slot ≤ 1 MiB (4B elems) or ≤ 2 MiB (8B elems),
+// which is already enormous for realtime shared layouts and avoids accidental multi-GB plans.
+const MAX_ARRAY_LENGTH = 262_144;
 
 function assertArrayLength(key: string, length: number): void {
   if (!Number.isFinite(length) || length <= 0) {
@@ -86,11 +86,25 @@ function assertArrayLength(key: string, length: number): void {
   }
 
   if (length > MAX_ARRAY_LENGTH) {
+    // Worst-case bytes for a single slot if the element type is 8 bytes (f64).
+    // We don't know the actual kind here, so we report a conservative upper bound.
+    const worstCaseBytesPerElem = 8;
+    const maxBytesWorstCase = MAX_ARRAY_LENGTH * worstCaseBytesPerElem;
+    const receivedBytesWorstCase = length * worstCaseBytesPerElem;
+
     throw createSpecError("builderInvalid", {
       where: "plan.planLayout",
       reason: "overflowRisk",
       key,
-      detail: String(length),
+      detail: `array length ${String(length)} exceeds cap ${String(MAX_ARRAY_LENGTH)} (256 Ki elements)`,
+      maxArrayLength: MAX_ARRAY_LENGTH,
+      receivedLength: length,
+      bytesWorstCaseMax: maxBytesWorstCase,
+      bytesWorstCaseReceived: receivedBytesWorstCase,
+      hint:
+        "Seqlok specs are control-plane layouts. " +
+        "If you need bulk data (audio, large buffers, long histories), " +
+        "use a ring/stream/mailbox instead of a huge spec array.",
     });
   }
 }

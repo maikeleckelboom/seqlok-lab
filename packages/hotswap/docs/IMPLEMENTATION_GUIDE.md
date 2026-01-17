@@ -371,7 +371,11 @@ Host/UI side reads snapshots for display.
   Legal; the protocol goes `prime → crossfade` immediately.
 
 * Ticket arrives during active swap
-  Base protocol is single-swap; multi-swap policy is handled separately (e.g. reject-while-busy or queuing).
+  Base protocol is Level 1 (`single`): one in-flight swap per slot. Overlap
+  handling is a host-side policy choice. Supported Level 2 behavior is
+  `reject-busy` (reject while busy). Any queue/retarget/coalesce behavior is
+  Level 3+ (experimental/future) and must be treated as out of scope for the
+  shipped contract.
 
 * Cancellation mid-swap
   Not part of the base contract. Adding cancellation requires extending both implementation and TLA⁺ specs.
