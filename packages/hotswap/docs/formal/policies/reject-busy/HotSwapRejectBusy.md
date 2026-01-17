@@ -1,7 +1,7 @@
 # Hot-Swap Protocol: Reject-While-Busy
 
-**Status:** Implemented – TLA⁺ spec and configs present
-**Scope:** Multi-swap behavior with *reject-while-busy* policy for `@seqlok/hotswap`
+**Status:** Implemented – TLA⁺ spec and configs present  
+**Scope:** Multi-swap behavior with *reject-while-busy* policy for `@seqlok/hotswap`  
 **Audience:** Seqlok contributors, hotswap implementers, and TLA⁺ authors
 
 This document describes the formal specification of the hot-swap protocol
@@ -15,16 +15,16 @@ extended with a **reject-while-busy** policy:
 The specification is encoded in `HotSwapRejectBusy.tla` and is verified using
 the TLC model checker.
 
-For the base single-swap protocol, see `HotSwapSingle.md`.
+For the base single-swap protocol, see `../single/HotSwapSingle.md`.
 
 ---
 
 ## Files
 
 ```text
-packages/hotswap/docs/formal/tla/HotSwapRejectBusy.tla
-packages/hotswap/docs/formal/tla/HotSwapRejectBusy.cfg
-packages/hotswap/docs/formal/tla/HotSwapRejectBusy.invonly.cfg
+packages/hotswap/docs/formal/policies/reject-busy/tla/HotSwapRejectBusy.tla
+packages/hotswap/docs/formal/policies/reject-busy/tla/HotSwapRejectBusy.cfg
+packages/hotswap/docs/formal/policies/reject-busy/tla/HotSwapRejectBusy.invonly.cfg
 ```
 
 * `.tla` – TLA⁺ specification of the reject-while-busy protocol.
@@ -163,8 +163,8 @@ Assuming `tla2tools.jar` is available and the workspace layout is intact:
 
 ```bash
 java -jar tools/tla/tla2tools.jar \
-  -config packages/hotswap/docs/formal/tla/HotSwapRejectBusy.cfg \
-  packages/hotswap/docs/formal/tla/HotSwapRejectBusy.tla
+  -config packages/hotswap/docs/formal/policies/reject-busy/tla/HotSwapRejectBusy.cfg \
+  packages/hotswap/docs/formal/policies/reject-busy/tla/HotSwapRejectBusy.tla
 ```
 
 Use the `.invonly.cfg` file for a faster invariants-only run.
@@ -349,6 +349,7 @@ Such extensions would be modeled in separate TLA modules (for example
 
 ## References
 
-* `HotSwapSingle.md` – base single-swap protocol specification.
-* `HotSwapSingle.tla` / `.cfg` – formal model and configuration for the base protocol.
+* `../single/HotSwapSingle.md` – base single-swap protocol specification.
+* `../single/tla/HotSwapSingle.tla` / `.cfg` – formal model and configuration for the base protocol.
 * ADR documents under `packages/hotswap/docs/adr/` describing multi-swap requirements.
+

@@ -9,50 +9,31 @@ and **cross-language**.
 
 ## 1. Contents
 
-### TLA+ Specifications
+### Policies (TLA+ + English spec)
 
-- **Single-Swap Protocol** (Level 2.0)
-  - [`tla/HotSwapSingle.tla`](./tla/HotSwapSingle.tla)  
-    Base protocol for a single swap (Engine1 -> Engine2).
-  - [`tla/HotSwapSingle.cfg`](./tla/HotSwapSingle.cfg)  
-    Full model checking (safety + liveness).
-  - [`tla/HotSwapSingle.invonly.cfg`](./tla/HotSwapSingle.invonly.cfg)  
-    Fast invariants-only checking.
+- **`single`**
+  - [`policies/single/`](./policies/single/)
 
-- **Multi-Swap with Reject-While-Busy** (Level 2.5)
-  - [`tla/HotSwapRejectBusy.tla`](./tla/HotSwapRejectBusy.tla)  
-    Protocol for sequential swaps with reject-while-busy policy.
-  - [`tla/HotSwapRejectBusy.cfg`](./tla/HotSwapRejectBusy.cfg)  
-    Full model checking (multi-swap scenarios).
-  - [`tla/HotSwapRejectBusy.invonly.cfg`](./tla/HotSwapRejectBusy.invonly.cfg)  
-    Fast invariants-only checking.
+- **`reject-busy`**
+  - [`policies/reject-busy/`](./policies/reject-busy/)
 
-### English Specifications
+- **`mailbox-latest`**
+  - [`policies/mailbox-latest/`](./policies/mailbox-latest/)
 
-- [`HotSwapSingle.md`](./HotSwapSingle.md)  
-  Human-readable specification of the base protocol: phases, state variables,
-  invariants, and temporal properties.
-
-- [`HotSwapRejectBusy.md`](./HotSwapRejectBusy.md)  
-  Specification of multi-swap behavior and reject-while-busy policy.
+Each policy folder is intended to be self-contained:
+English spec + `tla/` module + TLC configs.
 
 ### Reference Implementation
 
-- [`hotswap_spec.reference.hpp`](cpp/hotswap_spec.reference.hpp)  
+- [`reference/cpp/hotswap_spec.reference.hpp`](reference/cpp/hotswap_spec.reference.hpp)  
   Header-only **reference C++ specification** of the protocol state machine.
   Kept in lockstep with the TypeScript spec for cross-language verification.
 
   > Not installed as public ABI; production code includes `<seqlok/hotswap_spec.hpp>`.
 
-### Future Protocols
+### Primitives (shared building blocks)
 
-- [`SeqlokCoreProtocol.md`](./SeqlokCoreProtocol.md)  
-  (Planned) Formal spec for the seqlock-based params/meters protocol in
-  `@seqlok/core`.
-
-- [`CommandRingProtocol.md`](./CommandRingProtocol.md)  
-  (Planned) TLA+ spec for the SWSR command ring protocol that drives swap
-  tickets and other RT commands.
+- [`primitives/README.md`](./primitives/README.md)
 
 ### Tooling
 
@@ -76,20 +57,19 @@ High-level relationships:
   policy. Proves sequential swaps work correctly (~1k states, <1 second with
   request limit).
 
-- **HotSwapSingle.md / HotSwapRejectBusy.md**  
-  Human-readable explanations of the models (phases, invariants, properties).
+- **English policy docs**  
+  Human-readable explanations of the models (phases, invariants, properties),
+  one folder per policy under `policies/`.
 
-- **hotswap_spec.reference.hpp**  
+- **reference C++** (`reference/cpp/`)  
   C++ template state machine matching the TS implementation and traceable to
   the TLA+ models. Good for:
   - Cross-language conformance tests
   - Native engine runtimes
   - Verifying RT surface is allocation-free / lock-free
 
-- **SeqlokCoreProtocol / CommandRingProtocol**  
-  Sibling specs for other core protocols (seqlock params/meters and command
-  rings). Not required to understand hotswap, but live here to keep all formal
-  work together.
+- **primitives** (`primitives/`)  
+  Shared building blocks (transport notes, mailbox primitive TLA+, planned ring/coherence stubs).
 
 For overview / orientation of the whole package, see:
 
@@ -127,16 +107,16 @@ For ad-hoc runs or debugging:
 
 ```bash
 java -jar tla2tools.jar \
-  -config packages/hotswap/docs/formal/tla/HotSwapSingle.cfg \
-  packages/hotswap/docs/formal/tla/HotSwapSingle.tla
+  -config packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.cfg \
+  packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.tla
 ```
 
 **Multi-swap:**
 
 ```bash
 java -jar tla2tools.jar \
-  -config packages/hotswap/docs/formal/tla/HotSwapRejectBusy.cfg \
-  packages/hotswap/docs/formal/tla/HotSwapRejectBusy.tla
+  -config packages/hotswap/docs/formal/policies/reject-busy/tla/HotSwapRejectBusy.cfg \
+  packages/hotswap/docs/formal/policies/reject-busy/tla/HotSwapRejectBusy.tla
 ```
 
 Or use TLA+ Toolbox GUI and open the respective .tla files.
@@ -149,8 +129,9 @@ Detailed step-by-step instructions live in the individual spec docs.
 
 The canonical list of safety / liveness properties lives in:
 
-- **Single-swap:** [HotSwapSingle.md](./HotSwapSingle.md) - Base protocol invariants
-- **Multi-swap:** [HotSwapRejectBusy.md](./HotSwapRejectBusy.md) - Multi-swap invariants
+- **Single-swap:** [`policies/single/HotSwapSingle.md`](./policies/single/HotSwapSingle.md)
+- **Reject-busy:** [`policies/reject-busy/HotSwapRejectBusy.md`](./policies/reject-busy/HotSwapRejectBusy.md)
+- **Mailbox-latest:** [`policies/mailbox-latest/HotSwapMailboxLatest.md`](./policies/mailbox-latest/HotSwapMailboxLatest.md)
 - The .tla files themselves contain the formal definitions
 
 ### Common Safety Invariants (both specs)
@@ -183,6 +164,7 @@ requirements documents:
 |----------------|-----------------------|------------------|-------------------------------------|
 | `single`       | HotSwapSingle.tla     | Level 2.0        | Base protocol for one swap          |
 | `reject-busy`  | HotSwapRejectBusy.tla | Level 2.5        | Multi-swap with immediate rejection |
+| `mailbox-latest` | HotSwapMailboxLatest.tla | Level 2.6     | Multi-swap with latest-wins mailbox |
 | `queued` (TBD) | HotSwapQueued.tla     | Level 3.0        | Queued swaps (future)               |
 
 This replaces the older "Level 2.5" naming in spec files, though ADRs still

@@ -1,7 +1,7 @@
 # Hot-Swap Protocol: Single-Swap Specification
 
-**Status:** Implemented – TLA⁺ spec and configs present
-**Scope:** Base single-swap protocol for `@seqlok/hotswap`
+**Status:** Implemented – TLA⁺ spec and configs present  
+**Scope:** Base single-swap protocol for `@seqlok/hotswap`  
 **Audience:** Seqlok contributors, hotswap implementers, and TLA⁺ authors
 
 This document describes the **formal specification** of the base hot-swap
@@ -16,16 +16,16 @@ The focus is:
 * Eventual completion of each accepted swap.
 
 Multi-swap behavior with reject-while-busy policy is specified separately in
-`HotSwapRejectBusy.md`.
+`../reject-busy/HotSwapRejectBusy.md`.
 
 ---
 
 ## Files
 
 ```text
-packages/hotswap/docs/formal/tla/HotSwapSingle.tla
-packages/hotswap/docs/formal/tla/HotSwapSingle.cfg
-packages/hotswap/docs/formal/tla/HotSwapSingle.invonly.cfg
+packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.tla
+packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.cfg
+packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.invonly.cfg
 ```
 
 * `.tla` – TLA⁺ specification of the single-swap protocol.
@@ -94,13 +94,13 @@ With `tla2tools.jar` available and the workspace layout intact:
 ```bash
 # Full check (safety + liveness)
 java -jar tools/tla/tla2tools.jar \
-  -config packages/hotswap/docs/formal/tla/HotSwapSingle.cfg \
-  packages/hotswap/docs/formal/tla/HotSwapSingle.tla
+  -config packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.cfg \
+  packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.tla
 
 # Invariants-only (faster)
 java -jar tools/tla/tla2tools.jar \
-  -config packages/hotswap/docs/formal/tla/HotSwapSingle.invonly.cfg \
-  packages/hotswap/docs/formal/tla/HotSwapSingle.tla
+  -config packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.invonly.cfg \
+  packages/hotswap/docs/formal/policies/single/tla/HotSwapSingle.tla
 ```
 
 ---
@@ -288,7 +288,8 @@ invariants (two engines, no gaps, eventual completion) remain shared.
 
 ## References
 
-* `HotSwapRejectBusy.md` – multi-swap protocol with reject-while-busy policy.
-* `HotSwapRejectBusy.tla` / `.cfg` – formal model and configuration for the extended protocol.
+* `../reject-busy/HotSwapRejectBusy.md` – multi-swap protocol with reject-while-busy policy.
+* `../reject-busy/tla/HotSwapRejectBusy.tla` / `.cfg` – formal model and configuration for the extended protocol.
 * Lamport, *Specifying Systems* – TLA⁺ reference text.
 * TLA⁺ Toolbox and TLC documentation for further details on model checking.
+

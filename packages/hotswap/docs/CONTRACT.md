@@ -21,8 +21,9 @@ Given a valid ticket and a cooperating caller:
 
 These properties are captured in the TLA⁺ specs:
 
-- **Base protocol:** `formal/tla/HotSwapSingle.tla`
-- **Multi-swap (reject-while-busy):** `formal/tla/HotSwapRejectBusy.tla`
+- **Base protocol:** `formal/policies/single/tla/HotSwapSingle.tla`
+- **Multi-swap (reject-while-busy):** `formal/policies/reject-busy/tla/HotSwapRejectBusy.tla`
+- **Multi-swap (mailbox-latest):** `formal/policies/mailbox-latest/tla/HotSwapMailboxLatest.tla`
 
 and are model-checked with TLC.
 
@@ -94,7 +95,7 @@ implemented policy:
 - If a swap is **active** (any phase except idle): **reject** the new request.
 
 This reject-while-busy policy is proven correct in
-`formal/tla/HotSwapRejectBusy.tla`.
+`formal/policies/reject-busy/tla/HotSwapRejectBusy.tla`.
 
 Future policies (queued swaps, retargeting) are not yet
 implemented. See `adr/hotswap-advanced-multi-swap-exploratory.md` for vision.
@@ -103,12 +104,12 @@ implemented. See `adr/hotswap-advanced-multi-swap-exploratory.md` for vision.
 
 All properties are formally verified using TLA⁺ model checking:
 
-- **Base protocol** (single swap): `formal/tla/HotSwapSingle.tla`
+- **Base protocol** (single swap): `formal/policies/single/tla/HotSwapSingle.tla`
   - Millions of states explored.
   - Proves: `AtMostTwoEngines`, `NoGapDuringCrossfade`,
     `EventuallyIdle`, etc.
 
-- **Multi-swap** (reject-while-busy): `formal/tla/HotSwapRejectBusy.tla`
+- **Multi-swap** (reject-while-busy): `formal/policies/reject-busy/tla/HotSwapRejectBusy.tla`
   - Tens of thousands of states explored.
   - Proves: sequential swaps work, overlapping requests are safely
     rejected under the policy above.

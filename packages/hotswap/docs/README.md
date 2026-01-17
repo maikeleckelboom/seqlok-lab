@@ -67,22 +67,23 @@ start there.
   Start with:
   - [CONTRACT.md](./CONTRACT.md)
   - [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)
-  - [formal/HotSwapSingle.md](./formal/HotSwapSingle.md) for base invariants
-  - [formal/HotSwapRejectBusy.md](./formal/HotSwapRejectBusy.md) for multi-swap
+  - [formal/policies/single/HotSwapSingle.md](./formal/policies/single/HotSwapSingle.md) for base invariants
+  - [formal/policies/reject-busy/HotSwapRejectBusy.md](./formal/policies/reject-busy/HotSwapRejectBusy.md) for multi-swap
 
 - **Engine authors (DSP / C++)**  
   Start with:
   - [engine/engine-lifecycle-spec.md](./engine/engine-lifecycle-spec.md)
   - [engine/engine-sdk-guide.md](./engine/engine-sdk-guide.md)
-  - [formal/hotswap_spec.reference.hpp](formal/cpp/hotswap_spec.reference.hpp) as
+  - [formal/hotswap_spec.reference.hpp](formal/reference/cpp/hotswap_spec.reference.hpp) as
     the reference state machine (kept in sync with the TS spec).
 
 - **Formal / verification people**  
   Start with:
   - [formal/README.md](./formal/README.md)
-  - [formal/HotSwapSingle.md](./formal/HotSwapSingle.md)
-  - [formal/HotSwapRejectBusy.md](./formal/HotSwapRejectBusy.md)
-  - `formal/tla/*.tla` specs and configs
+  - [formal/policies/single/HotSwapSingle.md](./formal/policies/single/HotSwapSingle.md)
+  - [formal/policies/reject-busy/HotSwapRejectBusy.md](./formal/policies/reject-busy/HotSwapRejectBusy.md)
+  - [formal/policies/mailbox-latest/HotSwapMailboxLatest.md](./formal/policies/mailbox-latest/HotSwapMailboxLatest.md)
+  - `formal/policies/**/tla/*.tla` specs and configs
 
 ---
 
@@ -97,9 +98,10 @@ The protocol docs assume the Level 2.5 scope:
 
 For the full list of invariants (safety + liveness), see:
 
-- [formal/HotSwapSingle.md](./formal/HotSwapSingle.md) - Base protocol invariants
-- [formal/HotSwapRejectBusy.md](./formal/HotSwapRejectBusy.md) - Multi-swap invariants
-- The TLA+ specs in `formal/tla/` contain formal definitions
+- [formal/policies/single/HotSwapSingle.md](./formal/policies/single/HotSwapSingle.md) - Base protocol invariants
+- [formal/policies/reject-busy/HotSwapRejectBusy.md](./formal/policies/reject-busy/HotSwapRejectBusy.md) - Multi-swap invariants
+- [formal/policies/mailbox-latest/HotSwapMailboxLatest.md](./formal/policies/mailbox-latest/HotSwapMailboxLatest.md) - Latest-wins overlap handling
+- The TLA+ specs in `formal/policies/**/tla/` contain formal definitions
 
 ---
 
@@ -125,11 +127,12 @@ See [formal/README.md](./formal/README.md) for detailed instructions.
 
 The TLA+ specs use policy-based names instead of arbitrary level numbers:
 
-| Policy        | Spec                    | Level | Description               |
-|---------------|-------------------------|-------|---------------------------|
-| `single`      | HotSwapSingle.tla       | 2.0   | Base single-swap protocol |
-| `reject-busy` | HotSwapRejectBusy.tla   | 2.5   | Multi-swap with rejection |
-| `queued`      | HotSwapQueued.tla (TBD) | 3.0   | Queued swaps (future)     |
+| Policy            | Spec                        | Level | Description                       |
+|------------------|-----------------------------|-------|-----------------------------------|
+| `single`         | HotSwapSingle.tla           | 2.0   | Base single-swap protocol         |
+| `reject-busy`    | HotSwapRejectBusy.tla       | 2.5   | Multi-swap with rejection         |
+| `mailbox-latest` | HotSwapMailboxLatest.tla    | 2.6   | Multi-swap with latest-wins inbox |
+| `queued`         | HotSwapQueued.tla (TBD)     | 3.0   | Queued swaps (future)             |
 
 ADRs still use level numbers for requirements tracking, but specs use
 descriptive policy names.

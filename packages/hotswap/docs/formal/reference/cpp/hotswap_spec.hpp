@@ -211,3 +211,4 @@ inline SwapStepDecisionRT step_swap_state_rt(
 }
 
 } // namespace seqlok::hotswap
+
