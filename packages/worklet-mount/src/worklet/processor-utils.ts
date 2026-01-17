@@ -1,4 +1,4 @@
-import { type WmJsonObject, type WmPhase, isWmJsonObject } from "../protocol";
+import { type WmJsonObject, type WmPhase, isWmJsonObject } from "../wire";
 
 import type { WorkletMountErrorCode } from "../errors";
 

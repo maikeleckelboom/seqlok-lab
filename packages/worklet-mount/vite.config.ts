@@ -4,7 +4,7 @@ import type { UserConfig } from "vite";
 
 const base = createLibraryViteConfig({
   entryRelative: "src/index.ts",
-  external: [],
+  external: ["@seqlok/base"],
 });
 
 if (base.build === undefined) {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { isWmMountMessage } from "../src/protocol";
+import { isWmMountMessage } from "../src/wire";
 
 function makeWasmBytesAb(): ArrayBuffer {
   const u8 = new Uint8Array(16);

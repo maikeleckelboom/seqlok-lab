@@ -6,7 +6,7 @@ import {
   type WmMountMessage,
   isWmMountMessage,
   toU8View,
-} from "../protocol";
+} from "../wire";
 import { createDynamicFactory } from "./backend-dynamic";
 import {
   getErrorCode,

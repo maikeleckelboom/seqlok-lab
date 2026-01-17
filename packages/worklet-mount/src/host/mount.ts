@@ -1,5 +1,3 @@
-// File: packages/worklet-mount/src/mount/mount.ts
-
 import { createWorkletMountError } from "../errors";
 import {
   assertWasmBinary,
@@ -7,7 +5,7 @@ import {
   type WmLogMessage,
   type WmMountMessage,
   type WmWasmBytes,
-} from "../protocol";
+} from "../wire";
 
 export interface MountWorkletArgs {
   readonly key: string;

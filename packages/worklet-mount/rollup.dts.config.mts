@@ -1,6 +1,6 @@
 import dts from "rollup-plugin-dts";
 
-const external: readonly string[] = [];
+const external: readonly string[] = ["@seqlok/base"];
 
 export default [
   {

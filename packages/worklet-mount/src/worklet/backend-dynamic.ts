@@ -1,5 +1,5 @@
 import { createWorkletMountError } from "../errors";
-import { assertWasmBinary, toU8View, type WmWasmBytes } from "../protocol";
+import { assertWasmBinary, toU8View, type WmWasmBytes } from "../wire";
 
 import type { EmscriptenFactory, EmscriptenModule } from "./types";
 

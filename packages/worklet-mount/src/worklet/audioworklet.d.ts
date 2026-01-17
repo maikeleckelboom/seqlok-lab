@@ -1,5 +1,3 @@
-// src/types/audioworklet.d.ts
-
 /**
  * Global Environment Variables
  * These are available globally within the AudioWorkletGlobalScope.

@@ -70,7 +70,7 @@ import type { SpecInput } from "@seqlok/core";
 
 import type { Handoff } from "./topology-types";
 
-declare const incomingHandoff: Handoff;
+const incomingHandoff: Handoff;
 
 const shared = receiveHandoff(incomingHandoff);
 

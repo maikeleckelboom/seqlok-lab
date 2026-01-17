@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { WorkletMountProcessorCore } from "../src/worklet/processor-core";
 
-import type { WmMessageOut } from "../src/protocol";
+import type { WmMessageOut } from "../src/wire";
 import type { EmscriptenModule, RuntimeModule } from "../src/worklet/types";
 
 type Mod = Readonly<{
