@@ -53,3 +53,4 @@ packages/**/charts/
 
 # temporary
 seqlok-*.md
+!docs/seqlok-*.md

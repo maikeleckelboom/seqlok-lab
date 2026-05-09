@@ -6,12 +6,9 @@
 
 **Related**:
 
-- ADR-00Y — MWMR System Architecture via Domains + Observers + Rings
-- ADR-00Z — Observer Binding Role in `@seqlok/core`
-- ADR-010 — Ring Primitive in `@seqlok/core`
+- ADR-010 — Ring Primitive Ownership and Stack Position
 - ADR-00C — Meter Writes & Snapshot `into` (Controller side)
 - ADR-00F — ControllerParams.hydrate() for Cold-Path Bulk Updates
-- ADR-00X — `@seqlok/compose` for System-Level Composition
 
 ---
 
@@ -32,9 +29,9 @@ However, traditional mutex-based MWMR introduces:
 ADR-00Y, ADR-00Z, and ADR-010 establish the architectural pieces for **lock-free MWMR**:
 
 - SWMR seqlock planes (params/meters),
-- SWSR ring primitive (intent buses),
+- SWSR ring primitive in `@seqlok/primitives` (intent buses),
 - observer bindings (read-only fan-out),
-- composition via `@seqlok/compose`.
+- host-level composition above the primitive layer.
 
 This ADR **formalizes the invariants** those decisions imply and establishes normative guardrails for code review, tooling, and documentation.
 
@@ -48,14 +45,14 @@ This ADR **formalizes the invariants** those decisions imply and establishes nor
 
 ### 2.1 Primitive-Level Semantics (Immutable)
 
-`@seqlok/core` primitives are **strictly** single-writer:
+Primitive-level concurrency is **strictly** single-writer:
 
-- **Seqlock planes** (params/meters): **SWMR**
+- **Seqlock planes** (`@seqlok/core`, params/meters): **SWMR**
 
   - Exactly one writer per domain (controller for params, processor for meters)
   - Any number of readers via seqlock-protected snapshots
 
-- **Ring primitive** (see ADR-010 for ABI): **SWSR**
+- **Ring primitive** (`@seqlok/primitives`, see ADR-010 for ABI): **SWSR**
   - Exactly one producer binding per ring instance
   - Exactly one consumer binding per ring instance
   - Fixed wire layout: 64-byte header + u32 slots
@@ -90,6 +87,16 @@ For any Seqlok domain `Domain<S>`:
 3. **Zero or more** `ObserverBinding<S>` instances (read-only)
 
 No code outside these bindings writes to Seqlok planes, regardless of system complexity.
+
+### 2.4 Package Ownership
+
+| Component | Package |
+|-----------|---------|
+| Ring primitive | `@seqlok/primitives` |
+| Typed command transport | `@seqlok/commands` |
+| Runtime telemetry structures | `@seqlok/diagnostics` |
+| Tooling/analysis | `@seqlok/introspect` |
+| Spec/plan/backing/bindings | `@seqlok/core` |
 
 ---
 
@@ -139,8 +146,8 @@ These rules are **hard constraints**. Any violation is an architectural defect:
 
 ```ts
 // ❌ WRONG: Multiple controllers for same domains
-const ctrlUI = bindController(spec, backing); // UI thread
-const ctrlMIDI = bindController(spec, backing); // MIDI thread
+const ctrlUI = bindController(spec, plan, backing); // UI thread
+const ctrlMIDI = bindController(spec, plan, backing); // MIDI thread
 
 ctrlUI.params.set("gain", 0.8); // RACE
 ctrlMIDI.params.set("gain", 0.9); // RACE
@@ -159,7 +166,7 @@ ctrlMIDI.params.set("gain", 0.9); // RACE
 
 ```ts
 // ❌ WRONG: Multiple threads calling same controller
-const controller = bindController(spec, backing); // Deck worker
+const controller = bindController(spec, plan, backing); // Deck worker
 
 // UI thread
 onSliderChange((value) => {
@@ -208,7 +215,8 @@ function enqueueFromAnyThread(cmd: Command) {
 
 ```ts
 // ❌ WRONG: Observer that tries to write
-const observer = bindObserver(spec, received);
+const received = receiveHandoff(handoffMessage);
+const observer = bindObserver(received);
 
 function updateFromHUD(value: number) {
   observer.params.set("gain", value); // Type error: no such method
@@ -234,13 +242,13 @@ function updateFromHUD(value: number) {
 // see ADR-010 for exact exported API and signatures.
 
 class MPSCIntentBus {
-  private producers: Map<ProducerId, RingProducer<Command>>;
-  private consumers: Map<ProducerId, RingConsumer<Command>>;
+  private producers: Map<ProducerId, SwsrRingProducer<Command>>;
+  private consumers: Map<ProducerId, SwsrRingConsumer<Command>>;
 
-  addProducer(id: ProducerId): RingProducer<Command> {
-    const ring = allocateRing({ capacity: 64, wordsPerSlot: 8 });
-    const producer = bindRingProducer(ring, encodeCommand);
-    const consumer = bindRingConsumer(ring, decodeCommand);
+  addProducer(id: ProducerId): SwsrRingProducer<Command> {
+    const backing = allocateSwsrRing({ capacity: 64, wordsPerSlot: 8 });
+    const producer = bindSwsrRingProducer(backing, { encode: encodeCommand });
+    const consumer = bindSwsrRingConsumer(backing, { decode: decodeCommand });
 
     this.producers.set(id, producer);
     this.consumers.set(id, consumer);
@@ -273,7 +281,7 @@ class MPSCIntentBus {
 
 ```ts
 // ─────────────────────────────────────────────────────────
-// Domain Setup (Canonical Flow)
+// Host Side: Domain Setup (Canonical Flow)
 // ─────────────────────────────────────────────────────────
 const deckSpec = defineSpec({
   /* ... */
@@ -285,8 +293,14 @@ const deckHandoff = buildHandoff(deckPlan, deckBacking);
 // ─────────────────────────────────────────────────────────
 // Main Thread: Observer + Ring Producer
 // ─────────────────────────────────────────────────────────
-const deckObserver = bindObserver(deckSpec, deckHandoff);
-const uiRing = system.getRingProducer("transport", "ui-main");
+const deckObserver = bindObserver(deckSpec, deckPlan, deckBacking);
+
+// Producer from @seqlok/commands or @seqlok/primitives
+const { producer: uiRing } = createCommandMailbox({
+  mailboxId: 'ui-main',
+  codec: transportCodec,
+  layout: { capacity: 256, wordsPerSlot: transportCodec.wordsPerSlot }
+});
 
 slider.onInput = (value) => {
   uiRing.push({ type: "SET_GAIN", value }); // Intent, not direct write
@@ -301,8 +315,14 @@ function renderFrame() {
 // ─────────────────────────────────────────────────────────
 // MIDI Bridge Thread: Observer + Ring Producer
 // ─────────────────────────────────────────────────────────
-const midiObserver = bindObserver(deckSpec, deckHandoff);
-const midiRing = system.getRingProducer("transport", "midi-bridge");
+const midiReceived = receiveHandoff(handoff);
+const midiObserver = bindObserver(midiReceived);
+
+const { producer: midiRing } = createCommandMailbox({
+  mailboxId: 'midi-bridge',
+  codec: transportCodec,
+  layout: { capacity: 128, wordsPerSlot: transportCodec.wordsPerSlot }
+});
 
 midiController.on("fader", (value) => {
   midiRing.push({ type: "SET_GAIN", value }); // Intent
@@ -316,8 +336,14 @@ setInterval(() => {
 // ─────────────────────────────────────────────────────────
 // Deck Worker Thread: Controller + Ring Consumer (HUB)
 // ─────────────────────────────────────────────────────────
-const deckController = bindController(deckSpec, deckBacking);
-const transportRing = system.getRingConsumer("transport");
+const deckController = bindController(deckSpec, deckPlan, deckBacking);
+
+// Mailbox consumer
+const { consumer: transportRing } = createCommandMailbox({
+  mailboxId: 'transport',
+  codec: transportCodec,
+  layout: { capacity: 256, wordsPerSlot: transportCodec.wordsPerSlot }
+});
 
 function deckWorkerTick() {
   // Drain ALL intent sources (UI, MIDI, network, AI, automation)
@@ -341,7 +367,8 @@ setInterval(deckWorkerTick, 10); // 100Hz hub tick
 // ─────────────────────────────────────────────────────────
 // AudioWorklet Thread: Processor Only
 // ─────────────────────────────────────────────────────────
-const deckProcessor = bindProcessor(deckSpec, deckHandoff);
+const received = receiveHandoff(handoffMessage);
+const deckProcessor = bindProcessor(received);
 
 function audioProcess(inputs: Float32Array[], outputs: Float32Array[]) {
   deckProcessor.params.within((params) => {
@@ -359,7 +386,8 @@ function audioProcess(inputs: Float32Array[], outputs: Float32Array[]) {
 // ─────────────────────────────────────────────────────────
 // WebGPU Visualizer Worker: Observer Only
 // ─────────────────────────────────────────────────────────
-const vizObserver = bindObserver(deckSpec, deckHandoff);
+const vizReceived = receiveHandoff(vizHandoffMessage);
+const vizObserver = bindObserver(vizReceived);
 
 function renderParticles() {
   const { waveformData } = vizObserver.meters.snapshot(["waveformData"]);
@@ -441,10 +469,10 @@ function renderParticles() {
 
 ## 7. Summary
 
-This ADR formalizes the MWMR model established by ADR-00Y, ADR-00Z, and ADR-010:
+This ADR formalizes the MWMR model:
 
-- **Primitives** (`@seqlok/core`): SWMR planes + SWSR rings
-- **System** (`@seqlok/compose` + drivers): MWMR via composition
+- **Primitives**: SWMR planes (`@seqlok/core`) + SWSR rings (`@seqlok/primitives`)
+- **System** (host-level composition + drivers): MWMR via composition above the primitive layer
 - **Hard rule**: "MWMR exists only at the system topology level, never at the primitive/memory level"
 
 Any design that violates the invariants in section 3 or uses patterns from section 4 is architecturally incorrect and must be rejected.

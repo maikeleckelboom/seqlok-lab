@@ -1,8 +1,8 @@
-# Alternative Dispute Resolution 2025-11-12 — Meter Writes & Snapshot `into` (Seqlok v0.1.0)
+# ADR-00C: Meter Writes & Snapshot `into`
 
 **Status:** Accepted
 **Date:** 2025-11-12
-**Revised:** 2025-11-22 (align with final `meters.publish` API; remove `writer.set`)
+**Revised:** 2026-05-09 (acknowledge `writer.set` as current convenience sugar)
 **Scope:** `@seqlok/core` bindings — meter writing API and controller snapshots
 **Decision Owners:** Binding/API maintainers
 
@@ -12,17 +12,21 @@
 
 We finalize two user-visible binding decisions:
 
-1. **Meter writes use per-key functions + array staging, no generic `set`.**
+1. **Meter writes use per-key functions for the hot path, with `writer.set` as convenience sugar.**
 
 - Scalars are written by value via **per-key writers** generated from the spec:
 
-  - `writer.peak(1.25)` — hot path
+  - `writer.peak(1.25)` — preferred hot path
+
+- Scalars may also be written via the convenience method:
+
+  - `writer.set('peak', 1.25)` — dynamic-key sugar, slightly less performant
 
 - Arrays are written via **explicit mutator callbacks**:
 
   - `writer.stage('spectrum', (dst) => { /* mutate */ })`
 
-- There is **no `writer.set(key, valueOrMutator)`** in the core API. Dynamic-key dispatch and “one function to rule them all” patterns live in higher-level helpers (`@seqlok/compose`, product code), not in the kernel binding.
+- There is **no `writer.set(key, valueOrMutator)` overload for arrays**. Arrays are stage-only.
 
 2. **Controller snapshot keeps `into` as a nested option** (do **not** flatten).
 
@@ -56,8 +60,17 @@ We codify this distinction:
 
     - `writer.rms(value)`, `writer.peak(value)`, …
 
-  - No closures, no shape checks, no runtime key dispatch.
+  - No closures, no shape checks, minimal runtime dispatch.
   - The TypeScript signature is straight-line and easily inlined.
+
+  - For dynamic key selection, `writer.set(key, value)` exists as convenience sugar:
+
+    ```ts
+    const key: 'rms' | 'peak' = decideKey();
+    writer.set(key, 0.5); // convenience for dynamic dispatch
+    ```
+
+  - Benchmarks show `writer.set` has ~equal or slightly more overhead than direct per-key calls.
 
 - **Arrays by mutation**
 
@@ -67,6 +80,8 @@ We codify this distinction:
     - The write is scoped: one coherent commit per `publish`, with a single MU bump.
 
   - This makes the seqlock contract explicit: "enter staging, mutate, commit once."
+
+  - There is **no** `writer.set(key, valueOrMutator)` for arrays. Arrays are stage-only.
 
 - **No lazy scalar setters**
 
@@ -82,26 +97,6 @@ We codify this distinction:
     ```ts
     const peak = computePeak();
     writer.peak(peak);
-    ```
-
-- **Why drop `writer.set` from core**
-
-  - A generic `set(key, valueOrMutator)` would:
-
-    - require runtime key discrimination,
-    - complicate types (union overloads, conditional types),
-    - blur the scalar vs array distinction.
-
-  - We keep meter writers **minimal and per-key**. Any code that needs dynamic selection can be implemented in product space:
-
-    ```ts
-    function writeMeterDynamic(
-      writer: ProcessorMetersWriter<MySpec>,
-      key: MeterKey<MySpec>,
-      value: number,
-    ): void {
-      writer[key](value as never); // higher-level helper; not core surface
-    }
     ```
 
 ### 1.2 Keep `into` nested
@@ -150,8 +145,11 @@ export interface ProcessorMetersWriter<S> {
   rms(value: number): void;
   peak(value: number): void;
 
+  // Dynamic scalar setter (convenience sugar)
+  set<K extends ScalarMeterKeys<S>>(key: K, value: MeterScalarFor<S, K>): void;
+
   // Array writer: RAII-style staging
-  stage<const K extends MeterArrayKeys<S>>(
+  stage<const K extends ArrayMeterKeys<S>>(
     key: K,
     fn: (view: MutableMeterArrayView<S, K>) => void,
   ): void;
@@ -171,10 +169,12 @@ export interface ProcessorMetersBinding<S> {
 
 - **Scalar writes:**
 
-  - Always via per-key methods:
+  - Preferred: per-key methods for the hot path:
 
     - `writer.rms(value)`
     - `writer.peak(value)`
+
+  - Convenience: dynamic dispatch via `writer.set(key, value)`.
 
   - No callback form, no lazy evaluation.
 
@@ -339,7 +339,7 @@ Notes:
 
 - **Room for higher-level libraries**
 
-  - `@seqlok/compose` and product code can add:
+  - Product code and host-level integration can add:
 
     - dynamic writers (`setDynamic(writer, key, value)`),
     - preset serializers built on `snapshot`/`hydrate`,
@@ -347,10 +347,10 @@ Notes:
 
 ### 4.2 Trade-offs / negatives
 
-- Dynamic meter selection in the processor requires a tiny wrapper in product space:
+- Dynamic meter selection across scalar and array keys requires explicit branching:
 
-  - No universal `set` means more boilerplate in some higher-level code.
-  - This is deliberate: the kernel stays minimal; products that truly need dynamic dispatch can pay for it explicitly.
+  - `writer.set(key, value)` covers scalars; array writes always use `stage`, so code that handles both must branch explicitly.
+  - This is deliberate: the kernel stays minimal; products that truly need fully dynamic dispatch can pay for it explicitly.
 
 - Controller snapshot options are slightly more verbose than a "flattened" signature:
 
@@ -363,20 +363,25 @@ Notes:
 
 ### 5.1 Keep `writer.set(key, valueOrMutator)` in core
 
-**Rejected.**
+**Accepted for scalars only; arrays remain stage-only.**
 
-- Pros:
+- Scalar `writer.set(key, value)` exists as convenience sugar:
 
-  - Single mental model for all writes.
-  - Easier to write generic helpers that don't know about per-key methods.
+  - Pros:
+    - Useful for dynamic key selection (loops, tables, generic instrumentation).
+    - Simplifies code that receives a key name at runtime.
 
-- Cons:
+  - Cons:
+    - Slightly more overhead than per-key methods (benchmarked).
+    - Requires runtime key dispatch.
 
-  - Requires runtime dispatch based on `key` and `valueOrMutator` shape.
-  - Complicates TypeScript types (overloaded unions, conditional branches).
-  - Encourages generic code in the hottest path, where per-key calls are cheaper and clearer.
+  - Resolution: provided as convenience, but per-key methods remain the preferred hot path.
 
-Decision: push generic, dynamic patterns into higher-level helpers; keep the core binding explicit and per-key.
+- Array `writer.set(key, valueOrMutator)`:
+
+  - **Rejected.** Arrays are stage-only via `writer.stage(key, fn(view))`.
+  - No runtime discrimination between scalars and arrays within `set`.
+  - Keeps the scalar vs array distinction explicit.
 
 ### 5.2 Flatten `into` into top-level snapshot parameters
 

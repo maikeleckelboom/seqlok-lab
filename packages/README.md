@@ -13,7 +13,7 @@ Each package is a node in a strict one-way dependency graph.
 ### Runtime
 
 - `@seqlok/primitives`  
-  Seqlock, SWSR rings, atomics and low level memory tools
+  Seqlock, SWSR rings, atomics and low-level memory tools
 
 - `@seqlok/diagnostics`  
   RT-safe telemetry primitives  

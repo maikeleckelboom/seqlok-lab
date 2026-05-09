@@ -99,14 +99,12 @@ Use this cluster:
 
 - **Story / motivation:**
 
-  - [guides/architecture-from-pipe-to-hub-onboarding.md](./guides/architecture-from-pipe-to-hub-onboarding.md)
-    The whiteboard / noisy room / mailbox story of how we got to MWMR at the system level.
-  - [guides/onboarding-seqlok-mindset-and-hot-path.md](./guides/onboarding-seqlok-mindset-and-hot-path.md)
+  - [guides/onboarding-seqlok-mindset-and-hot-path.md](attic/onboarding-seqlok-mindset-and-hot-path.md)
     Event-loop vs polling, zero-GC rule, and hot vs cold path thinking.
 
 - **Technical architecture:**
 
-  - [guides/understanding-seqlok-mwmr-from-pipe-to-hub.md](./guides/understanding-seqlok-mwmr-from-pipe-to-hub.md)
+  - [guides/understanding-seqlok-mwmr-from-pipe-to-hub.md](attic/understanding-seqlok-mwmr-from-pipe-to-hub.md)
     From SWSR domains to system-level MWMR using rings, a hub controller, and observers.
   - [architecture/17-hot-vs-cold-path-design-philosophy.md](./architecture/17-hot-vs-cold-path-design-philosophy.md)
 

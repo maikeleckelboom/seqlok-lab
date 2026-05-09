@@ -1,41 +1,39 @@
 # Guides
 
-Deep-dive documents for `@seqlok/core`.
+Focused guides for `@seqlok/core`.
 
-These are focused walkthroughs and patterns that build on the main README and API reference. They assume you already
-know the basic canonical flow:
+These documents are practical, current, and tied to the live package surface.
+They build on the main README and assume you already know the canonical core flow:
 
-> `defineSpec → planLayout → allocateShared/allocateWasmShared → buildHandoff → receiveHandoff → bindController / bindProcessor`
+>
+`defineSpec → planLayout → allocateShared / allocateSharedPartitioned / allocateWasmShared → buildHandoff → receiveHandoff → bindController / bindProcessor / bindObserver`
 
 ---
 
 ## Available guides
 
-### Architecture & Topology
+### Core flow
 
-- [From Pipe to Hub: Understanding Seqlok's Architecture](./understanding-seqlok-mwmr-from-pipe-to-hub.md)
-  Evolution from a simple SWSR pipe to a system-level MWMR topology using rings, a hub controller, and observers.
+- [Seqlok Canonical Flow: From Spec to Bindings](./seqlok-flow-from-spec-to-bindings.md)  
+  The end-to-end pipeline from schema to shared memory, handoff, and live bindings.
 
-- [📘 Seqlok Architecture: From Pipe to Hub](./architecture-from-pipe-to-hub-onboarding.md)
-  Narrative onboarding story that explains why the system grew rings, hubs, and observers instead of mutating the core
-  SWMR model.
+### Utilities & UI wiring
 
-### Mindset & Hot Path
-
-- [🧠 Onboarding: The Seqlok Mindset and Hot Path](./onboarding-seqlok-mindset-and-hot-path.md)
-  How to think in loops instead of events, live with the **zero-GC** rule, and reason about cold-path vs hot-path
-  code when building on Seqlok.
-
-### Utilities & UI Wiring
-
-- [Enum helpers & UI wiring](./enum-helpers.md)
-  How to drive UI controls, legends, and fixtures directly from enum params/meters using:
+- [Enum helpers & UI wiring](./enum-helpers.md)  
+  How to drive UI controls, legends, and fixtures directly from enum params and meters using:
 
   - `enumValues`
   - `enumPaletteFor`
   - `enumArrayToLabels` / `enumLabelsToArray`
-  - `enumIndexFromLabel` / `getEnumLabelForIndex`
-
-More guides can land here over time as we standardize recurring patterns in real demos.
+  - `enumIndexFromLabel` / `enumLabelFromIndex`
 
 ---
+
+## Archived essays
+
+The following material is no longer treated as live package guidance, but may still be useful as background reading:
+
+- [Onboarding: The Seqlok Mindset and Hot Path](../attic/onboarding-seqlok-mindset-and-hot-path.md)
+
+More guides can land here over time, but this folder should stay narrow:
+current package usage, current package contracts, and practical patterns.

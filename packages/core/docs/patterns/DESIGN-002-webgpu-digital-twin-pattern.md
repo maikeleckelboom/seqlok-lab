@@ -148,7 +148,7 @@ fn vs(@builtin(instance_index) i : u32) -> VertexOut {
 }
 ```
 
-If you introduce a packed `currentPos : array<vec4<f32>>` later, it’s just another meter + GPU buffer; the pattern is the same.
+If you introduce a packed `currentPos : array<vec4<f32>>` later, it's just another meter + GPU buffer; the pattern is the same.
 
 ---
 

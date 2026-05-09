@@ -1,120 +1,173 @@
 # Seqlok Docs
 
-This folder holds internal docs for people **building with** Seqlok and
-**working on** the Seqlok repo.
+This folder is the documentation entry point for the Seqlok repo.
 
-Seqlok itself is a **real-time shared-state substrate** – it knows about
-params, meters, command rings and hotswap, but it does **not** encode
-audio decks, BPM, tracks or cues. Those live in host code on top.
+It serves two main audiences:
 
-If you are here, you are typically in one of three modes:
+- people **building with** Seqlok
+- people **working on** the Seqlok monorepo itself
 
-- you want to understand what Seqlok is,
-- you want to wire it into a host,
-- or you are hacking on the monorepo itself.
+Seqlok is a **schema-first coordination kernel** for coherent state exchange across execution boundaries.
 
-Pick the entry that matches.
+It owns shared-state coordination, command transport, and explicit live-swap protocol layers.
+It does **not** encode product semantics such as decks, BPM, tracks, cues, or host workflow policy.
 
 ---
 
-## Orientation
+## Start Here
 
-**Conceptual overview**
+### Understand what Seqlok is
 
-- **[Seqlok Primer](./Seqlok-Primer.md)**  
-  High-level explanation of what Seqlok solves, the package stack, and
-  the canonical flows (params/meters, commands, hotswap).  
-  _Best starting point for contributors and integrators._
+- **[Seqlok Primer](./seqlok-primer.md)**  
+  High-level explanation of what Seqlok owns, the boundary it defines, the package stack, and the canonical flows.
 
-**Developer workflow**
+- **[Seqlok Minimal Setup Sketch](./seqlok-minimal-setup-sketch.md)**  
+  One small current concrete path through the model.  
+  Read this after the primer when you want the boundary shape to become operational.
 
-- **[Developer CLI](./DEVELOPER-CLI.md)**  
-  How to run `pnpm dev`, `pnpm verify`, typecheck, tests and benches.
-  Also documents the workspace layout and common troubleshooting.
+### Work on the repo
 
----
+- **[Developer CLI](./developer-cli.md)**  
+  Monorepo workflows, verification commands, tests, benches, and maintenance commands.
 
-## Architecture & Contracts
+### Cross-package contract references
 
-The `architecture/` folder describes how the substrate is structured and
-what “done” means at the system level.
-
-- **[00 – Definition of Done](./architecture/00-definition-of-done.md)**  
-  Target end-state for Seqlok as a stable, language-agnostic control
-  fabric. Use this as the contract: new work should move the system
-  toward this shape, not away from it.
-
-- **[01 – Package graph & introspect sidecar](./architecture/01-packages-and-introspect.md)**  
-  Canonical package DAG, import rules, and the role of
-  `@seqlok/introspect` as a diagnostics sidecar that observes runtime
-  packages but is never on the hot path.
-
-- **[02 – Error system](./architecture/02-error-system.md)**  
-  Anatomy of `SeqlokError`, numeric codes, domain IDs and registry
-  aggregation. This is the contract that Rust/C++ or other hosts will
-  see.
-
-- **[03 – Error governance](./architecture/03-error-governance.md)**  
-  Rules for evolving the error universe (append-only codes, domain
-  allocation, deprecation policy, extension domains).
-
-Use these when you are designing new primitives, changing package layout
-or touching the error system.
+- **[Error Domains](./error-domains.md)**  
+  Numeric error-domain allocation and package ownership of error prefixes.
 
 ---
 
-## Decisions & ADRs
+## Repo Navigation
 
-The `adr/` folder records discrete design decisions with long half-life.
+When you need exact implementation or package surface detail, use the repo itself.
 
-Examples:
+### Root
 
-- **[0001 – Error system v1.0 audit](adr/ADR-001-error-system-audit.md)**  
-  Split of the error system out of `@seqlok/core` and the move to
-  domain-scoped numeric codes.
+- **[Repo README](../README.md)**  
+  Root project entry point and top-level package overview.
 
-- **[Error domain ID allocation](ERROR-DOMAINS.md)**  
-  Authoritative table of domain IDs and owners. Source of truth for
-  which package owns which `*.prefix` and numeric range.
+- **[Packages Overview](../packages/README.md)**  
+  Package map for the monorepo.
 
-When you make a non-trivial architectural change (new package, new
-domain, new host wiring pattern), add a new ADR here using whatever
-local template you prefer.
+### Core architecture docs
+
+The long-lived architecture, ADRs, guides, and internals now live under `packages/core/docs/`.
+
+- **[Core Docs Index](../packages/core/docs/INDEX.md)**
+- **[Architecture Index](../packages/core/docs/architecture/INDEX.md)**
+- **[ADR Index](../packages/core/docs/adr/INDEX.md)**
+- **[Guides Index](../packages/core/docs/guides/INDEX.md)**
+- **[Internals Index](../packages/core/docs/internals/INDEX.md)**
+- **[Performance Index](../packages/core/docs/performance/INDEX.md)**
+
+### Package entry points
+
+Each package owns its own local contract surface through its README and public exports.
+
+- **[base](../packages/base/README.md)**
+- **[primitives](../packages/primitives/README.md)**
+- **[core](../packages/core/README.md)**
+- **[commands](../packages/commands/README.md)**
+- **[hotswap](../packages/hotswap/README.md)**
+- **[integration](../packages/integration/README.md)**
+- **[introspect](../packages/introspect/README.md)**
+- **[streambuf](../packages/streambuf/README.md)**
+- **[worklet-mount](../packages/worklet-mount/README.md)**
+
+For exact exported APIs, use each package `src/index.ts`.
 
 ---
 
-## Admin & R&D Evidence
+## Current Package Families
 
-The `admin/` folder is project admin, not runtime API.
+The monorepo currently centers around these package families:
 
-- **[Admin README](./admin/README.md)**  
-  Explains the purpose of admin docs and conventions for R&D logs.
+- **`base`**  
+  Shared error algebra, invariants, numeric domain support, panic/invariant infrastructure.
 
-- **[R&D log](./admin/rd-log-2025.md)**  
-  Day-by-day technical log (tags + hours) for WBSO-style evidence and
-  future you.
+- **`primitives`**  
+  Low-level seqlock, SWSR ring, atomics, and plane-oriented shared-memory primitives.
 
-Future additions such as `release-checklist.md` or `governance.md` also
-belong here.
+- **`core`**  
+  Spec → layout → backing → handoff → bindings.
+
+- **`commands`**  
+  Typed command transport over ring-backed mailbox infrastructure.
+
+- **`hotswap`**  
+  Explicit live engine replacement protocol and scheduling helpers.
+
+- **`integration`**  
+  Higher-order runtime wiring across lanes, timelines, engine banks, plugins, and hotswap coordination.
+
+- **`introspect`**  
+  Error registry export, counters, budgets, sessions, and runtime observability surfaces.
+
+- **`diagnostics`**  
+  Additional diagnostic data structures and runtime-oriented observation helpers.
+
+- **`streambuf`**  
+  Bulk stream transport primitives.
+
+- **`worklet-mount`**  
+  Worklet mounting and host/worklet wiring utilities.
+
+- **`playground`**  
+  Interactive experimentation and visualization surface.
 
 ---
 
-## Product / Host Docs (Ghost DJ, etc.)
+## Formal Verification and Runtime Evidence
 
-Seqlok is the substrate; Ghost DJ is one of the first serious clients.
+Formal and verification-adjacent material lives with the working repo structure.
 
-Non-Seqlok product/host ideation docs are intentionally kept outside this repo (docs vault) to keep Seqlok docs focused.
+Relevant locations include:
 
-For example:
+- **[`../scripts/tla/`](../scripts/tla/)**
+- **[`../tools/tla/`](../tools/tla/)**
+- package tests
+- package benches
 
-- **[Ghost DJ data model](./concept/ghost-dj-data-model.md)**  
-  Session log model, track features, event schema and how a set becomes
-  structured data that planners / AI policies can reason about.
+Use those when you are validating protocol behavior, performance boundaries, or hot-path invariants.
 
-These docs are allowed to assume “we are building Ghost DJ”; they should
-not leak back into the Seqlok public API.
+---
 
-## Formal verification
+## How to Read the Repo
 
-- Param/meter binding & command mailbox specs (TLA+)
-- Roadmap for Seqlok + Dekzer specs (modes, hotswap driver, session recorder, etc.)
+Use this order unless you have a very specific task:
+
+1. **[Seqlok Primer](./seqlok-primer.md)**
+2. **[Seqlok Minimal Setup Sketch](./seqlok-minimal-setup-sketch.md)**
+3. **[Repo README](../README.md)**
+4. **[Packages Overview](../packages/README.md)**
+5. the package `README.md` you are actually changing
+6. the package `src/index.ts` for exact exports
+
+That path keeps conceptual understanding ahead of surface detail.
+
+---
+
+## What This Index Does Not Do
+
+This index does **not** try to mirror older doc structures that no longer exist as the main navigation surface.
+
+It does not assume root-level docs such as:
+
+- `architecture/`
+- `adr/`
+- `admin/`
+- `concept/`
+
+as if they still live directly under `docs/`.
+
+Those long-lived conceptual docs now live under **`packages/core/docs/`**.
+
+This file is only an entry point into the repo as it exists now.
+
+---
+
+## Maintenance Rule
+
+When the repo shape changes, update this file by checking the actual tree first.
+
+This index should describe the repo that exists, not the repo we remember.
