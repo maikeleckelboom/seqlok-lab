@@ -45,7 +45,7 @@ Exposing low-level primitives as "public API" would increase maintenance cost an
 
 ## Consequences
 
-- The **public API surface** matches the library’s real value: high-level, type-safe bindings over SharedArrayBuffer.
+- The **public API surface** matches the library's real value: high-level, type-safe bindings over SharedArrayBuffer.
 - The primitives implementation can be freely refactored or replaced in future versions without breaking consumers.
 - There is no implied commitment to support low-level seqlock primitives as a stable API.
 - If future features (e.g. coherent meter snapshots, stricter alignment validation) require primitives like `acquire`, they will be designed **binding-first** and can pull code from the shelf appendix as needed.

@@ -1,282 +1,184 @@
-# ADR-010: Ring Primitive in `@seqlok/core`
+# ADR-010: Ring Primitive Ownership and Stack Position
 
 **Status**: Accepted
 **Date**: 2025-11-19
+**Revised**: 2026-05-09
 **Owner**: _TBD_
 
 **Related**:
 
 - ADR-001 – Seqlok Core Canonical Flow
 - ADR-002 – Memory Growth & Swap via Handoff Sequences
-- ADR-00Y – MWMR System Architecture via Domains + Observers + Rings
-- ADR-00X – `@seqlok/compose` for System-Level Composition
-- ADR-00Z – Observer Binding Role in `@seqlok/core`
+- ADR-011 – MWMR Ground Truth
 
 ---
 
-## 1. Context
+## 1. What is the primitive?
 
-`@seqlok/core` currently exposes:
+The **SWSR (single-writer, single-reader) ring primitive** provides:
 
-- seqlock-based **params/meters** primitives (snapshot/publish),
-- a deterministic layout pipeline: `spec → plan → backing → handoff → bindings`,
-- SWMR domains via `bindController` / `bindProcessor` / `bindObserver`.
+- A fixed-size queue over `SharedArrayBuffer` or shared `WebAssembly.Memory`,
+- Lock-free, wait-free enqueue for the producer,
+- Lock-free, wait-free dequeue for the consumer,
+- Drop-newest-on-full overflow policy (configurable),
+- Zero allocations in the hot path.
 
-These primitives are about **state**:
+It is the foundational transport primitive for:
 
-- bidirectional,
-- snapshot-oriented,
-- read-many, write-one.
-
-Real-time systems like Dekzer also need a way to express **control flow**:
-
-- enqueue **commands** (play/pause/seek, rate ramps, engine swaps),
-- drain and execute them at predictable points (e.g. per audio block),
-- keep the hot path allocation-free and GC-friendly,
-- share the same memory across JS / Wasm / C++ runtimes.
-
-ADR-00Y and ADR-00X assume a **command ring / intent bus** but originally treated it as a separate package (
-`@seqlok/command-ring`).
-
-This ADR decides that the underlying **ring primitive** is fundamental enough to live directly in `@seqlok/core`
-alongside `seqlock`.
+- **Commands** – discrete intent (seek, trigger, swap),
+- **Streams** – bulk data (PCM, byte streams, frame sequences).
 
 ---
 
-## 2. Decision
+## 2. Which package owns it?
 
-We introduce a **generic, single-writer / single-reader (SWSR) ring primitive** in `@seqlok/core/src/primitives` with
-these properties:
+**`@seqlok/primitives`** owns the low-level SWSR ring primitive.
 
-- lives next to `seqlock` and other low-level primitives,
-- operates over `SharedArrayBuffer` or shared `WebAssembly.Memory`,
-- uses a fixed, ABI-stable layout,
-- is **semantic-free**:
-  - no knowledge of opcodes, timelines, or products,
-  - sees only `T` payloads via encode/decode functions,
-- is strictly **SWSR** at the primitive level:
-  - exactly one producer binding,
-  - exactly one consumer binding.
+Public surface (from `@seqlok/primitives`):
 
-Higher-level MPSC / MPMC patterns (MWMR intent buses) are built on top of this primitive by `@seqlok/compose` and
-product drivers.
+```ts
+// Allocation
+export function allocateSwsrRing(layout: SwsrRingLayout): SwsrRingBacking;
 
-The primitive is part of `@seqlok/core` **only as a mechanism**. All command semantics remain outside core.
+// Binding
+export function bindSwsrRingProducer<T>(backing: SwsrRingBacking, encode: SwsrRingEncode<T>): SwsrRingProducer<T>;
+export function bindSwsrRingConsumer<T>(backing: SwsrRingBacking, decode: SwsrRingDecode<T>): SwsrRingConsumer<T>;
 
----
+// Header layout constants
+export const SWSR_HEADER_WORDS: number;
+export const SWSR_HEADER_READ_INDEX: number;
+export const SWSR_HEADER_WRITE_INDEX: number;
+export const SWSR_HEADER_WRITE_SEQ: number;
+export const SWSR_HEADER_DROPPED: number;
+```
 
-## 3. Layout & ABI
-
-The layout is:
-
-- **Header**: 64-byte, cache-line-aligned `Uint32Array` of length 16
-- **Slots region**: contiguous `Uint32Array` of length `capacity * wordsPerSlot`
-
-Header fields (conceptual):
+Header fields (conceptual, ABI-stable):
 
 ```txt
 u32[0]  writeIndex     // next slot index for producer
 u32[1]  readIndex      // next slot index for consumer
-u32[2]  writeSeq       // monotonic sequence for producer-side metrics/diagnostics
-u32[3]  dropped        // cumulative count of dropped entries (overflow)
-u32[4..15] reserved    // future-proofing / padding
+u32[2]  writeSeq       // monotonic sequence for diagnostics
+u32[3]  dropped        // cumulative dropped count (overflow)
+u32[4..15] reserved    // future-proofing
 ```
 
-Slots:
-
-- each slot is `wordsPerSlot` 32-bit words (u32),
-- producer encodes a payload `T` into `wordsPerSlot` words,
-- consumer decodes from `wordsPerSlot` words back into `T`.
-
-Policy:
-
-- ring is **drop-newest-on-full** by default:
-
-  - if the producer detects that advancing `writeIndex` would collide with `readIndex`, it:
-
-    - increments `dropped`,
-    - overwrites the oldest slot,
-    - moves `readIndex` forward in lockstep (wrap-around).
-
-This policy keeps the consumer always seeing the **most recent** commands while preserving bounded memory and O(1)
-operations.
-
-The layout is deliberately trivial to mirror in C++ and other languages.
+This package is **schema-free** and **semantic-free**. It provides mechanisms (atomics, rings, memory helpers), not
+product meaning.
 
 ---
 
-## 4. Type-Level API (conceptual)
+## 3. What higher layers are built on top?
 
-At the primitive level we expose:
+### 3.1 Typed command transport – `@seqlok/commands`
 
-```ts
-export interface RingLayout {
-  readonly capacity: number; // number of slots
-  readonly wordsPerSlot: number; // 32-bit words per slot
-}
+Built on the primitive ring, `@seqlok/commands` provides:
 
-export interface RingBacking {
-  readonly header: Uint32Array; // length 16
-  readonly slots: Uint32Array; // length = capacity * wordsPerSlot
-}
+- `CommandCodec<C>` – encodes/decodes discriminated unions into fixed-width slots,
+- `createCommandMailbox(...)` – allocates ring + returns `{ producer, consumer }`,
+- `createCommandBus(...)` – fan-in over multiple consumers.
 
-export interface RingProducer<T> {
-  /** Enqueue a value if possible; returns true if accepted. */
-  push(value: T): boolean;
-}
+This is where **semantics** arrive: command schemas, opcodes, bus topology.
 
-export interface RingConsumer<T> {
-  /**
-   * Drain all currently available values.
-   * Implementations may batch to reduce overhead.
-   */
-  drain(fn: (value: T) => void): void;
-}
+### 3.2 Bulk stream transport – `@seqlok/streambuf`
 
-/**
- * Allocate a ring backing inside a SharedArrayBuffer or shared WebAssembly.Memory.
- * Ownership of the underlying memory is external (plan/backing layer).
- */
-export function allocateRing(layout: RingLayout): RingBacking;
+For PCM, byte streams, frame sequences. Uses the same primitive ring with different encoding strategies (chunked,
+streaming, circular).
 
-/**
- * Bind a **single producer** to the backing using encode/decode functions.
- */
-export function bindRingProducer<T>(
-  backing: RingBacking,
-  encode: (value: T, dst: Uint32Array, offset: number) => void,
-): RingProducer<T>;
+### 3.3 Core state model – `@seqlok/core`
 
-/**
- * Bind a **single consumer** to the backing.
- */
-export function bindRingConsumer<T>(
-  backing: RingBacking,
-  decode: (src: Uint32Array, offset: number) => T,
-): RingConsumer<T>;
-```
+`@seqlok/core` uses the ring primitive **only where needed** for:
 
-Notes:
+- Internal handoff protocol metadata (not public API),
+- Future internal transport (if any).
 
-- This is **conceptual** API; actual naming/placement may differ slightly,
-  but the ABI (header + slots) must remain stable.
-- Encode/decode are responsible for mapping `T` into fixed-width `wordsPerSlot`.
-- The primitive is oblivious to product semantics (opcodes, timestamps, swap tickets, etc.).
+Core **does not** re-export the primitive. If you need rings, you import `@seqlok/primitives` or higher layers.
 
 ---
 
-## 5. Usage Patterns
-
-### 5.1 Command rings (intent buses)
-
-Typical usage in a deck driver:
+## 4. Usage flow
 
 ```ts
-type DeckCommand = {
-  readonly opcode: number; // e.g. play, pause, seek, rate ramp, swap
-  readonly atFrameLo: number;
-  readonly atFrameHi: number;
-  readonly a: number;
-  readonly b: number;
-  readonly c: number;
-  readonly d: number;
+import {
+  allocateSwsrRing,
+  bindSwsrRingProducer,
+  bindSwsrRingConsumer,
+} from "@seqlok/primitives";
+
+// 1. Allocate
+const backing = allocateSwsrRing({ capacity: 256, wordsPerSlot: 4 });
+
+// 2. Bind producer + consumer (typically on different threads)
+const producer = bindSwsrRingProducer(backing, {
+  encode(command, dst, wordOffset) { /* write 4 words */ }
+});
+
+const consumer = bindSwsrRingConsumer(backing, {
+  decode(src, wordOffset) { /* read 4 words */ }
+});
+
+// 3. Use
+producer.enqueue({ /* ... */ });
+consumer.drain((cmd) => { /* ... */ });
+```
+
+Higher layers (`@seqlok/commands`) wrap this into typed mailboxes and buses.
+
+---
+
+## 5. What does it explicitly not own?
+
+| Concern | Owner | Not in `@seqlok/primitives` |
+|---------|-------|------------------------------|
+| Param/meter semantics | `@seqlok/core` | No spec, plan, or binding logic |
+| Typed command codecs | `@seqlok/commands` | No `CommandCodec`, mailbox, bus |
+| Stream framing | `@seqlok/streambuf` | No chunking, flow control |
+| Telemetry schemas | `@seqlok/diagnostics` | No snapshot formats |
+| Tooling/analysis | `@seqlok/introspect` | No counters, health checks |
+| Orchestration | Host/product code | No topology, scheduling, drivers |
+
+Primitives stay at the mechanism level. Meaning arrives in higher packages.
+
+---
+
+## 6. Cross-runtime interop
+
+The header layout is ABI-stable and trivial to mirror:
+
+```cpp
+// C++
+struct alignas(64) SwsrHeader {
+    std::atomic<std::uint32_t> writeIndex;
+    std::atomic<std::uint32_t> readIndex;
+    std::atomic<std::uint32_t> writeSeq;
+    std::atomic<std::uint32_t> dropped;
+    std::uint32_t reserved[12];
 };
-
-const layout = { capacity: 64, wordsPerSlot: 8 };
-const backing = allocateRing(layout);
-
-const producer = bindRingProducer<DeckCommand>(backing, encodeDeckCommand);
-const consumer = bindRingConsumer<DeckCommand>(backing, decodeDeckCommand);
-
-// Producer side (UI, MIDI, automation, agents...)
-producer.push({
-  opcode: OPCODE_SEEK,
-  atFrameLo,
-  atFrameHi,
-  a: targetFrameLo,
-  b: targetFrameHi,
-  c: 0,
-  d: 0,
-});
-
-// Consumer side (AudioWorklet / processor tick)
-consumer.drain((cmd) => {
-  // translate into controller params / SwapTickets
-});
 ```
 
-- Many producers (UI thread, MIDI worker, network worker, AI agents) can fan-in through
-  an MPSC hub built **on top of** this primitive.
-- A single driver/processor drains and applies commands at block boundaries.
+- JS via `Uint32Array`
+- C++ via `std::atomic` fields
+- Same `capacity` × `wordsPerSlot` produces identical layouts
 
-### 5.2 MWMR via ADR-00Y
-
-ADR-00Y uses the ring primitive to build **system-level MWMR**:
-
-- many intent producers → one or more logical `CommandRing`s,
-- a single driver per ring, owning controller/processor bindings,
-- many observers per domain via `bindObserver`.
-
-The ring primitive is the **MW → 1** leg; `bindObserver` is the **1 → MR** leg.
+This enables mixed JS/Wasm/C++ systems sharing the same control plane.
 
 ---
 
-## 6. C++ / Wasm Interop
+## 7. Summary
 
-Because the ABI is fixed:
+| Layer | Package | Role |
+|-------|---------|------|
+| **Primitive** | `@seqlok/primitives` | SWSR ring allocation + bind |
+| **Command semantics** | `@seqlok/commands` | Typed mailboxes, buses |
+| **Stream semantics** | `@seqlok/streambuf` | Bulk transfer |
+| **State engine** | `@seqlok/core` | Spec, plan, backing, handoff, bindings |
+| **Telemetry** | `@seqlok/diagnostics` | RT-safe schemas, SAB rings |
+| **Analysis** | `@seqlok/introspect` | Health, counters, tooling |
 
-- C++ can define:
-
-  ```cpp
-  struct alignas(64) RingHeader {
-      std::atomic<std::uint32_t> writeIndex;
-      std::atomic<std::uint32_t> readIndex;
-      std::atomic<std::uint32_t> writeSeq;
-      std::atomic<std::uint32_t> dropped;
-      std::uint32_t reserved[12];
-  };
-
-  struct DeckCommandSlot {
-      std::uint32_t words[8];
-  };
-  ```
-
-- JS/Wasm and C++ can map the same memory:
-
-  - JS via `Uint32Array`
-  - C++ via `std::uint32_t*` with `std::atomic` access for header fields
-
-- The same `capacity` / `wordsPerSlot` produces identical layouts across runtimes.
-
-This allows:
-
-- JS drivers generating commands for native engines,
-- native analyzers or DSP consuming commands produced in JS,
-- mixed JS/Wasm/C++ systems sharing the same control plane.
-
----
-
-## 7. Consequences
-
-- `@seqlok/core` now exposes **two fundamental concurrency primitives**:
-
-  1. **Seqlock** – for bidirectional state sync (params/meters).
-  2. **Ring primitive** – for unidirectional command queues (intent buses).
-
-- MWMR architectures (ADR-00Y) have a concrete, ABI-stable building block for fan-in.
-
-- The primitive remains **semantic-free**; products define:
-
-  - their own `T` payloads (e.g. `DeckCommand`, `SwapTicket`, agent intents),
-  - encode/decode functions,
-  - higher-level drivers/governors.
-
-- If, in future, applications need richer patterns (e.g. multiple priority queues,
-  different overflow policies), those can be built on top of the primitive without
-  changing its ABI.
+**Key decision:** The ring primitive lives in `@seqlok/primitives`, not `@seqlok/core`. Core focuses on the
+spec-to-binding lifecycle; primitives provides the substrate.
 
 This ADR is the normative source for:
 
-- the presence and layout of the ring primitive in `@seqlok/core`,
-- its relationship to MWMR system design (ADR-00Y),
-- its role relative to `bindObserver` and drivers described in ADR-00X / ADR-00Z.
+- Package ownership of the SWSR ring primitive (`@seqlok/primitives`),
+- Layering: primitives → commands/streambuf → core state model,
+- ABI contract for cross-runtime interop.

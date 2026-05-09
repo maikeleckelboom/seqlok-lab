@@ -123,8 +123,8 @@ More precisely:
 
 This gives a clean split:
 
-- “I want a copy to save/restore” → controller snapshot APIs (ADR-00C / ADR-00F).
-- “I want raw bytes to stream into GPU or network” → observer snapshot APIs (this ADR).
+- "I want a copy to save/restore" → controller snapshot APIs (ADR-00C / ADR-00F).
+- "I want raw bytes to stream into GPU or network" → observer snapshot APIs (this ADR).
 
 ---
 

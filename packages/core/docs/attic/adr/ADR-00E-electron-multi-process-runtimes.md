@@ -34,9 +34,9 @@ Electron introduces a **multi-process** architecture:
 
 Recurring questions:
 
-> “Does Electron make Seqlok obsolete or redundant?”
+> "Does Electron make Seqlok obsolete or redundant?"
 >
-> “Should Seqlok become an Electron IPC abstraction?”
+> "Should Seqlok become an Electron IPC abstraction?"
 
 This ADR draws the line: **Seqlok remains an in-process shared-memory engine**, not an IPC framework.
 
@@ -56,7 +56,7 @@ We need to clarify:
 
 3. Whether Electron-specific constraints should change:
 
-- Seqlok’s **core SWMR model**
+- Seqlok's **core SWMR model**
 - the **MWMR system model** (ADR-00Y)
 - `@seqlok/compose` topology semantics (ADR-00X)
 
@@ -186,7 +186,7 @@ memory across processes**.
 Renderer ↔ main use IPC for:
 
 - library updates
-- “load track X” commands
+- "load track X" commands
 - telemetry / logging
 
 **Seqlok stays completely inside renderer.**
@@ -197,7 +197,7 @@ Renderer ↔ main use IPC for:
 
 - Renderer:
 
-  - “hot path” Seqlok systems (deck, waveform, HUD)
+  - "hot path" Seqlok systems (deck, waveform, HUD)
 
 - Main:
 
@@ -254,12 +254,12 @@ Electron-specific features (e.g., window management, menus, OS integration) are 
 
 - Provide **examples** in `docs/architecture`:
 
-  - “Dekzer in Electron”:
+  - "Dekzer in Electron":
 
     - renderer: decks + visualizers
     - main: library + agents
 
-  - contrasting “all-in-renderer” vs “split” architectures.
+  - contrasting "all-in-renderer" vs "split" architectures.
 
 - Optional helper in a **separate** package (not `@seqlok/core`) to:
 

@@ -9,7 +9,7 @@
 - ADR-001 – Seqlok Core Canonical Flow
 - ADR-002 – Memory Growth & Swap via Handoff Sequences
 - ADR-00Y – MWMR System Architecture via Domains + Observers + Rings
-- ADR-00Z – Observer Binding Role in `@seqlok/core` (`bindObserver`)
+- ADR-00Z – `@seqlok/compose` System Composition
 - ADR-010 – Ring Primitive in `@seqlok/core` (SWSR intent queue)
 
 ---
@@ -166,7 +166,7 @@ const system = defineComposition((b) => ({
 
 The exact API will evolve, but the core intent is:
 
-> “Describe the graph once; let `@seqlok/compose` realize it in a principled, type-safe way."
+> "Describe the graph once; let `@seqlok/compose` realize it in a principled, type-safe way."
 
 ---
 

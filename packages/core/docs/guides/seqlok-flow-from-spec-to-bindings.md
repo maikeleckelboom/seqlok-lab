@@ -54,9 +54,9 @@ import {
 
 // ── Spec ───────────────────────────────────────────────────────────────────────
 
-const spec = defineSpec(({ param, meter }) => ({
+const spec = defineSpec(({param, meter}) => ({
   params: {
-    rate: param.f32({ min: 0.5, max: 2 }),
+    rate: param.f32({min: 0.5, max: 2}),
     mode: param.enum(['a', 'b']),
   },
   meters: {
@@ -128,9 +128,9 @@ Constraints:
 Example:
 
 ```ts
-const spec = defineSpec(({ param, meter }) => ({
+const spec = defineSpec(({param, meter}) => ({
   params: {
-    gain: param.f32({ min: 0, max: 2 }),
+    gain: param.f32({min: 0, max: 2}),
     mode: param.enum(['normal', 'granular']),
   },
   meters: {
@@ -367,9 +367,9 @@ Pattern with multiple consumer roles on a single handoff:
 ```ts
 // Host ─────────────────────────────────────────────────────────────────────────
 
-const spec = defineSpec(({ param, meter }) => ({
+const spec = defineSpec(({param, meter}) => ({
   params: {
-    rate: param.f32({ min: 0.5, max: 2 }),
+    rate: param.f32({min: 0.5, max: 2}),
   },
   meters: {
     rms: meter.f32(),

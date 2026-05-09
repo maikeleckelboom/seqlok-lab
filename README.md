@@ -5,7 +5,7 @@ Seqlok is a real-time shared-state substrate for low-latency, multithreaded engi
 It provides:
 
 - Param and meter bindings over SharedArrayBuffer with seqlock-style coherence
-- Lock-free SPSC command rings for cross-thread control
+- Lock-free SWSR command rings for cross-thread control
 - A generic engine swap protocol (spawn, prime, prewarm, crossfade, retire)
 
 > The Seqlok packages do **not** encode concepts like audio, decks, BPM, tracks or cues.  
@@ -21,7 +21,7 @@ glitch-free transitions between stateful processors.
 
 Everything in `@seqlok/core` revolves around a single shared-state flow:
 
-`defineSpec → planLayout → allocateShared / allocateSharedPartitioned / allocateWasmShared → buildHandoff → receiveHandoff → bindController / bindProcessor / bindObserver`
+`defineSpec -> planLayout -> allocateShared / allocateSharedPartitioned / allocateWasmShared -> buildHandoff -> receiveHandoff -> bindController / bindProcessor / bindObserver`
 
 ### 1. Define a spec (range-only DSL)
 
@@ -118,5 +118,5 @@ const currentLevel = metersSnapshot.level;
 
 ## Documentation
 
-- [Developer CLI guide](./docs/DEVELOPER-CLI.md) for workspace scripts, dev flow and verification pipeline
+- [Developer CLI guide](docs/developer-cli.md) for workspace scripts, dev flow and verification pipeline
 - Additional technical documentation lives under [docs/](./docs)
