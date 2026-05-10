@@ -66,7 +66,7 @@ That split keeps runtime publication bounded and keeps higher-level analysis out
 ### Development
 
 | Command          | Description                                          |
-|------------------|------------------------------------------------------|
+| ---------------- | ---------------------------------------------------- |
 | `pnpm dev`       | Watch types + run `@seqlok/core` tests in watch mode |
 | `pnpm dev:ui`    | Same as above + start playground dev server          |
 | `pnpm dev:types` | Type-check workspace in watch mode                   |
@@ -74,7 +74,7 @@ That split keeps runtime publication bounded and keeps higher-level analysis out
 ### Testing
 
 | Command           | Description                           |
-|-------------------|---------------------------------------|
+| ----------------- | ------------------------------------- |
 | `pnpm test`       | Run all package tests (single run)    |
 | `pnpm test:core`  | Run `@seqlok/core` tests only         |
 | `pnpm test:watch` | Watch mode for `@seqlok/core`         |
@@ -84,14 +84,14 @@ That split keeps runtime publication bounded and keeps higher-level analysis out
 ### Benchmarks
 
 | Command             | Description                   |
-|---------------------|-------------------------------|
+| ------------------- | ----------------------------- |
 | `pnpm bench`        | Run `@seqlok/core` benchmarks |
 | `pnpm bench:report` | Generate benchmark report     |
 
 ### Linting and formatting
 
 | Command            | Description                    |
-|--------------------|--------------------------------|
+| ------------------ | ------------------------------ |
 | `pnpm lint`        | Lint all packages              |
 | `pnpm lint:fix`    | Lint + auto-fix all packages   |
 | `pnpm lint:md`     | Lint markdown files            |
@@ -101,7 +101,7 @@ That split keeps runtime publication bounded and keeps higher-level analysis out
 ### Building and cleanup
 
 | Command             | Description                                       |
-|---------------------|---------------------------------------------------|
+| ------------------- | ------------------------------------------------- |
 | `pnpm build`        | Build all packages + strip extra `.d.ts`          |
 | `pnpm clean`        | Remove dist, caches, logs from all packages       |
 | `pnpm clean:caches` | Remove only cache directories                     |
@@ -110,7 +110,7 @@ That split keeps runtime publication bounded and keeps higher-level analysis out
 ### Verification gates
 
 | Command       | Description                                      |
-|---------------|--------------------------------------------------|
+| ------------- | ------------------------------------------------ |
 | `pnpm check`  | `test:types` → `test` → `lint`                   |
 | `pnpm verify` | `clean` → `build` → `check` (full CI simulation) |
 
@@ -141,7 +141,7 @@ of truth.
 ### TLA+ model checking
 
 | Command                 | Description                         |
-|-------------------------|-------------------------------------|
+| ----------------------- | ----------------------------------- |
 | `pnpm tla:fetch`        | Download TLA+ tools to `tools/tla/` |
 | `pnpm tla:hotswap`      | Run hotswap spec (invariants only)  |
 | `pnpm tla:hotswap:full` | Run hotswap spec (full model check) |
@@ -164,7 +164,7 @@ cd packages/core
 Most library packages share a near-common script interface:
 
 | Script            | Description                     |
-|-------------------|---------------------------------|
+| ----------------- | ------------------------------- |
 | `pnpm dev`        | Start test watch mode           |
 | `pnpm test`       | Run tests (single run)          |
 | `pnpm test:watch` | Run tests in watch mode         |
@@ -226,7 +226,7 @@ pnpm -r -F "@seqlok/*" run lint
 The workspace uses composite project references for incremental builds.
 
 | Config File                       | Purpose                                               |
-|-----------------------------------|-------------------------------------------------------|
+| --------------------------------- | ----------------------------------------------------- |
 | `tsconfig.base.json`              | Shared compiler options, strict mode, paths           |
 | `tsconfig.json`                   | Solution file with project references                 |
 | `tsconfig.workspace.json`         | Dev-time workspace type-checking                      |

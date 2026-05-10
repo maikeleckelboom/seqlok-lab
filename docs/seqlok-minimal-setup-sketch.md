@@ -41,7 +41,7 @@ Current Seqlok groups shared domains under `params` and `meters`.
 
 ```ts
 const laneSpec = defineSpec(({ param, meter }) => ({
-  id: 'lane',
+  id: "lane",
 
   params: {
     volume: param.f32({ min: 0, max: 1 }),
@@ -53,7 +53,7 @@ const laneSpec = defineSpec(({ param, meter }) => ({
     peakL: meter.f32(),
     peakR: meter.f32(),
   },
-}))
+}));
 ```
 
 That shape is small on purpose.
@@ -65,11 +65,11 @@ It does not become your application model.
 ## Canonical Host-Side Setup
 
 ```ts
-const plan = planLayout(laneSpec)
-const backing = allocateShared(plan)
-const handoff = buildHandoff(plan, backing)
+const plan = planLayout(laneSpec);
+const backing = allocateShared(plan);
+const handoff = buildHandoff(plan, backing);
 
-const controller = bindController(laneSpec, plan, backing)
+const controller = bindController(laneSpec, plan, backing);
 ```
 
 That is the explicit long path.
@@ -87,10 +87,10 @@ It is the best path to show in a sketch because it keeps the ownership model vis
 ## Canonical Worker-Side Setup
 
 ```ts
-const accepted = acceptHandoff(handoff)
+const accepted = acceptHandoff(handoff);
 
-const processor = bindProcessor(accepted)
-const observer = bindObserver(accepted)
+const processor = bindProcessor(accepted);
+const observer = bindObserver(accepted);
 ```
 
 `bindObserver` is optional.
@@ -106,15 +106,15 @@ The important thing is that the worker binds from a **accepted handoff**, not fr
 The controller is the host-facing, cold-path writer for params and reader for meters.
 
 ```ts
-controller.params.set('volume', 0.9)
+controller.params.set("volume", 0.9);
 
 controller.params.update({
   volume: 0.9,
   pan: 0.2,
-})
+});
 
-const params = controller.params.snapshot()
-const meters = controller.meters.snapshot(['peakL', 'peakR'])
+const params = controller.params.snapshot();
+const meters = controller.meters.snapshot(["peakL", "peakR"]);
 ```
 
 This surface favors explicit writes, clear ownership, and allocation-tolerant reads.
@@ -127,13 +127,13 @@ The processor is the hot-path reader for params and writer for meters.
 
 ```ts
 processor.params.within((params) => {
-  renderBlock(params.volume, params.pan, params.bypass)
+  renderBlock(params.volume, params.pan, params.bypass);
 
   processor.meters.publish((write) => {
-    write.peakL(leftPeak)
-    write.peakR(rightPeak)
-  })
-})
+    write.peakL(leftPeak);
+    write.peakR(rightPeak);
+  });
+});
 ```
 
 This is the tight loop surface.
@@ -146,8 +146,8 @@ It exists to stay bounded, coherent, and allocation-free in the hot path.
 If you need passive reads without write authority, bind an observer.
 
 ```ts
-const uiParams = observer.params.snapshot(['volume', 'pan'])
-const uiMeters = observer.meters.snapshot(['peakL', 'peakR'])
+const uiParams = observer.params.snapshot(["volume", "pan"]);
+const uiMeters = observer.meters.snapshot(["peakL", "peakR"]);
 ```
 
 That is useful for telemetry, HUDs, visualizers, analyzers, and dev tools.
@@ -163,11 +163,11 @@ If you are staying on the owner side and want to reuse the same `{ spec, plan, b
 triple cleanly, current Seqlok exposes `createSharedContext(...)`.
 
 ```ts
-const ctx = createSharedContext(laneSpec)
+const ctx = createSharedContext(laneSpec);
 
-const controller = bindController(ctx)
-const observer = bindObserver(ctx)
-const handoff = buildHandoff(ctx)
+const controller = bindController(ctx);
+const observer = bindObserver(ctx);
+const handoff = buildHandoff(ctx);
 ```
 
 This does **not** replace the canonical model.
@@ -183,18 +183,18 @@ Commands are for discrete intent, not continuously shared state.
 
 ```ts
 const mailbox = createCommandMailbox({
-  mailboxId: 'lane-1',
+  mailboxId: "lane-1",
   codec,
   layout: { capacity: 256, wordsPerSlot: codec.wordsPerSlot },
-})
+});
 
 const result = mailbox.producer.push({
-  kind: 'seek',
+  kind: "seek",
   targetFrame: 44100 * 150,
-})
+});
 
 if (!result.ok) {
-  reportCommandFailure(result)
+  reportCommandFailure(result);
 }
 ```
 
@@ -217,7 +217,7 @@ const decision = stepSwapStateRT(
   activeKind,
   nextKind,
   noneKindSentinel,
-)
+);
 ```
 
 That is intentionally more explicit than a cute one-liner.

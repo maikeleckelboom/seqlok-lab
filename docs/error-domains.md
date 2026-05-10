@@ -26,8 +26,8 @@ domain-local ordinal.
 ## Concrete domains in use
 
 | Domain ID | Prefix       | Owner                | Notes                              |
-|----------:|--------------|----------------------|------------------------------------|
-|         0 | *(none)*     | n/a                  | Unknown/unregistered               |
+| --------: | ------------ | -------------------- | ---------------------------------- |
+|         0 | _(none)_     | n/a                  | Unknown/unregistered               |
 |         1 | `internal`   | `@seqlok/base`       | Base/internal invariants           |
 |        10 | `env`        | `@seqlok/core`       | Environment / feature gating       |
 |        11 | `backing`    | `@seqlok/core`       | Shared memory / layout allocation  |

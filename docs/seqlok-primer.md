@@ -320,7 +320,7 @@ graph.
 ```
 
 | Package               | Role                                                         |
-|-----------------------|--------------------------------------------------------------|
+| --------------------- | ------------------------------------------------------------ |
 | `@seqlok/base`        | shared error types, numeric domain codes, zero external deps |
 | `@seqlok/primitives`  | seqlock and SWSR ring on `SharedArrayBuffer`                 |
 | `@seqlok/core`        | typed spec -> layout -> alloc -> handoff -> bind lifecycle   |
@@ -385,7 +385,7 @@ Seqlok stays at the coordination boundary.
 ## Where to Go Next
 
 | What you need                                  | Where to look                                          |
-|------------------------------------------------|--------------------------------------------------------|
+| ---------------------------------------------- | ------------------------------------------------------ |
 | full workspace graph and package relationships | `packages/README.md`                                   |
 | per-package API surfaces                       | `packages/*/README.md` or `index.ts`                   |
 | concurrency model and role rules               | `docs/03-seqlok-concurrency-model-and-roles`           |
