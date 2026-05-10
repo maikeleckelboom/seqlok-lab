@@ -3,7 +3,11 @@ import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 
 type HotswapMode = "invonly" | "full";
-type HotswapPolicy = "single" | "reject-busy" | "mailbox-latest";
+type HotswapPolicy =
+  | "single"
+  | "reject-busy"
+  | "persistent-handoff"
+  | "mailbox-latest";
 
 const TOOLS_JAR = resolve("tools", "tla", "tla2tools.jar");
 const HOTSWAP_FORMAL_DIR = resolve("packages", "hotswap", "docs", "formal");
@@ -20,14 +24,17 @@ function getSpecBaseName(policy: HotswapPolicy): string {
       return "HotSwapSingle";
     case "reject-busy":
       return "HotSwapRejectBusy";
+    case "persistent-handoff":
+      return "HotSwapPersistentHandoff";
     case "mailbox-latest":
       return "HotSwapMailboxLatest";
   }
 }
 
 function getPolicyTlaDir(policy: HotswapPolicy): string {
-  // Policy specs live under packages/hotswap/docs/formal/policies/<policy>/tla/
-  return resolve(HOTSWAP_FORMAL_DIR, "policies", policy, "tla");
+  // Supported policies live under policies/; experimental lives under experimental/
+  const subdir = policy === "mailbox-latest" ? "experimental" : "policies";
+  return resolve(HOTSWAP_FORMAL_DIR, subdir, policy, "tla");
 }
 
 function getSpecPath(policy: HotswapPolicy): string {
@@ -47,15 +54,20 @@ interface ParsedArgs {
 }
 
 function parsePolicy(raw: string): HotswapPolicy {
-  if (raw === "single" || raw === "reject-busy" || raw === "mailbox-latest") {
+  if (
+    raw === "single" ||
+    raw === "reject-busy" ||
+    raw === "persistent-handoff" ||
+    raw === "mailbox-latest"
+  ) {
     return raw;
   }
 
   console.error(
-    `Unknown policy "${raw}". Supported: "single", "reject-busy", "mailbox-latest"`,
+    `Unknown policy "${raw}". Supported: "single", "reject-busy", "persistent-handoff", "mailbox-latest"`,
   );
   console.error(
-    'Examples: "--policy single" (default), "--policy reject-busy", "--policy mailbox-latest"',
+    'Examples: "--policy single" (default), "--policy reject-busy", "--policy persistent-handoff", "--policy mailbox-latest"',
   );
 
   process.exitCode = 1;
@@ -83,18 +95,26 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
       "  pnpm tla:hotswap:full                           # single, full",
     );
     console.log(
-      "  pnpm tla:hotswap -- --policy reject-busy        # reject-busy, invonly",
+      "  pnpm tla:hotswap -- --policy reject-busy           # reject-busy, invonly",
     );
     console.log(
-      "  pnpm tla:hotswap:full -- --policy reject-busy   # reject-busy, full",
+      "  pnpm tla:hotswap:full -- --policy reject-busy      # reject-busy, full",
     );
     console.log(
-      "  pnpm tla:hotswap -- --policy mailbox-latest     # mailbox-latest, invonly (EXPERIMENTAL)",
+      "  pnpm tla:hotswap -- --policy persistent-handoff    # persistent-handoff, invonly",
     );
     console.log(
-      "  pnpm tla:hotswap:full -- --policy mailbox-latest # mailbox-latest, full (EXPERIMENTAL)",
+      "  pnpm tla:hotswap:full -- --policy persistent-handoff # persistent-handoff, full",
     );
-    console.log("  pnpm tla:hotswap:full -- --policy=reject-busy    # -nowarning is already set by the script");
+    console.log(
+      "  pnpm tla:hotswap -- --policy mailbox-latest        # mailbox-latest, invonly (EXPERIMENTAL)",
+    );
+    console.log(
+      "  pnpm tla:hotswap:full -- --policy mailbox-latest   # mailbox-latest, full (EXPERIMENTAL)",
+    );
+    console.log(
+      "  pnpm tla:hotswap:full -- --policy=reject-busy      # -nowarning is already set by the script",
+    );
 
     process.exitCode = 1;
     // eslint-disable-next-line no-process-exit
@@ -123,7 +143,7 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
 
       if (typeof next !== "string") {
         console.error(
-          'Missing value for "--policy". Expected "single", "reject-busy", or "mailbox-latest".',
+          'Missing value for "--policy". Expected "single", "reject-busy", "persistent-handoff", or "mailbox-latest".',
         );
         process.exitCode = 1;
         // eslint-disable-next-line no-process-exit
