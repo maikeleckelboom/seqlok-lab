@@ -1,125 +1,118 @@
 # Seqlok
 
-Seqlok is a real-time shared-state substrate for low-latency, multithreaded engines.
+Seqlok is a deterministic shared-memory contract system for timing-sensitive, multithreaded engines.
 
-[//]: # (Seqlok is a deterministic shared-memory contract system for real-time apps, with structured spec authoring, portable)
-[//]: # (spec data, explicit planning, explicit boundary adoption, and role-specific bindings.)
+It gives you:
 
-It provides:
+- structured spec authoring for params and meters
+- deterministic memory planning
+- explicit shared backing allocation
+- explicit handoff across trust boundaries
+- role-specific bindings for controller, processor, and observer
+- lock-free SWSR command rings
+- a generic engine-swap protocol
 
-- Param and meter bindings over SharedArrayBuffer with seqlock-style coherence
-- Lock-free SWSR command rings for cross-thread control
-- A generic engine swap protocol (spawn, prime, prewarm, crossfade, retire)
+> Seqlok does **not** encode product concepts like decks, tracks, BPM, transport rules, or cues. Those belong in application code built on top of the substrate.
 
-> The Seqlok packages do **not** encode concepts like audio, decks, BPM, tracks or cues.  
-> Those concerns live in application code built on top of this substrate.
-
-Audio and DSP are the first clients. The primitives are designed to work equally well for
-GPU simulations, live video pipelines, physics engines or any system that needs
-glitch-free transitions between stateful processors.
+Audio and DSP are the first clients, but the model is broader than audio. It fits any system where a hot path must cross a runtime boundary without torn state, hidden layout, or ad hoc memory contracts.
 
 ---
 
-## Canonical core API
+## Canonical core flow
 
-Everything in `@seqlok/core` revolves around a single shared-state flow:
+Everything in `@seqlok/core` centers on one explicit flow:
 
 `defineSpec -> planLayout -> allocateShared / allocateSharedPartitioned / allocateWasmShared -> buildHandoff -> acceptHandoff -> bindController / bindProcessor / bindObserver`
 
-### 1. Define a spec (range-only DSL)
+`keysOf(spec)` exists too, but it is ergonomic sugar. It projects canonical runtime keys back into the authored shape. It is not part of runtime identity.
 
-```ts
-import {defineSpec} from "@seqlok/core";
+---
 
-export const deckSpec = defineSpec(({param, meter}) => ({
-  params: {
-    playbackRate: param.f32({min: 0.5, max: 2}),
-    volume: param.f32({min: 0, max: 1}),
-  },
-  meters: {
-    position: meter.f32(),
-    level: meter.f32(),
-  },
-}));
-```
-
-### 2. Plan layout and allocate backing
-
-```ts
-import {
-  planLayout,
-  allocateShared,
-  buildHandoff,
-  type Handoff,
-} from "@seqlok/core";
-import {deckSpec} from "./deckSpec";
-
-const plan = planLayout(deckSpec);
-const backing = allocateShared(plan);
-
-const handoff: Handoff = buildHandoff(plan, backing);
-```
-
-### 3. Receive the handoff and bind roles
+## Minimal example
 
 ```ts
 import {
   acceptHandoff,
+  allocateShared,
   bindController,
   bindProcessor,
-  bindObserver,
+  buildHandoff,
+  defineSpec,
+  keysOf,
+  planLayout,
 } from "@seqlok/core";
-import type {SpecInput} from "@seqlok/core";
 
-import type {Handoff} from "./topology-types";
+export const deckSpec = defineSpec(({ param, meter }) => ({
+  id: "deck",
+  params: {
+    playback: {
+      rate: param.f32({ min: 0.5, max: 2 }),
+    },
+    mixer: {
+      volume: param.f32({ min: 0, max: 1 }),
+    },
+  },
+  meters: {
+    output: {
+      level: meter.f32(),
+    },
+  },
+}));
 
-const incomingHandoff: Handoff;
+export const deckKeys = keysOf(deckSpec);
 
-const shared = acceptHandoff(incomingHandoff);
+const plan = planLayout(deckSpec);
+const backing = allocateShared(plan);
 
-const controller = bindController(shared);
-const processor = bindProcessor(shared);
-const observer = bindObserver(shared);
-```
+const controller = bindController(deckSpec, plan, backing);
+const handoff = buildHandoff(plan, backing);
 
-### 4. Controller: write params, read meters
+controller.params.set(deckKeys.params.playback.rate, 1);
+controller.params.update({
+  [deckKeys.params.mixer.volume]: 0.8,
+});
 
-```ts
-controller.params.set("playbackRate", 1);
-controller.params.update({volume: 0.8});
+const accepted = acceptHandoff(handoff);
+const processor = bindProcessor(accepted);
 
-const metersSnapshot = controller.meters.snapshot();
-const level = metersSnapshot.level;
-```
-
-### 5. Processor: read params, publish meters
-
-```ts
-processor.params.within((view) => {
-  const rate = view.playbackRate;
-  const gain = view.volume;
+processor.params.within((params) => {
+  const rate = params[deckKeys.params.playback.rate];
+  const gain = params[deckKeys.params.mixer.volume];
   processAudioBlock(rate, gain);
 });
 
-processor.meters.publish((w) => {
-  w.set("position", computePosition());
-  w.set("level", computeLevel());
+processor.meters.publish((writer) => {
+  writer.set(deckKeys.meters.output.level, computeLevel());
 });
 ```
 
-### 6. Observer: read-only view
+---
 
-```ts
-const paramsSnapshot = observer.params.snapshot();
-const metersSnapshot = observer.meters.snapshot();
+## Packages
 
-const currentRate = paramsSnapshot.playbackRate;
-const currentLevel = metersSnapshot.level;
-```
+- `@seqlok/core`  
+  Specs, layout planning, shared backing, handoff, and bindings.
+- `@seqlok/primitives`  
+  Low-level synchronization and memory primitives.
+- `@seqlok/commands`  
+  Lock-free command-ring substrate.
+- `@seqlok/streambuf`  
+  Stream-oriented shared-buffer utilities.
+- `@seqlok/worklet-mount`  
+  Worklet mounting and runtime integration helpers.
+- `@seqlok/hotswap`  
+  Generic engine-swap and overlap protocol.
 
 ---
 
 ## Documentation
 
-- [Developer CLI guide](docs/developer-cli.md) for workspace scripts, dev flow and verification pipeline
+- [Developer CLI guide](docs/developer-cli.md)
+- [Core package docs](packages/core/README.md)
 - Additional technical documentation lives under [docs/](./docs)
+
+---
+
+## License
+
+See the repository license for current licensing terms.
