@@ -2,6 +2,9 @@
 
 Seqlok is a real-time shared-state substrate for low-latency, multithreaded engines.
 
+[//]: # (Seqlok is a deterministic shared-memory contract system for real-time apps, with structured spec authoring, portable)
+[//]: # (spec data, explicit planning, explicit boundary adoption, and role-specific bindings.)
+
 It provides:
 
 - Param and meter bindings over SharedArrayBuffer with seqlock-style coherence
@@ -26,12 +29,12 @@ Everything in `@seqlok/core` revolves around a single shared-state flow:
 ### 1. Define a spec (range-only DSL)
 
 ```ts
-import { defineSpec } from "@seqlok/core";
+import {defineSpec} from "@seqlok/core";
 
-export const deckSpec = defineSpec(({ param, meter }) => ({
+export const deckSpec = defineSpec(({param, meter}) => ({
   params: {
-    playbackRate: param.f32({ min: 0.5, max: 2 }),
-    volume: param.f32({ min: 0, max: 1 }),
+    playbackRate: param.f32({min: 0.5, max: 2}),
+    volume: param.f32({min: 0, max: 1}),
   },
   meters: {
     position: meter.f32(),
@@ -49,7 +52,7 @@ import {
   buildHandoff,
   type Handoff,
 } from "@seqlok/core";
-import { deckSpec } from "./deckSpec";
+import {deckSpec} from "./deckSpec";
 
 const plan = planLayout(deckSpec);
 const backing = allocateShared(plan);
@@ -66,9 +69,9 @@ import {
   bindProcessor,
   bindObserver,
 } from "@seqlok/core";
-import type { SpecInput } from "@seqlok/core";
+import type {SpecInput} from "@seqlok/core";
 
-import type { Handoff } from "./topology-types";
+import type {Handoff} from "./topology-types";
 
 const incomingHandoff: Handoff;
 
@@ -83,7 +86,7 @@ const observer = bindObserver(shared);
 
 ```ts
 controller.params.set("playbackRate", 1);
-controller.params.update({ volume: 0.8 });
+controller.params.update({volume: 0.8});
 
 const metersSnapshot = controller.meters.snapshot();
 const level = metersSnapshot.level;

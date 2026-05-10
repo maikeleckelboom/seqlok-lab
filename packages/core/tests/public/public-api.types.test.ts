@@ -13,6 +13,7 @@ describe("Public API Surface (Runtime Exports)", () => {
     const expectedExports: string[] = [
       // SPEC
       "defineSpec",
+      "keysOf",
 
       // PLAN
       "planLayout",
