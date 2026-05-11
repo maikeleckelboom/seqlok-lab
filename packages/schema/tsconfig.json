@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "tsBuildInfoFile": "../../node_modules/.cache/tsbuildinfo/schema.tsbuildinfo",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "types": ["vitest/globals"],
+    "paths": {}
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules"]
+}

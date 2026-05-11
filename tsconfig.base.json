@@ -8,6 +8,7 @@
     "baseUrl": ".",
     "paths": {
       "@seqlok/base": ["packages/base/src/index.ts"],
+      "@seqlok/schema": ["packages/schema/src/index.ts"],
       "@seqlok/primitives": ["packages/primitives/src/index.ts"],
       "@seqlok/introspect": ["packages/introspect/src/index.ts"],
       "@seqlok/core": ["packages/core/src/index.ts"],

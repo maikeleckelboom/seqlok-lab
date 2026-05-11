@@ -9,5 +9,5 @@ import { createLibraryViteConfig } from "../../scripts/vite/vite.base.config";
 
 export default createLibraryViteConfig({
   entryRelative: "src/index.ts",
-  external: ["@seqlok/base", "@seqlok/primitives"],
+  external: ["@seqlok/base", "@seqlok/primitives", "@seqlok/schema"],
 });

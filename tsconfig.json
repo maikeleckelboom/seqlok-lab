@@ -8,6 +8,7 @@
   "files": [],
   "references": [
     { "path": "./packages/base" },
+    { "path": "./packages/schema" },
     { "path": "./packages/worklet-mount" },
     { "path": "./packages/primitives" },
     { "path": "./packages/introspect" },

@@ -15,7 +15,7 @@ import { getEnumLabelForIndex, isEnumDef } from "./enum-utils";
 
 import type { MeterPlane, ParamPlane } from "./validate";
 import type { MeterPlaneViews, ParamPlaneViews } from "../../backing/map-views";
-import type { ParamDef } from "../../spec/types";
+import type { ParamDef } from "@seqlok/schema";
 
 /**
  * Load a scalar value from a numeric array, enforcing bounds.

@@ -22,15 +22,14 @@ import {
 } from "./validate";
 import { createSpecError } from "../errors/spec";
 
+import type { ResolvedSpec, SpecInput } from "./types";
 import type {
   MeterDef,
   ParamDef,
-  ResolvedSpec,
   ScalarRange,
   SpecAstInput,
-  SpecInput,
   SpecNamespace,
-} from "./types";
+} from "@seqlok/schema";
 
 /*
  * Constants and Helpers

@@ -39,6 +39,7 @@
     "@seqlok/base": "workspace:*",
     "@seqlok/primitives": "workspace:*",
     "@seqlok/core": "workspace:*",
+    "@seqlok/schema": "workspace:*",
     "@seqlok/commands": "workspace:*",
     "@seqlok/hotswap": "workspace:*"
   },

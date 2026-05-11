@@ -4,6 +4,7 @@
  */
 export const SEQLOK_PACKAGES = [
   "base",
+  "schema",
   "worklet-mount",
   "primitives",
   "streambuf",

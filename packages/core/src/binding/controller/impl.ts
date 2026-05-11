@@ -32,7 +32,6 @@ import type { Backing } from "../../backing/types";
 import type { Plan } from "../../plan/types";
 import type {
   ArrayParamKeys,
-  ParamDef,
   ParamKeys,
   ScalarParamKeys,
   SpecInput,
@@ -58,6 +57,7 @@ import type {
   ValidatedParamSlot,
 } from "../common/validate";
 import type { JsonValue } from "@seqlok/base";
+import type { ParamDef } from "@seqlok/schema";
 
 /**
  * Convert an unknown value into a compact, JSON-safe diagnostic payload.

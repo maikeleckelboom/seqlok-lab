@@ -1,0 +1,568 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://seqlok.dev/schema/spec-ast/v1.json",
+  "title": "SeqlokSpecAst",
+  "description": "Canonical authored spec AST for Seqlok shared-memory bridges. This schema validates authored structure, not meaning. Semantic compilation owns rules such as numeric range validity, runtime-contract formation, namespace flattening, planner invariants, and compatibility/hash policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional self-reference to this schema version for tooling and editor integration."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional authored identifier. Current core accepts omitted id and defaults it during semantic compilation."
+    },
+    "params": {
+      "$ref": "#/$defs/ParamNamespace",
+      "description": "Controller-owned authored namespace tree. Nested namespaces are allowed at the authored layer and are flattened later."
+    },
+    "meters": {
+      "$ref": "#/$defs/MeterNamespace",
+      "description": "Processor-owned authored namespace tree. Nested namespaces are allowed at the authored layer and are flattened later."
+    }
+  },
+  "$defs": {
+    "PositiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Positive integer used for fixed-length array fields."
+    },
+    "EnumVocabulary": {
+      "type": "array",
+      "description": "Enum label vocabulary. Labels must be non-empty strings and unique. Order is significant and must be preserved.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "ParamNamespace": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ParamNode"
+      },
+      "description": "Recursive authored namespace for params."
+    },
+    "MeterNamespace": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/MeterNode"
+      },
+      "description": "Recursive authored namespace for meters."
+    },
+    "ParamNode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ParamFieldDef"
+        },
+        {
+          "$ref": "#/$defs/ParamNamespace"
+        }
+      ]
+    },
+    "MeterNode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/MeterFieldDef"
+        },
+        {
+          "$ref": "#/$defs/MeterNamespace"
+        }
+      ]
+    },
+    "ParamFieldDef": {
+      "description": "Param leaf field definition.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/F32ParamDef"
+        },
+        {
+          "$ref": "#/$defs/I32ParamDef"
+        },
+        {
+          "$ref": "#/$defs/U32ParamDef"
+        },
+        {
+          "$ref": "#/$defs/BoolParamDef"
+        },
+        {
+          "$ref": "#/$defs/EnumParamDef"
+        },
+        {
+          "$ref": "#/$defs/F32ArrayParamDef"
+        },
+        {
+          "$ref": "#/$defs/I32ArrayParamDef"
+        },
+        {
+          "$ref": "#/$defs/U32ArrayParamDef"
+        },
+        {
+          "$ref": "#/$defs/U8ArrayParamDef"
+        },
+        {
+          "$ref": "#/$defs/I8ArrayParamDef"
+        },
+        {
+          "$ref": "#/$defs/I16ArrayParamDef"
+        },
+        {
+          "$ref": "#/$defs/U16ArrayParamDef"
+        },
+        {
+          "$ref": "#/$defs/BoolArrayParamDef"
+        },
+        {
+          "$ref": "#/$defs/EnumArrayParamDef"
+        }
+      ]
+    },
+    "MeterFieldDef": {
+      "description": "Meter leaf field definition.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/F32MeterDef"
+        },
+        {
+          "$ref": "#/$defs/F64MeterDef"
+        },
+        {
+          "$ref": "#/$defs/I32MeterDef"
+        },
+        {
+          "$ref": "#/$defs/U32MeterDef"
+        },
+        {
+          "$ref": "#/$defs/BoolMeterDef"
+        },
+        {
+          "$ref": "#/$defs/EnumMeterDef"
+        },
+        {
+          "$ref": "#/$defs/F32ArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/F64ArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/I32ArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/U32ArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/U8ArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/I8ArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/I16ArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/U16ArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/BoolArrayMeterDef"
+        },
+        {
+          "$ref": "#/$defs/EnumArrayMeterDef"
+        }
+      ]
+    },
+    "F32ParamDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "f32"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        }
+      }
+    },
+    "I32ParamDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "i32"
+        },
+        "min": {
+          "type": "integer"
+        },
+        "max": {
+          "type": "integer"
+        }
+      }
+    },
+    "U32ParamDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "u32"
+        },
+        "min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "BoolParamDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "bool"
+        }
+      }
+    },
+    "EnumParamDef": {
+      "type": "object",
+      "required": ["kind", "values"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "enum"
+        },
+        "values": {
+          "$ref": "#/$defs/EnumVocabulary"
+        }
+      }
+    },
+    "F32ArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "f32.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "I32ArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "i32.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "U32ArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "u32.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "U8ArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "u8.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "I8ArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "i8.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "I16ArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "i16.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "U16ArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "u16.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "BoolArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "bool.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "EnumArrayParamDef": {
+      "type": "object",
+      "required": ["kind", "values", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "enum.array"
+        },
+        "values": {
+          "$ref": "#/$defs/EnumVocabulary"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "F32MeterDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "f32"
+        }
+      }
+    },
+    "F64MeterDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "f64"
+        }
+      }
+    },
+    "I32MeterDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "i32"
+        }
+      }
+    },
+    "U32MeterDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "u32"
+        }
+      }
+    },
+    "BoolMeterDef": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "bool"
+        }
+      }
+    },
+    "EnumMeterDef": {
+      "type": "object",
+      "required": ["kind", "values"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "enum"
+        },
+        "values": {
+          "$ref": "#/$defs/EnumVocabulary"
+        }
+      }
+    },
+    "F32ArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "f32.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "F64ArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "f64.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "I32ArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "i32.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "U32ArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "u32.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "U8ArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "u8.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "I8ArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "i8.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "I16ArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "i16.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "U16ArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "u16.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "BoolArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "bool.array"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    },
+    "EnumArrayMeterDef": {
+      "type": "object",
+      "required": ["kind", "values", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "enum.array"
+        },
+        "values": {
+          "$ref": "#/$defs/EnumVocabulary"
+        },
+        "length": {
+          "$ref": "#/$defs/PositiveInteger"
+        }
+      }
+    }
+  }
+}

@@ -1,7 +1,5 @@
 import dts from "rollup-plugin-dts";
 
-const external = ["@seqlok/base", "@seqlok/primitives", "@seqlok/schema"];
-
 export default [
   {
     input: "src/index.ts",
@@ -15,6 +13,5 @@ export default [
         respectExternal: true,
       }),
     ],
-    external,
   },
 ];

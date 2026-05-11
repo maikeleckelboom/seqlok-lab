@@ -8,7 +8,7 @@
  * the enum tables carried in the Spec.
  */
 
-import type { ParamDef } from "../../spec/types";
+import type { ParamDef } from "@seqlok/schema";
 
 type ObjectRecord = Record<string, unknown>;
 

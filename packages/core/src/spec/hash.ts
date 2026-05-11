@@ -1,4 +1,5 @@
-import type { MeterDef, ParamDef, SpecHash, SpecInput } from "./types";
+import type { SpecHash, SpecInput } from "./types";
+import type { MeterDef, ParamDef } from "@seqlok/schema";
 
 type HashableSpecContent = Readonly<{
   id?: string;

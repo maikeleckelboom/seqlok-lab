@@ -15,13 +15,13 @@ import { createSpecError } from "../errors/spec";
 import { getMeterKindEntry, getParamKindEntry } from "../spec/kinds";
 
 import type { EntrySlot, LockStrideBytes, PlaneByteLengths } from "./types";
+import type { SpecInput } from "../spec/types";
 import type {
   MeterDef,
   ParamDef,
   ScalarMeterDef,
   ScalarParamDef,
-  SpecInput,
-} from "../spec/types";
+} from "@seqlok/schema";
 
 /**
  * Internal per-plane byte aggregates used during planning.

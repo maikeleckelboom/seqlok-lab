@@ -1,6 +1,6 @@
 import { hashCanonicalSpecContent } from "./hash";
 
-import type { MeterDef, ParamDef } from "./types";
+import type { MeterDef, ParamDef } from "@seqlok/schema";
 
 type AnonymousSpecIdentityInput = Readonly<{
   params: Readonly<Record<string, ParamDef>>;

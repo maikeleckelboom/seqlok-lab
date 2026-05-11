@@ -7,7 +7,7 @@
  * This module normalizes that to a stable empty record to avoid `undefined` plumbing.
  */
 
-import type { ParamDef } from "../../spec/types";
+import type { ParamDef } from "@seqlok/schema";
 
 /**
  * Normalized param definition table.

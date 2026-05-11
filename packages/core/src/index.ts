@@ -14,7 +14,7 @@ export {
   type ParamBuilders,
   type MeterBuilders,
 } from "./spec/define";
-export type { SpecInput, SpecAstInput, ResolvedSpec } from "./spec/types";
+export type { SpecInput, ResolvedSpec } from "./spec/types";
 export { keysOf } from "./spec/keys";
 export type {
   KeyMirrorFromAst,

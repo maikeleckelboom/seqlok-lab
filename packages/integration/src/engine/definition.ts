@@ -12,12 +12,13 @@ import {
   defineSpec,
   type ParamBuilders,
   type MeterBuilders,
-  type SpecAstInput,
   type ResolvedSpec,
 } from "@seqlok/core";
 
+
 import type { EngineInstance } from "../lane/engine-bank";
 import type { RingDefinition } from "@seqlok/commands";
+import type { SpecAstInput } from "@seqlok/schema";
 
 /**
  * Builders exposed to engine spec authors.

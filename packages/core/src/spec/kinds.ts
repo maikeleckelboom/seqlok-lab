@@ -8,8 +8,8 @@
  * error. Adding an entry here is the switch that “turns on” support for a kind.
  */
 
-import type { MeterDef, ParamDef } from "./types";
 import type { PlaneKey } from "@seqlok/primitives";
+import type { MeterDef, ParamDef } from "@seqlok/schema";
 
 export type ParamKind = ParamDef["kind"];
 export type MeterKind = MeterDef["kind"];

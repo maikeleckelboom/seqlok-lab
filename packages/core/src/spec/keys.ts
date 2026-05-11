@@ -1,10 +1,5 @@
-import type {
-  MeterDef,
-  ParamDef,
-  ResolvedSpec,
-  SpecAstInput,
-  SpecInput,
-} from "./types";
+import type { ResolvedSpec, SpecInput } from "./types";
+import type { MeterDef, ParamDef, SpecAstInput } from "@seqlok/schema";
 
 type UnionToIntersection<U> = (
   U extends unknown ? (value: U) => void : never

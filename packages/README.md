@@ -10,6 +10,10 @@ Each package is a node in a strict one-way dependency graph.
 - `@seqlok/base`  
   Core types, numeric error codes, invariants and small helpers
 
+- `@seqlok/schema`  
+  Canonical authored spec contract  
+  Structural validation, normalization, and JSON Schema export for the authored AST
+
 ### Runtime
 
 - `@seqlok/primitives`  
@@ -77,6 +81,7 @@ flowchart LR
 %% Layering left → right: Base → Runtime → Tooling → Host
   subgraph Base
     base
+    schema
   end
 
   subgraph Runtime
@@ -105,6 +110,7 @@ flowchart LR
   diagnostics --> base
   core --> primitives
   core --> base
+  core --> schema
   commands --> core
   commands --> primitives
   streambuf --> primitives

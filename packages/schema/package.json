@@ -1,6 +1,8 @@
 {
-  "name": "@seqlok/core",
+  "name": "@seqlok/schema",
   "version": "0.3.0-next.0",
+  "description": "Canonical authored spec contract for Seqlok. Structural validation, normalization, and JSON Schema export.",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -12,44 +14,39 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./spec-ast/v1.json": "./spec-ast/v1.json",
     "./package.json": "./package.json"
   },
   "files": [
     "dist/**/*",
+    "spec-ast/**/*",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "bench": "vitest bench --reporter=verbose --run",
-    "bench:format": "tsx scripts/format-bench.ts",
-    "bench:report": "pnpm run bench && pnpm run bench:format",
-    "lint": "eslint src tests scripts",
-    "lint:fix": "eslint src tests scripts --fix",
-    "format": "prettier --ignore-path ../../.prettierignore --write .",
-    "clean": "rimraf dist .eslintcache node_modules/.vite node_modules/.cache pnpm-debug.log",
+    "build": "vite build && rollup -c rollup.dts.config.mts",
+    "clean": "rimraf dist .eslintcache pnpm-debug.log",
     "purge": "pnpm run clean && rimraf node_modules",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "format": "prettier --ignore-path ../../.prettierignore --write .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "test:types": "pnpm --workspace-root test:types",
-    "build": "pnpm run clean && vite build && rollup -c rollup.dts.config.mts",
     "dev": "pnpm run test:watch"
-  },
-  "dependencies": {
-    "@seqlok/base": "workspace:*",
-    "@seqlok/primitives": "workspace:*",
-    "@seqlok/schema": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
     "eslint-plugin-import": "catalog:",
     "eslint-plugin-regex": "catalog:",
     "fast-check": "catalog:",
     "globals": "catalog:",
+    "rimraf": "catalog:",
     "rollup": "catalog:",
     "rollup-plugin-dts": "catalog:",
-    "tsx": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "vite": "catalog:",
