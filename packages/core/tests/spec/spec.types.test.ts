@@ -11,12 +11,12 @@ import type {
   ParamKeys,
   ScalarMeterKeys,
   ScalarParamKeys,
-  SpecInput,
 } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 describe("Spec Keys Splitting (Compile-Time Contracts)", () => {
   it("Param/Meter keys", () => {
-    interface Spec extends SpecInput {
+    interface Spec extends CanonicalSpec {
       id: "x";
       params: {
         rate: {
@@ -40,7 +40,7 @@ describe("Spec Keys Splitting (Compile-Time Contracts)", () => {
   });
 
   it("array/scalar key partitions", () => {
-    interface Spec extends SpecInput {
+    interface Spec extends CanonicalSpec {
       id: "x";
       params: {
         a: { kind: "f32"; min: 0; max: 10 };
@@ -64,7 +64,7 @@ describe("Spec Keys Splitting (Compile-Time Contracts)", () => {
 
 describe("ParamValueFor / MeterValueFor shapes (spot checks)", () => {
   it("value shapes are correct", () => {
-    interface Spec extends SpecInput {
+    interface Spec extends CanonicalSpec {
       id: "x";
       params: {
         gain: { kind: "f32"; min: 0; max: 4 };

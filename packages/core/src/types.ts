@@ -4,7 +4,8 @@ import type {
   ParamShape,
   ParamValueFor,
 } from "./binding/common/types";
-import type { MeterKeys, ParamKeys, SpecInput } from "./spec/types";
+import type { MeterKeys, ParamKeys } from "./spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * All controller-visible param values for a spec.
@@ -28,7 +29,7 @@ import type { MeterKeys, ParamKeys, SpecInput } from "./spec/types";
  * //   ...
  * // }
  */
-export type ParamValues<S extends SpecInput> = {
+export type ParamValues<S extends CanonicalSpec> = {
   [K in ParamKeys<S>]: ParamValueFor<S, K>;
 };
 
@@ -53,7 +54,7 @@ export type ParamValues<S extends SpecInput> = {
  * //   ...
  * // }
  */
-export type MeterValues<S extends SpecInput> = {
+export type MeterValues<S extends CanonicalSpec> = {
   [K in MeterKeys<S>]: MeterValueFor<S, K>;
 };
 
@@ -76,7 +77,7 @@ export type MeterValues<S extends SpecInput> = {
  *   const spectrum = view.spectrum; // Float32Array scratch view
  * });
  */
-export type ProcessorParamView<S extends SpecInput> = ParamShape<S>;
+export type ProcessorParamView<S extends CanonicalSpec> = ParamShape<S>;
 
 /**
  * Processor-side coherent meter view.
@@ -96,7 +97,7 @@ export type ProcessorParamView<S extends SpecInput> = ParamShape<S>;
  *   // write into `spectrum` here
  * });
  */
-export type ProcessorMeterView<S extends SpecInput> = MeterShape<S>;
+export type ProcessorMeterView<S extends CanonicalSpec> = MeterShape<S>;
 
 /**
  * Shape of a param snapshot constrained to a key list.
@@ -125,7 +126,7 @@ export type ProcessorMeterView<S extends SpecInput> = MeterShape<S>;
  * // }
  */
 export type SnapshotOf<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends readonly ParamKeys<S>[] = readonly ParamKeys<S>[],
 > = {
   [P in K[number]]: ParamValueFor<S, P>;
@@ -161,7 +162,7 @@ export type SnapshotOf<
  * // }
  */
 export type SnapshotMetersOf<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends readonly MeterKeys<S>[] = readonly MeterKeys<S>[],
 > = {
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents

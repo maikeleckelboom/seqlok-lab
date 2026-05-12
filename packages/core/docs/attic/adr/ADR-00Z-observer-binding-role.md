@@ -51,19 +51,19 @@ We add `bindObserver` to `@seqlok/core` as the standard read-only binding.
 ### 2.1 API surface (conceptual)
 
 ```ts
-export function bindObserver<S extends SpecInput>(
+export function bindObserver<S extends CanonicalSpec>(
   accepted: AcceptedHandoff<S>,
   options?: ObserverOptions,
 ): ObserverBinding<S>;
 
-export interface ObserverBinding<S extends SpecInput> {
+export interface ObserverBinding<S extends CanonicalSpec> {
   readonly params: ObserverParams<S>;
   readonly meters: ObserverMeters<S>;
 
   dispose(): void;
 }
 
-export interface ObserverParams<S extends SpecInput> {
+export interface ObserverParams<S extends CanonicalSpec> {
   snapshot(): ParamsSnapshot<S>;
 
   snapshot<const K extends readonly ParamKeys<S>[]>(
@@ -73,7 +73,7 @@ export interface ObserverParams<S extends SpecInput> {
   version(): PUSeq;
 }
 
-export interface ObserverMeters<S extends SpecInput> {
+export interface ObserverMeters<S extends CanonicalSpec> {
   snapshot(): MetersSnapshot<S>;
 
   snapshot<const K extends readonly MeterKeys<S>[]>(

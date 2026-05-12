@@ -2,7 +2,7 @@ import { describe, it, expectTypeOf } from "vitest";
 
 import { type MeterValueFor, type ParamValueFor } from "../../src";
 
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 type F32RO = Readonly<Float32Array>;
 type I32RO = Readonly<Int32Array>;
@@ -10,7 +10,7 @@ type U8RO = Readonly<Uint8Array>;
 
 describe("Param Shapes via ParamValueFor", () => {
   it("bool → boolean", () => {
-    interface S extends SpecInput {
+    interface S extends CanonicalSpec {
       id: "x";
       params: { enabled: { kind: "bool" } };
     }
@@ -18,7 +18,7 @@ describe("Param Shapes via ParamValueFor", () => {
   });
 
   it("enum → public string union", () => {
-    interface S extends SpecInput {
+    interface S extends CanonicalSpec {
       id: "x";
       params: { mode: { kind: "enum"; values: readonly ["a", "b", "c"] } };
     }
@@ -27,7 +27,7 @@ describe("Param Shapes via ParamValueFor", () => {
   });
 
   it("arrays → correct typed arrays", () => {
-    interface S extends SpecInput {
+    interface S extends CanonicalSpec {
       id: "x";
       params: {
         coeffsF: { kind: "f32.array"; length: 8 };
@@ -43,7 +43,7 @@ describe("Param Shapes via ParamValueFor", () => {
 
 describe("Meter Shapes via MeterValueFor", () => {
   it("scalar + array", () => {
-    interface S extends SpecInput {
+    interface S extends CanonicalSpec {
       id: "x";
       meters: {
         peak: { kind: "f32" };

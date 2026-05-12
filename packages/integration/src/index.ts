@@ -81,6 +81,15 @@ export { defineEngine } from "./engine/definition";
 export type { LanePluginDefinition, PluginRegistry } from "./plugin/registry";
 export { definePlugin, createPluginRegistry } from "./plugin/registry";
 
+export { INTEGRATION_ERRORS, createIntegrationError } from "./errors/integration";
+export type {
+  IntegrationErrorCode,
+  IntegrationErrorKey,
+  IntegrationError,
+  IntegrationErrorFactory,
+  IntegrationDuplicatePluginDetails,
+} from "./errors/integration";
+
 export type { LaneKindConfig, LaneKind } from "./lane/lane-kind";
 export { defineLaneKind } from "./lane/lane-kind";
 export { mountLane } from "./lane/mount-lane";

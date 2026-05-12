@@ -3,10 +3,10 @@
  * Structural validation for authored spec AST objects.
  *
  * Validates structure only. Semantic meaning (e.g. min < max) is owned by
- * @seqlok/core semantic compilation.
+ * @seqlok/schema canonicalization via canonicalizeSpecAst.
  */
 
-import type { SpecAstInput } from "./types";
+import type { SpecAstInput } from "./ast";
 
 export interface SchemaValidationIssue {
   readonly path: string;

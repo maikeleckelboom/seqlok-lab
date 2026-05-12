@@ -10,7 +10,7 @@
 
 import type { Backing } from "../../backing/types";
 import type { Handoff, AcceptedHandoff } from "../../handoff/types";
-import type { SpecInput } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 type ObjectRecord = Record<string, unknown>;
 
@@ -33,7 +33,7 @@ function isPacking(value: unknown): value is "shared" | "shared-partitioned" {
  * `Handoff` carries the protocol header field `version: 1`.
  * This guard is intentionally cheap; full validation belongs in `acceptHandoff`.
  */
-export function isHandoff<const S extends SpecInput>(
+export function isHandoff<const S extends CanonicalSpec>(
   value: unknown,
 ): value is Handoff<S> {
   if (!isObjectRecord(value)) {
@@ -60,7 +60,7 @@ export function isHandoff<const S extends SpecInput>(
  * `AcceptedHandoff` does not include the protocol header field `version`.
  * This guard is used for overload dispatch only.
  */
-export function isAcceptedHandoff<const S extends SpecInput>(
+export function isAcceptedHandoff<const S extends CanonicalSpec>(
   value: unknown,
 ): value is AcceptedHandoff<S> {
   if (!isObjectRecord(value)) {
@@ -83,7 +83,7 @@ export function isAcceptedHandoff<const S extends SpecInput>(
 /**
  * Converts an `AcceptedHandoff` packing into the `Backing` shape used by binding impls.
  */
-export function backingFromAccepted<const S extends SpecInput>(
+export function backingFromAccepted<const S extends CanonicalSpec>(
   accepted: AcceptedHandoff<S>,
 ): Backing {
   if (accepted.packing === "shared") {

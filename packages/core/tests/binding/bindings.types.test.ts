@@ -18,7 +18,7 @@ import type {
   ParamValueFor,
   ProcessorParams,
 } from "../../src/binding/common/types";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 describe("Backing Union Type Guards (Signatures)", () => {
   it("isSharedBacking(b: Backing): b is SharedBacking", () => {
@@ -103,7 +103,7 @@ describe("Control-Flow Narrowing: Real-Value Runtime Checks", () => {
 type F32RO = Readonly<Float32Array>;
 
 describe("binding (compile-time contracts)", () => {
-  interface S extends SpecInput {
+  interface S extends CanonicalSpec {
     readonly id: "lane";
     readonly params: {
       rate: { kind: "f32"; min: 0.25; max: 4 };

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { defineSpec } from "../../src/spec/define";
 
 import type { MeterBuilders, ParamBuilders } from "../../src/spec/define";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * Helper type representing the callback structure passed to defineSpec.
@@ -21,11 +21,11 @@ type SpecBuilder = (api: {
 
 /**
  * Wraps spec definition in a closure to verify runtime validation behavior.
- * Casts the builder output to `SpecInput` to bypass static type checking,
+ * Casts the builder output to `CanonicalSpec` to bypass static type checking,
  * allowing us to intentionally feed invalid data to the runtime validator.
  */
 function runSpec(builder: SpecBuilder): () => unknown {
-  return () => defineSpec(builder as unknown as SpecInput);
+  return () => defineSpec(builder as unknown as CanonicalSpec);
 }
 
 describe("Scalar range validation (property-based)", () => {

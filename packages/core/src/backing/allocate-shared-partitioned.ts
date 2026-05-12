@@ -17,7 +17,7 @@ import { createEnvError } from "../errors/env";
 
 import type { SharedPartitionedBacking } from "./types";
 import type { Plan } from "../plan/types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * Allocates separate SharedArrayBuffers for each plane in the layout.
@@ -26,9 +26,8 @@ import type { SpecInput } from "../spec/types";
  * @param plan - Memory layout specification
  * @returns Backing with independent SAB per plane
  *
- * @throws {Error}
- * - If SharedArrayBuffer is unsupported in the environment
- * - If any plane allocation fails
+ * @throws {BackingError} If any plane allocation fails.
+ * @throws {EnvError} If SharedArrayBuffer is unsupported in this environment.
  *
  * @example
  * ```typescript
@@ -36,7 +35,7 @@ import type { SpecInput } from "../spec/types";
  * // backing.planes contains separate SABs for each plane
  * ```
  */
-export function allocateSharedPartitioned<S extends SpecInput>(
+export function allocateSharedPartitioned<S extends CanonicalSpec>(
   plan: Plan<S>,
 ): SharedPartitionedBacking {
   if (typeof SharedArrayBuffer === "undefined") {

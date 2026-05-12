@@ -23,7 +23,7 @@ import { throwUnknownKey } from "../common/validate";
 
 import type { Backing } from "../../backing/types";
 import type { Plan } from "../../plan/types";
-import type { SpecInput } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type {
   Ephemeral,
   MeterWriter,
@@ -34,13 +34,14 @@ import type {
   ProcessorParams,
   PUSeq,
 } from "../common/types";
+import { asEphemeralView } from "../common/types";
 import type { MeterPlane, ParamPlane } from "../common/validate";
 
-type WithinCallback<S extends SpecInput> = Parameters<
+type WithinCallback<S extends CanonicalSpec> = Parameters<
   ProcessorParams<S>["within"]
 >[0];
 
-type WithinView<S extends SpecInput> =
+type WithinView<S extends CanonicalSpec> =
   WithinCallback<S> extends (view: infer V) => unknown ? V : never;
 
 /**
@@ -172,26 +173,26 @@ function paramArrayViewFor(
 
   switch (slot.plane) {
     case "PF32":
-      return ensurePlane(views.PF32, "param.array", "PF32").subarray(
+      return asEphemeralView(ensurePlane(views.PF32, "param.array", "PF32").subarray(
         start,
         end,
-      ) as Ephemeral<Float32Array>;
+      ));
     case "PI32": {
       const a = ensurePlane(views.PI32, "param.array", "PI32");
       if (slot.kind === "u32.array") {
-        return new Uint32Array(
+        return asEphemeralView(new Uint32Array(
           a.buffer,
           a.byteOffset + slot.offset,
           slot.length,
-        ) as Ephemeral<Uint32Array>;
+        ));
       }
-      return a.subarray(start, end) as Ephemeral<Int32Array>;
+      return asEphemeralView(a.subarray(start, end));
     }
     case "PB":
-      return ensurePlane(views.PB, "param.array", "PB").subarray(
+      return asEphemeralView(ensurePlane(views.PB, "param.array", "PB").subarray(
         start,
         end,
-      ) as Ephemeral<Uint8Array>;
+      ));
   }
 }
 
@@ -256,20 +257,20 @@ function meterArrayViewFor(
 
   switch (slot.plane) {
     case "MF32":
-      return ensurePlane(views.MF32, "meter.array", "MF32").subarray(
+      return asEphemeralView(ensurePlane(views.MF32, "meter.array", "MF32").subarray(
         start,
         end,
-      ) as Ephemeral<Float32Array>;
+      ));
     case "MF64":
-      return ensurePlane(views.MF64, "meter.array", "MF64").subarray(
+      return asEphemeralView(ensurePlane(views.MF64, "meter.array", "MF64").subarray(
         start,
         end,
-      ) as Ephemeral<Float64Array>;
+      ));
     case "MU32":
-      return ensurePlane(views.MU32, "meter.array", "MU32").subarray(
+      return asEphemeralView(ensurePlane(views.MU32, "meter.array", "MU32").subarray(
         start,
         end,
-      ) as Ephemeral<Uint32Array>;
+      ));
   }
 }
 
@@ -329,7 +330,7 @@ function assertNotDisposed(disposed: boolean, where: string): void {
  * - `version()` reads PU/MU commit counters via SC atomics.
  * - Lifetime is managed via `noteBinding` / `releaseBinding`.
  */
-export function processorImpl<const S extends SpecInput>(
+export function processorImpl<const S extends CanonicalSpec>(
   plan: Plan<S>,
   backing: Backing,
   options: ProcessorOptions = {},

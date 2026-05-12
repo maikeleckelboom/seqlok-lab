@@ -2,22 +2,23 @@
 
 Canonical authored spec contract for Seqlok.
 
-This package owns the **authored AST** — the JSON-serializable contract that
-all other Seqlok layers build from. It does **not** own the builder DSL,
-semantic compilation, runtime planning, or binding.
+This package owns the **authored AST** and the **canonical collapsed spec** —
+the JSON-serializable contract that all other Seqlok layers build from. It does
+**not** own the builder DSL, runtime planning, or binding.
 
 ## Purpose
 
 - Publish the canonical authored spec model as plain-data types.
 - Provide structural validation of authored spec objects.
-- Provide deterministic normalization into canonical authored form.
+- Provide the only public AST-to-canonical collapse (`canonicalizeSpecAst`).
 - Publish the official JSON Schema artifact (`spec-ast/v1.json`).
 
 ## What lives here
 
 - `SpecAstInput` and leaf definition unions (`ParamDef`, `MeterDef`).
+- `CanonicalSpec` and `CanonicalSpecFromAst` — the flat, validated runtime contract.
+- `canonicalizeSpecAst(...)` — the only public AST-to-canonical collapse function.
 - `validateSpecAst(...)` — structural validation only.
-- `normalizeSpecAst(...)` — deterministic authored-layer canonicalization.
 - `SPEC_AST_V1_ID` — the stable `$id` URI of the published JSON Schema.
 - `spec-ast/v1.json` — the published JSON Schema file, available via
   `@seqlok/schema/spec-ast/v1.json`.
@@ -25,23 +26,24 @@ semantic compilation, runtime planning, or binding.
 ## What does NOT live here
 
 - Builder DSL sugar (owned by `@seqlok/core`).
-- Semantic compilation, namespace flattening, runtime defaults (owned by `@seqlok/core`).
+- Runtime planning, backing, handoff, bindings (owned by `@seqlok/core`).
 - Spec hashing and identity (owned by `@seqlok/core`).
-- Planning, backing, handoff, bindings (owned by `@seqlok/core`).
 - `keysOf(...)` projection (owned by `@seqlok/core`).
 
-## Why normalizeSpecAst
+## Why canonicalizeSpecAst
 
-`normalizeSpecAst` operates at the **authored** layer only:
+`canonicalizeSpecAst` is the single owner of the AST-to-canonical collapse:
 
-- Sorts object keys deterministically at every nesting level
-- Preserves enum vocabulary order (identity-significant)
-- Omits empty `params`/`meters` planes
-- Does **not** flatten namespaces or apply runtime defaults
+- Validates authored structure via `validateSpecAst`
+- Flattens nested namespaces into flat dot-path canonical planes
+- Fills default scalar ranges (f32, i32, u32)
+- Generates a deterministic anonymous id when `id` is omitted
+- Omits empty planes
+- Rejects empty segments, dotted segments, duplicate canonical keys,
+  and leaf/namespace collisions
 
-This is the canonical collapsing function that makes two equivalent authored
-ASTs produce identical JSON. It is distinct from `@seqlok/core`'s semantic
-compilation, which flattens namespaces, fills defaults, and validates meaning.
+This is distinct from `@seqlok/core`'s DSL sugar, which sits on top of
+schema-owned contract types without re-owning canonical meaning.
 
 ## Schema version
 
@@ -54,9 +56,10 @@ The `$id` is `https://seqlok.dev/schema/spec-ast/v1.json`.
 ```ts
 import {
   validateSpecAst,
-  normalizeSpecAst,
+  canonicalizeSpecAst,
   SPEC_AST_V1_ID,
   type SpecAstInput,
+  type CanonicalSpec,
 } from "@seqlok/schema";
 
 const ast: SpecAstInput = {
@@ -68,7 +71,7 @@ const ast: SpecAstInput = {
 };
 
 validateSpecAst(ast); // throws SchemaValidationError if structurally invalid
-const canonical = normalizeSpecAst(ast); // deterministic authored form
+const spec: CanonicalSpec = canonicalizeSpecAst(ast); // canonical flat contract
 ```
 
 ### Importing the JSON Schema file
@@ -87,12 +90,11 @@ import schema from "@seqlok/schema/spec-ast/v1.json";
 - enum vocabularies are non-empty arrays of unique non-empty strings
 - array lengths are positive integers
 
-`@seqlok/core` validates **meaning**:
+`canonicalizeSpecAst` adds **semantic** validation over the authenticated contract:
 
 - numeric range validity (`min < max`)
-- runtime defaults
 - namespace flattening and collision rules
-- planner invariants
-- hash and compatibility policy
+- deterministic default range filling
+- deterministic missing-id materialization
 
 That boundary is intentional and should remain stable.

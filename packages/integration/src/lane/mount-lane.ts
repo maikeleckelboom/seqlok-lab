@@ -11,10 +11,10 @@ import type {
   ProcessorBinding,
   AcceptedHandoff,
   SharedContext,
-  SpecInput,
 } from "@seqlok/core";
+import type { CanonicalSpec } from "@seqlok/schema";
 
-export type LaneBindSource<S extends SpecInput> =
+export type LaneBindSource<S extends CanonicalSpec> =
   | AcceptedHandoff<S>
   | Handoff<S>
   | SharedContext<S>;
@@ -28,7 +28,7 @@ export type LaneBindSource<S extends SpecInput> =
  * - `source` may be a `Handoff`, `AcceptedHandoff`, or `SharedContext`.
  *   We bind observer/processor directly from it (core handles normalization).
  */
-export interface MountLaneOptions<S extends SpecInput> {
+export interface MountLaneOptions<S extends CanonicalSpec> {
   readonly mailboxId: string;
   readonly source: LaneBindSource<S>;
 }
@@ -42,7 +42,7 @@ export interface MountLaneOptions<S extends SpecInput> {
  * - Aggregates all processor plugins into a single `processBlock` function.
  */
 export interface MountedLane<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   EngineKindEnum extends number,
 > {
   readonly laneKindId: string;
@@ -92,7 +92,7 @@ interface ProcessorHandle {
  * - Creates a `LaneRuntimeCore` for this lane so transport/hotswap can be layered on top.
  */
 export function mountLane<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   TConfig,
   EngineKindEnum extends number,
   Command,

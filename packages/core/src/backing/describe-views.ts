@@ -11,7 +11,7 @@
 import { PLANE_PACK_ORDER, type PlaneKey } from "@seqlok/primitives";
 
 import type { Plan } from "../plan/types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 function label(key: PlaneKey): string {
   switch (key) {
@@ -54,7 +54,9 @@ function padLeft(s: string, width: number): string {
  *
  * Dev-only helper: safe to `console.log(describeViews(plan).join('\n'))`.
  */
-export function describeViews<S extends SpecInput>(plan: Plan<S>): string[] {
+export function describeViews<S extends CanonicalSpec>(
+  plan: Plan<S>,
+): string[] {
   const { planes } = plan;
 
   const lines: string[] = [];

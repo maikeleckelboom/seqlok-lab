@@ -88,6 +88,8 @@ export interface DomainDescriptor {
  * - 70–79:    @seqlok/streambuf
  * - 80–89:    @seqlok/hotswap
  * - 90–99:    @seqlok/worklet-mount
+ * - 100–109:  @seqlok/schema
+ * - 110–119:  @seqlok/integration
  * - 200–254:  user / extension domains (3rd-party engines, plugins)
  * - 255:      reserved sentinel (never assign)
  */
@@ -121,6 +123,12 @@ export interface DomainIdsTable {
 
   // @seqlok/worklet-mount (90–99)
   readonly workletMount: 90;
+
+  // @seqlok/schema (100–109)
+  readonly schema: 100;
+
+  // @seqlok/integration (110–119)
+  readonly integration: 110;
 
   // Reserved sentinel (never assign)
   readonly reserved: 255;
@@ -156,6 +164,12 @@ export const DOMAIN_IDS: DomainIdsTable = {
 
   // @seqlok/worklet-mount (90–99)
   workletMount: 90,
+
+  // @seqlok/schema (100–109)
+  schema: 100,
+
+  // @seqlok/integration (110–119)
+  integration: 110,
 
   // Reserved
   reserved: 255,
@@ -210,6 +224,8 @@ export interface DomainRangesTable {
   readonly streambuf: DomainRange;
   readonly hotswap: DomainRange;
   readonly workletMount: DomainRange;
+  readonly schema: DomainRange;
+  readonly integration: DomainRange;
   readonly user: DomainRange;
 }
 
@@ -224,6 +240,8 @@ export const DOMAIN_RANGES: Readonly<DomainRangesTable> = {
     min: DOMAIN_IDS.workletMount,
     max: DOMAIN_IDS.workletMount,
   },
+  schema: { min: 100, max: 109 },
+  integration: { min: 110, max: 119 },
   user: { min: 200, max: 254 },
 } as const;
 

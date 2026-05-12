@@ -162,7 +162,6 @@ describe("observer binding - coverage edges", () => {
       expect(err.details?.where ?? "").toMatch(/observer/i);
     };
 
-    // guard checks on all observer APIs
     expectObserverDisposed(() => observer.params.snapshot());
     expectObserverDisposed(() => observer.meters.snapshot());
     expectObserverDisposed(() => observer.params.version());
@@ -227,8 +226,7 @@ describe("observer binding - coverage edges", () => {
 
     const err = thrown as AssertionErrorShape;
 
-    expect(err.code).toBe("internal.assertionFailed");
-    expect(err.details?.where ?? "").toMatch(/bindObserver|binding\.observer/i);
+    expect(err.code).toBe("backing.allocUndersized");
   });
 
   it("validates partitioned backing capacity", () => {
@@ -266,7 +264,6 @@ describe("observer binding - coverage edges", () => {
 
     const err = thrown as AssertionErrorShape;
 
-    expect(err.code).toBe("internal.assertionFailed");
-    expect(err.details?.where ?? "").toMatch(/bindObserver|binding\.observer/i);
+    expect(err.code).toBe("backing.allocUndersized");
   });
 });

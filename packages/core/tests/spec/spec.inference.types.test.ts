@@ -2,7 +2,7 @@ import { describe, it, expectTypeOf } from "vitest";
 
 import { defineSpec } from "../../src/spec/define";
 
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 describe("DefineSpec: Strengthened Inference Contracts", () => {
   it("preserves literals for scalar ranges, enum values, and array lengths", () => {
@@ -100,19 +100,19 @@ describe("DefineSpec: Strengthened Inference Contracts", () => {
     }>();
   });
 
-  it("accepts plain-object specs when constrained by SpecInput", () => {
+  it("accepts plain-object specs when constrained by CanonicalSpec", () => {
     const input = {
       id: "plain",
       params: {
         value: { kind: "f32", min: 0, max: 1 },
       },
-    } satisfies SpecInput;
+    } satisfies CanonicalSpec;
 
     const spec = defineSpec(input);
 
     expectTypeOf<typeof spec>().toExtend<typeof input>();
 
-    expectTypeOf(spec).toExtend<SpecInput>();
+    expectTypeOf(spec).toExtend<CanonicalSpec>();
   });
 
   it("covers scalar overload variants for f32/i32", () => {

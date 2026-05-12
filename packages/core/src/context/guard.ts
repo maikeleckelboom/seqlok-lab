@@ -1,5 +1,5 @@
 import type { SharedContext } from "./types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 type ObjectRecord = Record<string, unknown>;
 
@@ -18,7 +18,7 @@ function hasOwn(obj: ObjectRecord, key: string): boolean {
  * @remarks
  * Structural only; does not verify plan/backing invariants.
  */
-export function isSharedContext<S extends SpecInput>(
+export function isSharedContext<S extends CanonicalSpec>(
   value: unknown,
 ): value is SharedContext<S> {
   if (!isObjectRecord(value)) {

@@ -34,8 +34,8 @@ import type {
   ArrayParamKeys,
   ParamKeys,
   ScalarParamKeys,
-  SpecInput,
 } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type {
   ArrayParamView,
   ControllerBinding,
@@ -346,34 +346,6 @@ function writeScalarUnchecked(
 }
 
 /**
- * Assert that the backing buffer is large enough for the plan.
- *
- * @remarks
- * - For shared backings, validates that the SAB `byteLength` can satisfy
- *   `plan.bytesTotal`.
- * - Other backing kinds (WASM, partitioned) are expected to be validated in
- *   their respective allocators or `mapViews` implementations.
- */
-function assertBackingCapacity<S extends SpecInput>(
-  plan: Plan<S>,
-  backing: Backing,
-): void {
-  if (backing.kind === "shared") {
-    const required = plan.bytesTotal >>> 0;
-    const actual = backing.sab.byteLength >>> 0;
-
-    invariant(actual >= required, () =>
-      createInternalError("assertionFailed", {
-        where: "binding.controller.backing",
-        detail: `required=${String(required)}, actual=${String(actual)}`,
-      }),
-    );
-  }
-  // Other backing kinds (e.g. WASM, partitioned) should be validated
-  // in their respective allocators / mapViews implementations.
-}
-
-/**
  * Build a controller binding from a concrete plan and backing.
  *
  * @remarks
@@ -381,8 +353,9 @@ function assertBackingCapacity<S extends SpecInput>(
  * - All validation happens before `publish`, so failures never bump PU.
  * - `version()` reads the commit counter; no parity check is needed on the
  *   controller side.
+ * - Backing capacity is validated by `mapViews`; no separate precheck needed.
  */
-export function controllerImpl<const S extends SpecInput>(
+export function controllerImpl<const S extends CanonicalSpec>(
   plan: Plan<S>,
   backing: Backing,
   paramDefs: Readonly<Record<string, ParamDef>>,
@@ -390,7 +363,6 @@ export function controllerImpl<const S extends SpecInput>(
 ): ControllerBinding<S> {
   const policy: RangePolicy = options.params?.rangePolicy ?? "reject";
 
-  assertBackingCapacity(plan, backing);
   claimBinding(backing, "controller");
 
   try {

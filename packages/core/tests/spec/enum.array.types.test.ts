@@ -1,12 +1,12 @@
 import { describe, it, expectTypeOf } from "vitest";
 
 import type { ParamShape, ParamValueFor } from "../../src/binding/common/types";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 type I32RO = Readonly<Int32Array>;
 
 describe("EnumArray: Public and Processor Shapes", () => {
-  interface S extends SpecInput {
+  interface S extends CanonicalSpec {
     readonly id: "x";
     readonly params: {
       readonly ea: {

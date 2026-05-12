@@ -25,10 +25,10 @@ import type { Backing } from "../../backing/types";
 import type { SharedContext } from "../../context/types";
 import type { Handoff, AcceptedHandoff } from "../../handoff/types";
 import type { Plan } from "../../plan/types";
-import type { SpecInput } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type { ProcessorBinding, ProcessorOptions } from "../common/types";
 
-interface NormalizedProcessorSource<S extends SpecInput> {
+interface NormalizedProcessorSource<S extends CanonicalSpec> {
   readonly plan: Plan<S>;
   readonly backing: Backing;
 }
@@ -40,7 +40,7 @@ interface NormalizedProcessorSource<S extends SpecInput> {
  * This overload is designed for worker/worklet entrypoints where the Spec may be unavailable.
  * The plan embedded in the handoff is sufficient to wire reads/writes.
  */
-export function bindProcessor<const S extends SpecInput>(
+export function bindProcessor<const S extends CanonicalSpec>(
   source: Handoff<S> | AcceptedHandoff<S> | SharedContext<S>,
   options?: ProcessorOptions,
 ): ProcessorBinding<S>;
@@ -52,7 +52,7 @@ export function bindProcessor<const S extends SpecInput>(
  * This form is useful in tests, custom hosts, or when you are composing processors
  * around a plan/backing that you already manage.
  */
-export function bindProcessor<const S extends SpecInput>(
+export function bindProcessor<const S extends CanonicalSpec>(
   spec: S,
   plan: Plan<S>,
   backing: Backing,
@@ -62,7 +62,7 @@ export function bindProcessor<const S extends SpecInput>(
 /**
  * Implementation of bindProcessor overload dispatch.
  */
-export function bindProcessor<const S extends SpecInput>(
+export function bindProcessor<const S extends CanonicalSpec>(
   arg1: Handoff<S> | AcceptedHandoff<S> | SharedContext<S> | S,
   arg2?: ProcessorOptions | Plan<S>,
   arg3?: Backing,
@@ -73,7 +73,7 @@ export function bindProcessor<const S extends SpecInput>(
   return processorImpl(plan, backing, options);
 }
 
-function normalizeSource<const S extends SpecInput>(
+function normalizeSource<const S extends CanonicalSpec>(
   arg1: Handoff<S> | AcceptedHandoff<S> | SharedContext<S> | S,
   arg2?: ProcessorOptions | Plan<S>,
   arg3?: Backing,
@@ -108,7 +108,7 @@ function normalizeSource<const S extends SpecInput>(
   };
 }
 
-function normalizeFromAccepted<const S extends SpecInput>(
+function normalizeFromAccepted<const S extends CanonicalSpec>(
   accepted: AcceptedHandoff<S>,
 ): NormalizedProcessorSource<S> {
   return {
@@ -117,7 +117,7 @@ function normalizeFromAccepted<const S extends SpecInput>(
   };
 }
 
-function getOptions<const S extends SpecInput>(
+function getOptions<const S extends CanonicalSpec>(
   arg1: Handoff<S> | AcceptedHandoff<S> | SharedContext<S> | S,
   arg2?: ProcessorOptions | Plan<S>,
   arg4?: ProcessorOptions,

@@ -1,10 +1,10 @@
 import { describe, it, expectTypeOf } from "vitest";
 
 import type { CoherentParamShape } from "../../src/binding/common/types";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 describe("Coherent Param Shape", () => {
-  interface S extends SpecInput {
+  interface S extends CanonicalSpec {
     readonly id: "demo";
     readonly params: {
       readonly gain: { kind: "f32" };

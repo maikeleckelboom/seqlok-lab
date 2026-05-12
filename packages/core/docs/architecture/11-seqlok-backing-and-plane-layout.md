@@ -197,13 +197,13 @@ same logical plane set and slot tables regardless of flavor.
 ### 4.1 Allocation entry points
 
 ```ts
-declare function allocateShared<S extends SpecInput>(
+declare function allocateShared<S extends CanonicalSpec>(
   plan: Plan<S>,
 ): SharedBacking;
-declare function allocateSharedPartitioned<S extends SpecInput>(
+declare function allocateSharedPartitioned<S extends CanonicalSpec>(
   plan: Plan<S>,
 ): SharedPartitionedBacking;
-declare function allocateWasmShared<S extends SpecInput>(
+declare function allocateWasmShared<S extends CanonicalSpec>(
   plan: Plan<S>,
 ): WasmSharedBacking;
 ```

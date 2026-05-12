@@ -2,11 +2,11 @@
  * @fileoverview
  * Public API for @seqlok/schema.
  *
- * Canonical authored spec contract: types, structural validation,
- * normalization, and JSON Schema version identifier.
+ * Canonical authored spec contract: AST types, canonical contract types,
+ * canonicalization, structural validation, and JSON Schema version identifier.
  */
 
-// Types
+// AST types
 export type {
   SpecNamespace,
   ScalarRange,
@@ -45,7 +45,27 @@ export type {
   ScalarParamDef,
   ScalarMeterDef,
   SpecAstInput,
-} from "./types";
+} from "./ast";
+
+// Canonical contract types
+export type { CanonicalSpec, CanonicalSpecFromAst } from "./canonical";
+
+// Canonicalization
+export { canonicalizeSpecAst } from "./canonicalize";
+
+// Schema error domain
+export { SCHEMA, SCHEMA_ERRORS, createSchemaError } from "./errors/schema";
+export type {
+  SchemaErrorCode,
+  SchemaErrorKey,
+  SchemaError,
+  SchemaErrorFactory,
+  SchemaInvalidDefinitionDetails,
+  SchemaInvalidSegmentDetails,
+  SchemaDuplicateCanonicalKeyDetails,
+  SchemaLeafNamespaceConflictDetails,
+  SchemaRangeInvalidDetails,
+} from "./errors/schema";
 
 // Validation
 export {
@@ -53,9 +73,6 @@ export {
   SchemaValidationError,
   type SchemaValidationIssue,
 } from "./validate";
-
-// Normalization
-export { normalizeSpecAst } from "./normalize";
 
 // JSON Schema identifier
 export { SPEC_AST_V1_ID } from "./schema-id";

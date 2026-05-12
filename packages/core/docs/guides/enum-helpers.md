@@ -4,7 +4,7 @@ This guide shows practical patterns for using the enum helpers in Seqlok
 to drive real UI controls, fixtures, and tools.
 
 All helpers are spec-driven: they read the enum vocabulary from your
-`SpecInput`, so whenever you tweak the DSL, your UI and tools stay in sync.
+`CanonicalSpec`, so whenever you tweak the DSL, your UI and tools stay in sync.
 
 ---
 
@@ -26,7 +26,7 @@ import {
 Core shape:
 
 ```ts
-declare function enumValues<S extends SpecInput, K extends EnumKeyOf<S>>(
+declare function enumValues<S extends CanonicalSpec, K extends EnumKeyOf<S>>(
   spec: S,
   key: K,
 ): readonly EnumLabel<S, K>[];
@@ -41,7 +41,7 @@ const modes = enumValues<DemoSpec, "simMode">(spec, "simMode");
 
 Requirements:
 
-- `DemoSpec` is the `SpecInput` type (usually `type DemoSpec = typeof spec`)
+- `DemoSpec` is the `CanonicalSpec` type (usually `type DemoSpec = typeof spec`)
 - `simMode` is an `enum` or `enum.array` param or meter in that spec
 
 ---
@@ -276,16 +276,18 @@ Use case: compact, order-sensitive encodings (palettes, network, textures).
 import {
   enumPaletteFor,
   type ControllerBinding,
-  type SpecInput,
-} from "@seqlok/core";
+  type CanonicalSpec,
+} from "@seqlok/schema";
 
-export type EnumParamKey<S extends SpecInput> = Extract<
+import { enumPaletteFor, type ControllerBinding } from "@seqlok/core";
+
+export type EnumParamKey<S extends CanonicalSpec> = Extract<
   keyof S["params"],
   string
 >;
 
 export function createEnumButtons<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends EnumParamKey<S>,
 >(
   ctl: ControllerBinding<S>,

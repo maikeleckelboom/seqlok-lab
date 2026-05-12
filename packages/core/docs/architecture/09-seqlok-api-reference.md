@@ -47,7 +47,7 @@ function defineSpec<const T extends SpecAstInput>(
   buildOrAst:
     | T
     | ((api: Readonly<{ param: ParamBuilders; meter: MeterBuilders }>) => T),
-): ResolvedSpec<T>;
+): CanonicalSpecFromAst<T>;
 ```
 
 `defineSpec(...)` accepts two authoring surfaces:
@@ -158,7 +158,7 @@ That means:
 Project a resolved spec's canonical flat keyspace back into a structural mirror.
 
 ```ts
-function keysOf<const S extends SpecInput>(spec: S): KeyMirrorOf<S>;
+function keysOf<const S extends CanonicalSpec>(spec: S): KeyMirrorOf<S>;
 ```
 
 Example:
@@ -214,7 +214,7 @@ Canonical runtime keys still own identity.
 Compute a deterministic plan from a validated runtime contract.
 
 ```ts
-function planLayout<S extends SpecInput>(
+function planLayout<S extends CanonicalSpec>(
   spec: S,
   options?: PlanOptions,
 ): Plan<S>;
@@ -245,7 +245,7 @@ Plans are pure:
 Allocate a single contiguous shared backing from a plan.
 
 ```ts
-function allocateShared<S extends SpecInput>(plan: Plan<S>): SharedBacking;
+function allocateShared<S extends CanonicalSpec>(plan: Plan<S>): SharedBacking;
 ```
 
 This is the golden-path backing strategy.
@@ -263,7 +263,7 @@ Use it when you want:
 Allocate a per-plane shared backing from a plan.
 
 ```ts
-function allocateSharedPartitioned<S extends SpecInput>(
+function allocateSharedPartitioned<S extends CanonicalSpec>(
   plan: Plan<S>,
 ): SharedPartitionedBacking;
 ```
@@ -285,7 +285,7 @@ Bindings do not change shape because of contiguous vs partitioned backing.
 Use a shared `WebAssembly.Memory` as the backing realization.
 
 ```ts
-function allocateWasmShared<S extends SpecInput>(
+function allocateWasmShared<S extends CanonicalSpec>(
   plan: Plan<S>,
   memory: WebAssembly.Memory,
 ): WasmSharedBacking;
@@ -306,7 +306,7 @@ Important notes:
 Create a small host-side resource bundle containing `spec`, `plan`, and `backing`.
 
 ```ts
-function createSharedContext<S extends SpecInput>(
+function createSharedContext<S extends CanonicalSpec>(
   spec: S,
   allocator?: (plan: Plan<S>) => Backing,
 ): SharedContext<S>;
@@ -336,11 +336,11 @@ This is convenience over the same explicit model, not a different architecture.
 Build a serializable boundary envelope from either a `SharedContext` or a `(plan, backing)` pair.
 
 ```ts
-function buildHandoff<S extends SpecInput>(
+function buildHandoff<S extends CanonicalSpec>(
   context: SharedContext<S>,
 ): Handoff<S>;
 
-function buildHandoff<S extends SpecInput>(
+function buildHandoff<S extends CanonicalSpec>(
   plan: Plan<S>,
   backing: Backing,
 ): Handoff<S>;
@@ -374,7 +374,7 @@ object.
 Validate a handoff envelope and produce a trusted accepted handoff.
 
 ```ts
-function acceptHandoff<S extends SpecInput>(
+function acceptHandoff<S extends CanonicalSpec>(
   handoff: Handoff<S>,
 ): AcceptedHandoff<S>;
 
@@ -408,7 +408,7 @@ const observer = bindObserver(accepted);
 Optionally compare plans for compatibility.
 
 ```ts
-function verifyHandoff<S extends SpecInput>(
+function verifyHandoff<S extends CanonicalSpec>(
   localPlan: Plan<S>,
   remotePlan: Plan<S>,
 ): void;
@@ -433,12 +433,12 @@ It is not required for the normal runtime flow.
 Bind the controller role.
 
 ```ts
-function bindController<const S extends SpecInput>(
+function bindController<const S extends CanonicalSpec>(
   context: SharedContext<S>,
   options?: ControllerOptions,
 ): ControllerBinding<S>;
 
-function bindController<const S extends SpecInput>(
+function bindController<const S extends CanonicalSpec>(
   spec: S,
   plan: Plan<S>,
   backing: Backing,
@@ -482,12 +482,12 @@ Important correction:
 Bind the processor role.
 
 ```ts
-function bindProcessor<const S extends SpecInput>(
+function bindProcessor<const S extends CanonicalSpec>(
   source: Handoff<S> | AcceptedHandoff<S> | SharedContext<S>,
   options?: ProcessorOptions,
 ): ProcessorBinding<S>;
 
-function bindProcessor<const S extends SpecInput>(
+function bindProcessor<const S extends CanonicalSpec>(
   spec: S,
   plan: Plan<S>,
   backing: Backing,
@@ -527,12 +527,12 @@ broader than that.
 Bind the observer role.
 
 ```ts
-function bindObserver<const S extends SpecInput>(
+function bindObserver<const S extends CanonicalSpec>(
   source: Handoff<S> | AcceptedHandoff<S> | SharedContext<S>,
   options?: ObserverOptions,
 ): ObserverBinding<S>;
 
-function bindObserver<const S extends SpecInput>(
+function bindObserver<const S extends CanonicalSpec>(
   spec: S,
   plan: Plan<S>,
   backing: Backing,
@@ -620,7 +620,7 @@ Author-time spec input.
 - optional recursive `params`
 - optional recursive `meters`
 
-### `SpecInput`
+### `CanonicalSpec`
 
 Normalized runtime contract.
 
@@ -628,7 +628,7 @@ Normalized runtime contract.
 - flat canonical `params` map keyed by dot-path strings
 - flat canonical `meters` map keyed by dot-path strings
 
-### `ResolvedSpec<T>`
+### `CanonicalSpecFromAst<T>`
 
 The compile-time resolved output of `defineSpec(...)`.
 

@@ -13,7 +13,7 @@ import { planLayout } from "../plan/layout";
 import type { SharedContext } from "./types";
 import type { Backing } from "../backing/types";
 import type { Plan } from "../plan/types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * Helper to create a context from a spec (allocates immediately).
@@ -28,7 +28,7 @@ import type { SpecInput } from "../spec/types";
  * const ctl = bindController(ctx);
  * ```
  */
-export function createSharedContext<S extends SpecInput>(
+export function createSharedContext<S extends CanonicalSpec>(
   spec: S,
   allocator: (plan: Plan<S>) => Backing = allocateShared,
 ): SharedContext<S> {

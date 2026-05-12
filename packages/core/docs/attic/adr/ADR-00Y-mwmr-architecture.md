@@ -65,7 +65,7 @@ We want MWMR from:
 Conceptually:
 
 ```ts
-type Domain<S extends SpecInput> = {
+type Domain<S extends CanonicalSpec> = {
   readonly spec: Spec<S>;
   readonly backing: Backing;
   readonly controller: ControllerBinding<S> | null; // one param writer
@@ -73,7 +73,7 @@ type Domain<S extends SpecInput> = {
   readonly observers: Set<ObserverBinding<S>>; // many readers
 };
 
-type SystemDomain = Domain<SpecInput>;
+type SystemDomain = Domain<CanonicalSpec>;
 
 type CommandRing = unknown; // logical type, realized via ring primitive (ADR-010)
 
@@ -105,7 +105,7 @@ The **system** is a graph of such domains wired with:
 Public surface (conceptual):
 
 ```ts
-export function bindObserver<S extends SpecInput>(
+export function bindObserver<S extends CanonicalSpec>(
   accepted: AcceptedHandoff<S>,
   options?: ObserverOptions,
 ): ObserverBinding<S>;

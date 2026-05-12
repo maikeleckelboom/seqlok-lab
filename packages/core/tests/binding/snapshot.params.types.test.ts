@@ -5,9 +5,9 @@ import type {
   ParamsSnapshot,
   SnapshotParamsObject,
 } from "../../src/binding/common/types";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
-interface S extends SpecInput {
+interface S extends CanonicalSpec {
   readonly id: "snap-params";
   readonly params: {
     readonly gain: { readonly kind: "f32" };

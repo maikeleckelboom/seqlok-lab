@@ -29,7 +29,7 @@ import type { Handoff, AcceptedHandoff } from "./types";
 import type { Backing } from "../backing/types";
 import type { SharedContext } from "../context/types";
 import type { Plan, PlaneByteLengths } from "../plan/types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * Protocol version supported by this module.
@@ -77,7 +77,7 @@ function isPlaneByteLengths(value: unknown): value is PlaneByteLengths {
  *
  * @internal
  */
-function isPlanLike<S extends SpecInput>(plan: unknown): plan is Plan<S> {
+function isPlanLike<S extends CanonicalSpec>(plan: unknown): plan is Plan<S> {
   if (!isObject(plan)) {
     return false;
   }
@@ -126,14 +126,14 @@ function isObject(value: unknown): value is Record<string, unknown> {
 /**
  * Owner-side overload: build a handoff from a `SharedContext<S>`.
  */
-export function buildHandoff<S extends SpecInput>(
+export function buildHandoff<S extends CanonicalSpec>(
   context: SharedContext<S>,
 ): Handoff<S>;
 
 /**
  * Owner-side overload: build a handoff from an explicit `(plan, backing)` pair.
  */
-export function buildHandoff<S extends SpecInput>(
+export function buildHandoff<S extends CanonicalSpec>(
   plan: Plan<S>,
   backing: Backing,
 ): Handoff<S>;
@@ -141,7 +141,7 @@ export function buildHandoff<S extends SpecInput>(
 /**
  * Runtime implementation for both `buildHandoff` overloads.
  */
-export function buildHandoff<S extends SpecInput>(
+export function buildHandoff<S extends CanonicalSpec>(
   arg1: Plan<S> | SharedContext<S>,
   arg2?: Backing,
 ): Handoff<S> {
@@ -245,7 +245,7 @@ export function buildHandoff<S extends SpecInput>(
  *
  * Use this overload when the `Handoff<S>` type is preserved across the boundary.
  */
-export function acceptHandoff<S extends SpecInput>(
+export function acceptHandoff<S extends CanonicalSpec>(
   handoff: Handoff<S>,
 ): AcceptedHandoff<S>;
 
@@ -261,7 +261,7 @@ export function acceptHandoff(handoff: unknown): AcceptedHandoff;
  *
  * @internal
  */
-export function acceptHandoff<S extends SpecInput>(
+export function acceptHandoff<S extends CanonicalSpec>(
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   handoff: Handoff<S> | unknown,
 ): AcceptedHandoff<S> {
@@ -356,7 +356,7 @@ export function acceptHandoff<S extends SpecInput>(
  * - `handoff.specHashMismatch` if `hash` values differ.
  * - `handoff.backingMismatch` if `bytesTotal` differ.
  */
-export function verifyHandoff<S extends SpecInput>(
+export function verifyHandoff<S extends CanonicalSpec>(
   localPlan: Plan<S>,
   remotePlan: Plan<S>,
 ): void {
@@ -406,7 +406,7 @@ function computeHashDiff(expected: string, received: string): string {
   return `first-diff@${String(firstDiff)}`;
 }
 
-function isSharedContext<S extends SpecInput>(
+function isSharedContext<S extends CanonicalSpec>(
   value: Plan<S> | SharedContext<S>,
 ): value is SharedContext<S> {
   return (

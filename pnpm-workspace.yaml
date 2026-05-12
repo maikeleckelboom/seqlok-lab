@@ -21,7 +21,7 @@ catalog:
   prettier: 4.0.0-alpha.12
   reka-ui: ^2.6.1
   rimraf: ^6.1.2
-  rollup: ^4.53.3
+  rollup: ^4.59.0
   rollup-plugin-dts: 6.2.3
   simple-git-hooks: ^2.13.1
   tailwindcss: ^4.1.17

@@ -1,7 +1,8 @@
 import type { LanePluginPack } from "../lane/lane-plugins";
-import type { SpecInput } from "@seqlok/core";
+import type { CanonicalSpec } from "@seqlok/schema";
+import { createIntegrationError } from "../errors/integration";
 
-export interface LanePluginDefinition<S extends SpecInput> {
+export interface LanePluginDefinition<S extends CanonicalSpec> {
   readonly id: string;
   readonly create: () => LanePluginPack<S>;
 }
@@ -11,13 +12,13 @@ export interface LanePluginDefinition<S extends SpecInput> {
  *
  * Lets call sites be more explicit and centralizes the type parameters.
  */
-export function definePlugin<S extends SpecInput>(
+export function definePlugin<S extends CanonicalSpec>(
   definition: LanePluginDefinition<S>,
 ): LanePluginDefinition<S> {
   return definition;
 }
 
-export interface PluginRegistry<S extends SpecInput> {
+export interface PluginRegistry<S extends CanonicalSpec> {
   register(plugin: LanePluginDefinition<S>): void;
   get(id: string): LanePluginDefinition<S> | undefined;
   list(): readonly LanePluginDefinition<S>[];
@@ -28,14 +29,16 @@ export interface PluginRegistry<S extends SpecInput> {
  *
  * Intended to live at host level (Dekzer / lanes), not inside workers.
  */
-export function createPluginRegistry<S extends SpecInput>(): PluginRegistry<S> {
+export function createPluginRegistry<
+  S extends CanonicalSpec,
+>(): PluginRegistry<S> {
   const byId = new Map<string, LanePluginDefinition<S>>();
 
   const register = (plugin: LanePluginDefinition<S>): void => {
     if (byId.has(plugin.id)) {
-      throw new Error(
-        `PluginRegistry: plugin with id "${plugin.id}" is already registered.`,
-      );
+      throw createIntegrationError("duplicatePlugin", {
+        pluginId: plugin.id,
+      });
     }
     byId.set(plugin.id, plugin);
   };

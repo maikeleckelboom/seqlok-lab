@@ -4,9 +4,9 @@ import type {
   ArrayParamView,
   ControllerParams,
 } from "../../src/binding/common/types";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
-interface S extends SpecInput {
+interface S extends CanonicalSpec {
   readonly id: "lane";
   readonly params: {
     readonly coeffs: {

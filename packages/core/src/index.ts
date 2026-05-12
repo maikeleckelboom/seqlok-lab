@@ -14,13 +14,10 @@ export {
   type ParamBuilders,
   type MeterBuilders,
 } from "./spec/define";
-export type { SpecInput, ResolvedSpec } from "./spec/types";
+// CanonicalSpec and CanonicalSpecFromAst are owned by @seqlok/schema.
+// Import them directly from @seqlok/schema; core does not re-export them.
 export { keysOf } from "./spec/keys";
-export type {
-  KeyMirrorFromAst,
-  ParamKeyMirror,
-  MeterKeyMirror,
-} from "./spec/keys";
+export type { ParamKeyMirror, MeterKeyMirror } from "./spec/keys";
 
 // PLAN
 export { planLayout } from "./plan/layout";

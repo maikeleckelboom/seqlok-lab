@@ -24,7 +24,7 @@ import { createSpecError } from "../errors/spec";
 import { hashSpec } from "../spec/hash";
 
 import type { EntrySlot, LockStrideBytes, Plan, PlanOptions } from "./types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type { MeterDef, ParamDef } from "@seqlok/schema";
 
 /**
@@ -53,7 +53,7 @@ const PLAN_SOFT_LIMIT_BYTES = 0x7fff_ffff; // ~2GB-1
  * - Computes per-plane byte lengths and per-entry slots.
  * - Reserves `lockStrideBytes` around the seqlock planes for isolation.
  */
-export function planLayout<S extends SpecInput>(
+export function planLayout<S extends CanonicalSpec>(
   inputSpec: S,
   options: PlanOptions = {},
 ): Plan<S> {

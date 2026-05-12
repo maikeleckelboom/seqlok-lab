@@ -4,7 +4,7 @@
 
 The Seqlok core is deliberately **not** designed as a set of stateful objects or contexts. Instead, it is built on:
 
-- Algebraic data types (`SpecInput`, `Plan<S>`, `Backing`, `Handoff`, bindings)
+- Algebraic data types (`CanonicalSpec`, `Plan<S>`, `Backing`, `Handoff`, bindings)
 - Pure or "pure-ish" functions between them
 - Explicit module boundaries (`primitives` → `spec` → `plan` → `backing` → `handoff` → `binding`)
 
@@ -33,11 +33,11 @@ At the kernel level, APIs are shaped like the canonical flow:
 
 ```ts
 // owner / main
-const spec = defineSpec(/* ... */); // DSL → SpecInput
-const plan = planLayout(spec); // SpecInput → Plan<S>
+const spec = defineSpec(/* ... */); // DSL → CanonicalSpec
+const plan = planLayout(spec); // CanonicalSpec → Plan<S>
 const backing = allocateShared(plan); // Plan<S> → Backing
 const handoff = buildHandoff(plan, backing); // Plan<S> × Backing → Handoff
-const controller = bindController(spec, plan, backing); // SpecInput × Plan<S> × Backing → ControllerBinding<S>
+const controller = bindController(spec, plan, backing); // CanonicalSpec × Plan<S> × Backing → ControllerBinding<S>
 
 // worker / processor
 const accepted = acceptHandoff(handoff); // Handoff → AcceptedHandoff<S>
@@ -284,7 +284,7 @@ These can wrap the canonical flow:
 
 ```ts
 // example sketch: orchestration helper (could be OO, could be functional)
-export function createControllerKit<S extends SpecInput>(spec: S) {
+export function createControllerKit<S extends CanonicalSpec>(spec: S) {
   const plan = planLayout(spec);
   const backing = allocateShared(plan);
   const handoff = buildHandoff(plan, backing);
@@ -300,7 +300,7 @@ export function createControllerKit<S extends SpecInput>(spec: S) {
 }
 
 // worker side
-export function initProcessor<S extends SpecInput>(handoff: Handoff<S>) {
+export function initProcessor<S extends CanonicalSpec>(handoff: Handoff<S>) {
   const accepted = acceptHandoff(handoff);
   return bindProcessor(accepted);
 }

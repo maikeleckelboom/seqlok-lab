@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { allocateShared, planLayout } from "../../src";
 
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * Helper to construct a specification with explicit byte-size targets for
  * boolean (PB) and float32 (PF32) planes to test allocation sizing.
  */
-function makeSpec(bytesPB: number, bytesPF32: number): SpecInput {
+function makeSpec(bytesPB: number, bytesPF32: number): CanonicalSpec {
   return {
     id: "demo",
     params: {
@@ -23,7 +23,7 @@ function makeSpec(bytesPB: number, bytesPF32: number): SpecInput {
  * Validates that the allocated SharedArrayBuffer exactly matches the
  * byte size calculated by the layout planner.
  */
-function expectBackingMatchesPlan(spec: SpecInput) {
+function expectBackingMatchesPlan(spec: CanonicalSpec) {
   const plan = planLayout(spec);
   const backing = allocateShared(plan);
 

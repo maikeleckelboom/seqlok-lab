@@ -9,7 +9,7 @@ import type {
   WasmSharedBacking,
 } from "../../src/backing/types";
 import type { Plan } from "../../src/plan/types";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 describe("Handoff v1: Type Barrier Contracts", () => {
   it("buildHandoff second parameter is the Backing union (shared | partitioned | wasm)", () => {
@@ -27,7 +27,7 @@ describe("Handoff v1: Type Barrier Contracts", () => {
   });
 
   it("buildHandoff preserves the spec type parameter from the Plan", () => {
-    interface S extends SpecInput {
+    interface S extends CanonicalSpec {
       id: "x";
       params: { gain: { kind: "f32"; min: 0; max: 2 } };
       meters: { peak: { kind: "f32" } };
@@ -36,7 +36,7 @@ describe("Handoff v1: Type Barrier Contracts", () => {
     type P = Plan<S>;
     type Env = ReturnType<typeof buildHandoff<S>>;
 
-    // The handoff should still be tied to Plan<S> / SpecInput S
+    // The handoff should still be tied to Plan<S> / CanonicalSpec S
     expectTypeOf<Env["plan"]>().toEqualTypeOf<P>();
   });
 });

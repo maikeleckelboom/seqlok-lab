@@ -17,7 +17,7 @@ import { createEnvError } from "../errors/env";
 
 import type { SharedBacking } from "./types";
 import type { Plan } from "../plan/types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * Allocates a contiguous SharedArrayBuffer for the entire layout.
@@ -26,9 +26,8 @@ import type { SpecInput } from "../spec/types";
  * @param plan - Memory layout specification
  * @returns SharedBacking with a single SAB
  *
- * @throws {Error}
- * - If SharedArrayBuffer is unsupported in the environment
- * - If allocation fails due to memory constraints
+ * @throws {BackingError} If allocation fails due to memory constraints.
+ * @throws {EnvError} If SharedArrayBuffer is unsupported in this environment.
  *
  * @example
  * ```typescript
@@ -36,7 +35,7 @@ import type { SpecInput } from "../spec/types";
  * // backing.sab contains all planes contiguously
  * ```
  */
-export function allocateShared<S extends SpecInput>(
+export function allocateShared<S extends CanonicalSpec>(
   plan: Plan<S>,
 ): SharedBacking {
   if (typeof SharedArrayBuffer === "undefined") {

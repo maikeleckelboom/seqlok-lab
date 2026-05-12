@@ -19,7 +19,7 @@
 plane defined by a spec `S`. Before this ADR it exposed:
 
 ```ts
-interface ControllerParams<S extends SpecInput> {
+interface ControllerParams<S extends CanonicalSpec> {
   set<K extends ScalarParamKeys<S>>(key: K, value: ParamValueFor<S, K>): void;
   update(patch: ScalarParamPatch<S>): void;
   stage<const K extends ArrayParamKeys<S>>(
@@ -232,7 +232,7 @@ We choose **Option B**.
 - We introduce a named helper type:
 
   ```ts
-  export type HydratePatch<S extends SpecInput> = {
+  export type HydratePatch<S extends CanonicalSpec> = {
     readonly [K in ParamKeys<S>]?: ParamValueFor<S, K> | undefined;
   };
   ```
@@ -336,11 +336,11 @@ We keep the binding surface small:
   - arrays: typed arrays (`Float32Array`, `Int32Array`, `Uint8Array`, etc.).
 
 ```ts
-export type HydratePatch<S extends SpecInput> = {
+export type HydratePatch<S extends CanonicalSpec> = {
   readonly [K in ParamKeys<S>]?: ParamValueFor<S, K> | undefined;
 };
 
-interface ControllerParams<S extends SpecInput> {
+interface ControllerParams<S extends CanonicalSpec> {
   // existing hot-path verbs
   set<K extends ScalarParamKeys<S>>(key: K, value: ParamValueFor<S, K>): void;
   update(patch: ScalarParamPatch<S>): void;

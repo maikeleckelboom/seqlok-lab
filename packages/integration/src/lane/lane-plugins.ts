@@ -1,10 +1,7 @@
-import type {
-  SpecInput,
-  ObserverBinding,
-  ProcessorBinding,
-} from "@seqlok/core";
+import type { ObserverBinding, ProcessorBinding } from "@seqlok/core";
+import type { CanonicalSpec } from "@seqlok/schema";
 
-export interface LaneObserverPlugin<S extends SpecInput> {
+export interface LaneObserverPlugin<S extends CanonicalSpec> {
   readonly id: string;
 
   /**
@@ -19,7 +16,7 @@ export interface LaneObserverPlugin<S extends SpecInput> {
   readonly attachObserver?: (observer: ObserverBinding<S>) => void;
 }
 
-export interface LaneProcessorPlugin<S extends SpecInput> {
+export interface LaneProcessorPlugin<S extends CanonicalSpec> {
   readonly id: string;
 
   /**
@@ -39,7 +36,7 @@ export interface LaneProcessorPlugin<S extends SpecInput> {
   };
 }
 
-export interface LanePluginPack<S extends SpecInput> {
+export interface LanePluginPack<S extends CanonicalSpec> {
   readonly observers: readonly LaneObserverPlugin<S>[];
   readonly processors: readonly LaneProcessorPlugin<S>[];
 }

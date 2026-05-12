@@ -9,13 +9,11 @@
  */
 
 import { createInternalError, invariant } from "@seqlok/base";
-import { ALL_PLANES } from "@seqlok/primitives";
 
 import {
   createObserverMeterSnapshot,
   createObserverParamSnapshot,
 } from "./snapshot";
-import { getPlaneBuffer, getBackingBuffer } from "../../backing/buffers";
 import { mapViews } from "../../backing/map-views";
 import {
   makeWithin,
@@ -34,7 +32,8 @@ import {
 
 import type { Backing } from "../../backing/types";
 import type { Plan } from "../../plan/types";
-import type { MeterKeys, ParamKeys, SpecInput } from "../../spec/types";
+import type { MeterKeys, ParamKeys } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type {
   MetersSnapshot,
   MUSeq,
@@ -73,16 +72,16 @@ type SnapshotMeterSlot = Readonly<{
   bytesPerElement: number;
 }>;
 
-type ObserverParamsSnapshotFn<S extends SpecInput> =
+type ObserverParamsSnapshotFn<S extends CanonicalSpec> =
   ObserverParams<S>["snapshot"];
-type ObserverMetersSnapshotFn<S extends SpecInput> =
+type ObserverMetersSnapshotFn<S extends CanonicalSpec> =
   ObserverMeters<S>["snapshot"];
 
-type ObserverWithinCallback<S extends SpecInput> = Parameters<
+type ObserverWithinCallback<S extends CanonicalSpec> = Parameters<
   ObserverParams<S>["within"]
 >[0];
 
-type ObserverWithinView<S extends SpecInput> =
+type ObserverWithinView<S extends CanonicalSpec> =
   ObserverWithinCallback<S> extends (view: infer V) => unknown ? V : never;
 
 function assertNotDisposed(disposed: boolean, where: string): void {
@@ -107,66 +106,18 @@ function toSeqPair(
   };
 }
 
-function assertBackingCapacity<S extends SpecInput>(
-  plan: Plan<S>,
-  backing: Backing,
-): void {
-  const requiredTotal = plan.bytesTotal >>> 0;
-
-  // Single-buffer backings: shared + wasm-shared
-  if (backing.kind === "shared" || backing.kind === "wasm-shared") {
-    const buf = getBackingBuffer(backing);
-    const actualBytes = buf.byteLength >>> 0;
-
-    invariant(actualBytes >= requiredTotal, () =>
-      createInternalError("assertionFailed", {
-        where: "binding.observer.backing.single",
-        backingKind: backing.kind,
-        requiredBytes: requiredTotal,
-        actualBytes,
-      }),
-    );
-
-    return;
-  }
-
-  // shared-partitioned: each plane has its own SAB; check per-plane capacity.
-  for (const plane of ALL_PLANES) {
-    const requiredBytes = plan.planes[plane] >>> 0;
-
-    if (requiredBytes === 0) {
-      continue;
-    }
-
-    const buf = getPlaneBuffer(backing, plane);
-    const actualBytes = buf.byteLength >>> 0;
-
-    invariant(actualBytes >= requiredBytes, () =>
-      createInternalError("assertionFailed", {
-        where: "binding.observer.backing.shared-partitioned",
-        plane,
-        requiredBytes,
-        actualBytes,
-      }),
-    );
-  }
-}
-
 /**
  * Observer binding implementation for a given plan/backing.
  *
  * @typeParam S - Spec type.
  */
-export function observerImpl<const S extends SpecInput>(
+export function observerImpl<const S extends CanonicalSpec>(
   plan: Plan<S>,
   backing: Backing,
   paramDefs: Readonly<Record<string, ParamDef>>,
   options: ObserverOptions = {},
 ): ObserverBinding<S> {
-  // Validate backing size against the plan before mapping.
-  assertBackingCapacity(plan, backing);
-
-  // Non-exclusive observer role.
+  // Backing capacity is validated by mapViews; no separate precheck needed.
   noteBinding(backing, "observer");
 
   let disposed = false;

@@ -4,9 +4,9 @@ import type {
   IntoForMeters,
   SnapshotMetersObject,
 } from "../../src/binding/common/types";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
-interface S extends SpecInput {
+interface S extends CanonicalSpec {
   readonly id: "snap-meters";
   readonly meters: {
     readonly rms: { readonly kind: "f32" };

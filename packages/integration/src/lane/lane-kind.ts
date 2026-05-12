@@ -1,10 +1,10 @@
 import type { EngineInstance } from "./engine-bank";
 import type { LanePluginPack } from "./lane-plugins";
 import type { EngineDefinition } from "../engine/definition";
-import type { SpecInput } from "@seqlok/core";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 export interface LaneKindConfig<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   TConfig,
   EngineKindEnum extends number,
   Command,
@@ -33,7 +33,7 @@ export interface LaneKindConfig<
  * AudioWorklet, worklet-mount contracts, or shared-memory ABI.
  */
 export interface LaneKind<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   TConfig,
   EngineKindEnum extends number,
   Command,
@@ -56,7 +56,7 @@ export interface LaneKind<
  * Define a lane kind for a given engine family and plugin pack.
  */
 export function defineLaneKind<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   TConfig,
   EngineKindEnum extends number,
   Command,

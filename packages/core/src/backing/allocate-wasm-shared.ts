@@ -20,7 +20,7 @@ import { createEnvError } from "../errors/env";
 
 import type { WasmSharedBacking } from "./types";
 import type { Plan } from "../plan/types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /** WebAssembly page size in bytes (64 KiB). */
 const WASM_PAGE_SIZE = 64 * 1024;
@@ -136,7 +136,7 @@ function ensureWasmCapacity(
  * - In both cases, the memory is grown if necessary to satisfy requirements.
  * - If neither is provided, a new `WebAssembly.Memory` is allocated.
  */
-export function allocateWasmShared<S extends SpecInput>(
+export function allocateWasmShared<S extends CanonicalSpec>(
   plan: Plan<S>,
   options?: AllocateWasmSharedOptions,
 ): WasmSharedBacking {

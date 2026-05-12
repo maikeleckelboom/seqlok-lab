@@ -27,7 +27,8 @@ import {
 } from "../common/validate";
 
 import type { MeterPlaneViews, ParamPlaneViews } from "../../backing/map-views";
-import type { MeterKeys, ParamKeys, SpecInput } from "../../spec/types";
+import type { MeterKeys, ParamKeys } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type {
   MetersSnapshot,
   ParamsSnapshot,
@@ -62,7 +63,7 @@ type SnapshotMeterSlot = Readonly<{
  * - `snapshot()` → full ParamsSnapshot<S>
  * - `snapshot(keys)` → subset SnapshotParamsObject<S, K>
  */
-export interface ObserverParamsSnapshot<S extends SpecInput> {
+export interface ObserverParamsSnapshot<S extends CanonicalSpec> {
   (): ParamsSnapshot<S>;
 
   <const K extends readonly ParamKeys<S>[]>(
@@ -75,7 +76,7 @@ export interface ObserverParamsSnapshot<S extends SpecInput> {
  * - `snapshot()` → full MetersSnapshot<S>
  * - `snapshot(keys)` → subset SnapshotMetersObject<S, K>
  */
-export interface ObserverMetersSnapshot<S extends SpecInput> {
+export interface ObserverMetersSnapshot<S extends CanonicalSpec> {
   (): MetersSnapshot<S>;
 
   <const K extends readonly MeterKeys<S>[]>(
@@ -222,7 +223,7 @@ function metersSnapshotRawObserver(
  * policy are handled by the binding layer (`snapshotWithPolicy` +
  * seqlock pair). Arrays are ephemeral views into the backing.
  */
-export function createObserverParamSnapshot<S extends SpecInput>(
+export function createObserverParamSnapshot<S extends CanonicalSpec>(
   defs: Readonly<Record<string, ParamDef>>,
   slots: Record<string, SnapshotParamSlot>,
   views: ParamPlaneViews,
@@ -243,7 +244,7 @@ export function createObserverParamSnapshot<S extends SpecInput>(
  * Same deal as params: this is pure view logic. Seqlock coherence and
  * degrade policy live above this in the observer binding.
  */
-export function createObserverMeterSnapshot<S extends SpecInput>(
+export function createObserverMeterSnapshot<S extends CanonicalSpec>(
   slots: Record<string, SnapshotMeterSlot>,
   views: MeterPlaneViews,
 ): ObserverMetersSnapshot<S> {

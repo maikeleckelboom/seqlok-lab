@@ -26,7 +26,7 @@ import type { Backing } from "../../backing/types";
 import type { SharedContext } from "../../context/types";
 import type { Handoff, AcceptedHandoff } from "../../handoff/types";
 import type { Plan } from "../../plan/types";
-import type { SpecInput } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type { ParamDefs } from "../common/param-defs";
 import type { ObserverBinding, ObserverOptions } from "../common/types";
 
@@ -37,7 +37,7 @@ import type { ObserverBinding, ObserverOptions } from "../common/types";
  * - `SharedContext` surfaces host-side richness via Spec param defs.
  * - `Handoff` / `AcceptedHandoff` binds from the embedded plan and shared memory only.
  */
-export function bindObserver<const S extends SpecInput>(
+export function bindObserver<const S extends CanonicalSpec>(
   source: Handoff<S> | AcceptedHandoff<S> | SharedContext<S>,
   options?: ObserverOptions,
 ): ObserverBinding<S>;
@@ -49,7 +49,7 @@ export function bindObserver<const S extends SpecInput>(
  * This form is useful in tests, custom hosts, or when you are composing bindings
  * around a plan/backing that you already manage.
  */
-export function bindObserver<const S extends SpecInput>(
+export function bindObserver<const S extends CanonicalSpec>(
   spec: S,
   plan: Plan<S>,
   backing: Backing,
@@ -59,7 +59,7 @@ export function bindObserver<const S extends SpecInput>(
 /**
  * Implementation of bindObserver overload dispatch.
  */
-export function bindObserver<const S extends SpecInput>(
+export function bindObserver<const S extends CanonicalSpec>(
   arg1: Handoff<S> | AcceptedHandoff<S> | SharedContext<S> | S,
   arg2?: ObserverOptions | Plan<S>,
   arg3?: Backing,
@@ -70,7 +70,7 @@ export function bindObserver<const S extends SpecInput>(
   return observerImpl(plan, backing, defs, options);
 }
 
-function normalizeSource<const S extends SpecInput>(
+function normalizeSource<const S extends CanonicalSpec>(
   arg1: Handoff<S> | AcceptedHandoff<S> | SharedContext<S> | S,
   arg2?: ObserverOptions | Plan<S>,
   arg3?: Backing,
@@ -113,7 +113,7 @@ function normalizeSource<const S extends SpecInput>(
   };
 }
 
-function normalizeFromAccepted<const S extends SpecInput>(
+function normalizeFromAccepted<const S extends CanonicalSpec>(
   accepted: AcceptedHandoff<S>,
 ): {
   readonly plan: Plan<S>;
@@ -127,7 +127,7 @@ function normalizeFromAccepted<const S extends SpecInput>(
   };
 }
 
-function getOptions<const S extends SpecInput>(
+function getOptions<const S extends CanonicalSpec>(
   arg1: Handoff<S> | AcceptedHandoff<S> | SharedContext<S> | S,
   arg2?: ObserverOptions | Plan<S>,
   arg4?: ObserverOptions,

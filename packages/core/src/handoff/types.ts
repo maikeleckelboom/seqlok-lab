@@ -24,7 +24,7 @@
  */
 
 import type { Plan } from "../plan/types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * Unique symbol used to brand Handoff types.
@@ -57,7 +57,7 @@ export type HandoffPacking = "shared" | "shared-partitioned";
  *
  * @typeParam S - Spec type parameter inferred from `defineSpec`.
  */
-interface SharedHandoff<S extends SpecInput = SpecInput> {
+interface SharedHandoff<S extends CanonicalSpec = CanonicalSpec> {
   /**
    * Phantom property ensuring this object was created via `buildHandoff`.
    */
@@ -114,7 +114,7 @@ interface SharedHandoff<S extends SpecInput = SpecInput> {
  *
  * @typeParam S - Spec type parameter inferred from `defineSpec`.
  */
-interface SharedPartitionedHandoff<S extends SpecInput = SpecInput> {
+interface SharedPartitionedHandoff<S extends CanonicalSpec = CanonicalSpec> {
   /**
    * Phantom property ensuring this object was created via `buildHandoff`.
    */
@@ -189,7 +189,7 @@ interface SharedPartitionedHandoff<S extends SpecInput = SpecInput> {
  * Consumers should not construct this type manually; use
  * `buildHandoff(...)` to ensure invariants are met.
  */
-export type Handoff<S extends SpecInput = SpecInput> =
+export type Handoff<S extends CanonicalSpec = CanonicalSpec> =
   | SharedHandoff<S>
   | SharedPartitionedHandoff<S>;
 
@@ -198,7 +198,7 @@ export type Handoff<S extends SpecInput = SpecInput> =
  *
  * @typeParam S - Spec type (inferred from `handoff.plan`).
  */
-interface AcceptedSharedHandoff<S extends SpecInput = SpecInput> {
+interface AcceptedSharedHandoff<S extends CanonicalSpec = CanonicalSpec> {
   /**
    * Memory layout strategy used by this accepted handoff.
    *
@@ -235,7 +235,9 @@ interface AcceptedSharedHandoff<S extends SpecInput = SpecInput> {
  *
  * @typeParam S - Spec type (inferred from `handoff.plan`).
  */
-interface AcceptedSharedPartitionedHandoff<S extends SpecInput = SpecInput> {
+interface AcceptedSharedPartitionedHandoff<
+  S extends CanonicalSpec = CanonicalSpec,
+> {
   /**
    * Memory layout strategy used by this accepted handoff.
    *
@@ -298,6 +300,6 @@ interface AcceptedSharedPartitionedHandoff<S extends SpecInput = SpecInput> {
  * - For local wiring / tests / custom hosts, the binding layer may also accept
  *   `SharedContext<S>` or explicit `(spec, plan, backing)` inputs.
  */
-export type AcceptedHandoff<S extends SpecInput = SpecInput> =
+export type AcceptedHandoff<S extends CanonicalSpec = CanonicalSpec> =
   | AcceptedSharedHandoff<S>
   | AcceptedSharedPartitionedHandoff<S>;

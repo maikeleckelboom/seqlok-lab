@@ -16,9 +16,9 @@ import type {
 } from "../../src/binding/common/types";
 import type { Handoff, AcceptedHandoff } from "../../src/handoff/types";
 import type { Plan } from "../../src/plan/types";
-import type { SpecInput } from "../../src/spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
-export interface BoundPair<S extends SpecInput> {
+export interface BoundPair<S extends CanonicalSpec> {
   readonly spec: S;
   readonly plan: Plan<S>;
   readonly backing: SharedBacking;
@@ -32,7 +32,7 @@ export interface BoundPair<S extends SpecInput> {
  * Test-only convenience:
  * Spec → Plan → Allocate → Handoff → Bind₁ (controller) → Bind₂ (processor)
  */
-export function bindingsFromSpec<S extends SpecInput>(
+export function bindingsFromSpec<S extends CanonicalSpec>(
   spec: S,
   options?: {
     readonly controller?: ControllerOptions;

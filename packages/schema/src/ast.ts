@@ -1,6 +1,6 @@
 /**
  * @fileoverview
- * Canonical authored spec types for Seqlok.
+ * Authored AST types for Seqlok.
  *
  * These types represent the JSON-serializable authored contract surface.
  * They are owned by @seqlok/schema and consumed by @seqlok/core for

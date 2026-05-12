@@ -4,7 +4,8 @@
  * Planning output types live here; DSL-facing spec types remain under `spec/`.
  */
 
-import type { SpecHash, SpecInput } from "../spec/types";
+import type { SpecHash } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type { PlaneKey } from "@seqlok/primitives";
 
 /**
@@ -85,7 +86,7 @@ export interface EntrySlot {
  * @typeParam S The authored spec (preserves literal key types so that
  *             params/meters stay keyed by the original DSL).
  */
-export interface Plan<S extends SpecInput> {
+export interface Plan<S extends CanonicalSpec> {
   /**
    * Effective spec id.
    *

@@ -11,7 +11,7 @@
 - Type system expansion:
 
   - Split author-time vs runtime spec shapes (`SpecAstInput` / `SpecNamespace`
-    → normalized `SpecInput` / `ResolvedSpec<T>`), so nesting is _typed_.
+    → normalized `CanonicalSpec` / `CanonicalSpecFromAst<T>`), so nesting is _typed_.
   - Params: added `u32` (scalar + `u32.array`), plus new fixed-length byte /
     integer array param kinds: `u8.array`, `i8.array`, `i16.array`, `u16.array`.
   - Meters: added missing `i32` + `i32.array`, and enum meters

@@ -19,8 +19,8 @@ import type {
   ParamsOf,
   ScalarMeterKeys,
   ScalarParamKeys,
-  SpecInput,
 } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /**
  * Monotonic sequence number for param updates (PU domains).
@@ -48,12 +48,12 @@ type Display<T> = T extends (...args: readonly unknown[]) => unknown
   : { [K in keyof T]: T[K] } & {};
 
 type ParamAt<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends ParamKeys<S>,
 > = K extends keyof ParamsOf<S> ? ParamsOf<S>[K] : never;
 
 type MeterAt<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends MeterKeys<S>,
 > = K extends keyof MetersOf<S> ? MetersOf<S>[K] : never;
 
@@ -171,7 +171,7 @@ interface MeterControllerMap {
  * - Values are processor-side views (`ParamProcessorMap`).
  * - Used inside `ProcessorParamsView` and processor bindings.
  */
-export type ParamShape<S extends SpecInput> = Display<{
+export type ParamShape<S extends CanonicalSpec> = Display<{
   readonly [K in ParamKeys<S>]: ParamAt<S, K> extends {
     kind: infer Kind;
   }
@@ -188,7 +188,7 @@ export type ParamShape<S extends SpecInput> = Display<{
  * - Keys are meter keys from the spec.
  * - Values are processor-side views (`MeterProcessorMap`).
  */
-export type MeterShape<S extends SpecInput> = Display<{
+export type MeterShape<S extends CanonicalSpec> = Display<{
   readonly [K in MeterKeys<S>]: MeterAt<S, K> extends {
     kind: infer Kind;
   }
@@ -205,7 +205,7 @@ export type MeterShape<S extends SpecInput> = Display<{
  * - For enum scalars, returns the enum label type (not the index).
  * - For arrays, returns readonly typed array views.
  */
-export type ParamValueFor<S extends SpecInput, K extends ParamKeys<S>> =
+export type ParamValueFor<S extends CanonicalSpec, K extends ParamKeys<S>> =
   ParamAt<S, K> extends {
     kind: infer Kind;
   }
@@ -223,7 +223,7 @@ export type ParamValueFor<S extends SpecInput, K extends ParamKeys<S>> =
  * - Scalars are primitives.
  * - Arrays are readonly typed array views.
  */
-export type MeterValueFor<S extends SpecInput, K extends MeterKeys<S>> =
+export type MeterValueFor<S extends CanonicalSpec, K extends MeterKeys<S>> =
   MeterAt<S, K> extends {
     kind: infer Kind;
   }
@@ -240,7 +240,7 @@ export type MeterValueFor<S extends SpecInput, K extends MeterKeys<S>> =
  * - Typically wrapped in `Ephemeral` for processor views.
  */
 export type ArrayParamView<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends ArrayParamKeys<S>,
 > = ParamShape<S>[K];
 
@@ -255,7 +255,7 @@ export type ArrayParamView<
 export type CoherentValue<T extends number | string | boolean> = T;
 
 type ScalarFor<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends ScalarParamKeys<S>,
 > = ParamShape<S>[K] extends number | string | boolean
   ? ParamShape<S>[K]
@@ -269,7 +269,7 @@ type ScalarFor<
  * - Array params are exposed as raw processor-side arrays.
  * - This shape is used for single-shot coherent snapshots.
  */
-export type CoherentParamShape<S extends SpecInput> = Display<
+export type CoherentParamShape<S extends CanonicalSpec> = Display<
   {
     readonly [K in ScalarParamKeys<S>]: CoherentValue<ScalarFor<S, K>>;
   } & {
@@ -284,7 +284,7 @@ export type CoherentParamShape<S extends SpecInput> = Display<
  * - Scalar params: coherent scalar values.
  * - Array params: ephemeral typed array views (callback-scoped).
  */
-export type ProcessorParamsView<S extends SpecInput> = Display<
+export type ProcessorParamsView<S extends CanonicalSpec> = Display<
   {
     readonly [K in ScalarParamKeys<S>]: CoherentValue<ScalarFor<S, K>>;
   } & {
@@ -319,9 +319,22 @@ export type Ephemeral<T extends EphemeralTypedArray> = T & {
 };
 
 /**
+ * Brand a typed array as an ephemeral view.
+ *
+ * @remarks
+ * This is a pure type-level brand cast — no runtime cost.
+ * Use this instead of repeating `as Ephemeral<…>` at call sites.
+ */
+export function asEphemeralView<T extends EphemeralTypedArray>(
+  view: T,
+): Ephemeral<T> {
+  return view as Ephemeral<T>;
+}
+
+/**
  * Alias for the full processor-side param shape, kept for readability.
  */
-// export type RawParamShape<S extends SpecInput> = ParamShape<S>;
+// export type RawParamShape<S extends CanonicalSpec> = ParamShape<S>;
 
 /**
  * Policy for handling out-of-range param writes on the controller side.
@@ -460,7 +473,7 @@ export interface ProcessorOptions {
  * - `meters` exposes coherent read operations and snapshots.
  * - `dispose()` releases backing references and internal resources.
  */
-export interface ControllerBinding<S extends SpecInput> {
+export interface ControllerBinding<S extends CanonicalSpec> {
   readonly params: ControllerParams<S>;
   readonly meters: ControllerMeters<S>;
 
@@ -475,7 +488,7 @@ export interface ControllerBinding<S extends SpecInput> {
  * - `meters` exposes coherent writes via `publish(...)`.
  * - `dispose()` releases backing references and internal resources.
  */
-export interface ProcessorBinding<S extends SpecInput> {
+export interface ProcessorBinding<S extends CanonicalSpec> {
   readonly params: ProcessorParams<S>;
   readonly meters: ProcessorMeters<S>;
 
@@ -503,7 +516,7 @@ type MutableBuffer<T> =
  * - Only array-typed params are allowed; scalar keys are filtered out.
  */
 export type IntoForParams<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   KS extends readonly ParamKeys<S>[],
 > = Readonly<{
   [K in Extract<KS[number], ParamKeys<S>> as ParamValueFor<
@@ -522,7 +535,7 @@ export type IntoForParams<
  * - Only array-typed meters are allowed; scalar keys are filtered out.
  */
 export type IntoForMeters<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   KS extends readonly MeterKeys<S>[],
 > = Readonly<{
   [K in Extract<KS[number], MeterKeys<S>> as MeterValueFor<
@@ -540,7 +553,7 @@ export type IntoForMeters<
  * - `into` enables zero-alloc snapshots by reusing caller-provided buffers.
  */
 export interface SnapshotMetersOptions<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends readonly MeterKeys<S>[],
 > {
   /**
@@ -556,7 +569,7 @@ export interface SnapshotMetersOptions<
  * - `into` enables zero-alloc snapshots by reusing caller-provided buffers.
  */
 export interface SnapshotParamsOptions<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   K extends readonly ParamKeys<S>[],
 > {
   /**
@@ -572,7 +585,7 @@ export interface SnapshotParamsOptions<
  * - Used by `controller.params.update(...)`.
  * - Only scalar param keys are allowed; arrays are excluded.
  */
-export type ScalarParamPatch<S extends SpecInput> = Readonly<
+export type ScalarParamPatch<S extends CanonicalSpec> = Readonly<
   Partial<{ [K in ScalarParamKeys<S>]: ParamValueFor<S, K> }>
 >;
 
@@ -585,7 +598,7 @@ export type ScalarParamPatch<S extends SpecInput> = Readonly<
  * - Validates array types/lengths.
  * - Commits all changes under a single PU publish.
  */
-export type HydratePatch<S extends SpecInput> = Readonly<
+export type HydratePatch<S extends CanonicalSpec> = Readonly<
   Partial<{ [K in ParamKeys<S>]: ParamValueFor<S, K> }>
 >;
 
@@ -599,7 +612,7 @@ export type HydratePatch<S extends SpecInput> = Readonly<
  * - `snapshot` overloads for full and partial snapshots (with optional `into`).
  * - `version` exposes the current PU sequence.
  */
-export interface ControllerParams<S extends SpecInput> {
+export interface ControllerParams<S extends CanonicalSpec> {
   /**
    * Set a single scalar param value.
    *
@@ -698,7 +711,7 @@ export interface ControllerParams<S extends SpecInput> {
  * - `snapshot` overloads for full and partial meter snapshots (with optional `into`).
  * - `version` exposes the current MU sequence.
  */
-export interface ControllerMeters<S extends SpecInput> {
+export interface ControllerMeters<S extends CanonicalSpec> {
   /**
    * Full snapshot of all meters.
    */
@@ -760,17 +773,19 @@ export interface ControllerMeters<S extends SpecInput> {
   version(): MUSeq;
 }
 
-type MeterScalarFor<S extends SpecInput, K extends MeterKeys<S>> = NonNullable<
-  S["meters"]
->[K] extends {
+type MeterScalarFor<
+  S extends CanonicalSpec,
+  K extends MeterKeys<S>,
+> = NonNullable<S["meters"]>[K] extends {
   kind: "bool";
 }
   ? boolean
   : number;
 
-type MeterArrayFor<S extends SpecInput, K extends MeterKeys<S>> = NonNullable<
-  S["meters"]
->[K] extends {
+type MeterArrayFor<
+  S extends CanonicalSpec,
+  K extends MeterKeys<S>,
+> = NonNullable<S["meters"]>[K] extends {
   kind: "f32.array";
 }
   ? Float32Array
@@ -810,7 +825,7 @@ type MeterArrayFor<S extends SpecInput, K extends MeterKeys<S>> = NonNullable<
  * `set(key, value)` exists only as scalar sugar when you need dynamic,
  * key-driven writes (e.g. in loops, tables, or generic instrumentation).
  */
-export type MeterWriter<S extends SpecInput> = {
+export type MeterWriter<S extends CanonicalSpec> = {
   [K in ScalarMeterKeys<S>]: (value: MeterScalarFor<S, K>) => void;
 } & {
   /**
@@ -844,7 +859,7 @@ export type MeterWriter<S extends SpecInput> = {
  * - `within` exposes a seqlock-protected view of all params.
  * - `version` exposes the current PU sequence.
  */
-export interface ProcessorParams<S extends SpecInput> {
+export interface ProcessorParams<S extends CanonicalSpec> {
   /**
    * Read parameters within a seqlock-protected critical section.
    *
@@ -868,7 +883,7 @@ export interface ProcessorParams<S extends SpecInput> {
  * - `publish` exposes a seqlock-protected writer for meters.
  * - `version` exposes the current MU sequence.
  */
-export interface ProcessorMeters<S extends SpecInput> {
+export interface ProcessorMeters<S extends CanonicalSpec> {
   /**
    * Publish meter values within a seqlock-protected critical section.
    *
@@ -891,23 +906,23 @@ export interface ProcessorMeters<S extends SpecInput> {
 /**
  * Full controller-visible snapshot of all params.
  */
-export type ParamsSnapshot<S extends SpecInput> = Readonly<
+export type ParamsSnapshot<S extends CanonicalSpec> = Readonly<
   Display<{ [K in ParamKeys<S>]: ParamValueFor<S, K> }>
 >;
 
 /**
  * Full controller-visible snapshot of all meters.
  */
-export type MetersSnapshot<S extends SpecInput> = Readonly<
+export type MetersSnapshot<S extends CanonicalSpec> = Readonly<
   Display<{ [K in MeterKeys<S>]: MeterValueFor<S, K> }>
 >;
 
 type ParamSnapshotKeys<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   KS extends readonly ParamKeys<S>[],
 > = Extract<KS[number], ParamKeys<S>>;
 type MeterSnapshotKeys<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   KS extends readonly MeterKeys<S>[],
 > = Extract<KS[number], MeterKeys<S>>;
 
@@ -918,7 +933,7 @@ type MeterSnapshotKeys<
  * - Keys correspond to the requested subset.
  */
 export type SnapshotParamsObject<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   KS extends readonly ParamKeys<S>[],
 > = Readonly<Display<{ [K in ParamSnapshotKeys<S, KS>]: ParamValueFor<S, K> }>>;
 
@@ -929,7 +944,7 @@ export type SnapshotParamsObject<
  * - Keys correspond to the requested subset.
  */
 export type SnapshotMetersObject<
-  S extends SpecInput,
+  S extends CanonicalSpec,
   KS extends readonly MeterKeys<S>[],
 > = Readonly<Display<{ [K in MeterSnapshotKeys<S, KS>]: MeterValueFor<S, K> }>>;
 
@@ -966,7 +981,7 @@ export interface ObserverOptions {
  *   convenience; array values may be backed by ephemeral views.
  * - `within(...)` mirrors `processor.params.within` for hot-path, zero-copy reads.
  */
-export interface ObserverParams<S extends SpecInput> {
+export interface ObserverParams<S extends CanonicalSpec> {
   /**
    * Full snapshot of all params.
    */
@@ -1028,7 +1043,7 @@ export interface ObserverParams<S extends SpecInput> {
  *   - No `into` support (arrays are ephemeral views into backing planes).
  *   - Strictly read-only; no publish/write surface.
  */
-export interface ObserverMeters<S extends SpecInput> {
+export interface ObserverMeters<S extends CanonicalSpec> {
   /**
    * Full snapshot of all meters.
    */
@@ -1086,7 +1101,7 @@ export interface ObserverMeters<S extends SpecInput> {
  * - `meters` exposes coherent snapshots with rich overloads.
  * - No write capability.
  */
-export interface ObserverBinding<S extends SpecInput> {
+export interface ObserverBinding<S extends CanonicalSpec> {
   readonly params: ObserverParams<S>;
   readonly meters: ObserverMeters<S>;
 

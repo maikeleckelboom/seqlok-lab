@@ -4,17 +4,16 @@
  *
  * @remarks
  * - Uses `SpecAstInput` for author-time builder output (nested namespaces, optional id).
- * - Uses `ResolvedSpec<S>` for runtime normalized form (flat dot-keys, required id).
- * - The `defineSpec()` call transforms AST → Resolved, and this is explicit in the types.
+ * - Uses `CanonicalSpecFromAst<S>` for runtime canonical form (flat dot-keys, required id).
+ * - The `resolveSpec()` call lowers authored AST to canonical spec via defineSpec.
  */
 
 import {
   defineSpec,
   type ParamBuilders,
   type MeterBuilders,
-  type ResolvedSpec,
 } from "@seqlok/core";
-
+import type { CanonicalSpecFromAst } from "@seqlok/schema";
 
 import type { EngineInstance } from "../lane/engine-bank";
 import type { RingDefinition } from "@seqlok/commands";
@@ -47,7 +46,7 @@ export type EngineSpecBuilder<S extends SpecAstInput> = (
  * The `spec` field is the *resolved* form — flat dot-keys, validated ranges.
  */
 export interface EngineConstructorOptions<S extends SpecAstInput, TConfig> {
-  readonly spec: ResolvedSpec<S>;
+  readonly spec: CanonicalSpecFromAst<S>;
   readonly config: TConfig;
 }
 
@@ -92,11 +91,11 @@ export interface DefineEngineConfig<
   readonly defaultKind: EngineKindEnum;
 
   /**
-   * Spec builder — invoked lazily via `toSpecInput()`.
+   * Spec builder — invoked lazily via `resolveSpec()`.
    *
    * @remarks
-   * The builder returns the AST form. `defineSpec()` normalizes it to the
-   * resolved form with flat dot-keys and validated ranges.
+   * The builder returns the AST form. `defineSpec()` canonicalizes it to
+   * canonical form with flat dot-keys and validated ranges.
    */
   readonly buildSpec: EngineSpecBuilder<S>;
 
@@ -144,13 +143,13 @@ export interface EngineDefinition<
   readonly defaultKind: EngineKindEnum;
 
   /**
-   * Returns the resolved spec for this engine family.
+   * Returns the canonical spec for this engine family.
    *
    * @remarks
    * Lazily calls `defineSpec(buildSpec)` on first access and caches the result.
-   * Returns `ResolvedSpec<S>` — the normalized, flat, validated form.
+   * Returns `CanonicalSpecFromAst<S>` — the canonical, flat, validated form.
    */
-  readonly toSpecInput: () => ResolvedSpec<S>;
+  readonly resolveSpec: () => CanonicalSpecFromAst<S>;
 
   /**
    * Host-side engine constructor.
@@ -208,7 +207,7 @@ export interface EngineDefinition<
  * });
  *
  * // Later: get the resolved spec
- * const spec = stretchEngine.toSpecInput();
+ * const spec = stretchEngine.resolveSpec();
  * // spec.params.rate → { kind: "f32", min: 0.25, max: 4 }
  * ```
  */
@@ -246,15 +245,15 @@ export function defineEngine<
     eventRing,
   } = config;
 
-  // Lazy-initialized cache for the resolved spec
-  let cachedSpec: ResolvedSpec<S> | undefined;
+  // Lazy-initialized cache for the canonical spec
+  let cachedSpec: CanonicalSpecFromAst<S> | undefined;
 
-  const toSpecInput = (): ResolvedSpec<S> => {
+  const resolveSpec = (): CanonicalSpecFromAst<S> => {
     if (cachedSpec !== undefined) {
       return cachedSpec;
     }
 
-    // Transform AST → Resolved via defineSpec
+    // Lower authored AST to canonical spec via defineSpec
     const spec = defineSpec(buildSpec);
     cachedSpec = spec;
     return spec;
@@ -264,7 +263,7 @@ export function defineEngine<
     id,
     kinds,
     defaultKind,
-    toSpecInput,
+    resolveSpec,
     createInstance,
     commandRing,
     eventRing,

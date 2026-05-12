@@ -1,7 +1,7 @@
 {
   "name": "@seqlok/schema",
   "version": "0.3.0-next.0",
-  "description": "Canonical authored spec contract for Seqlok. Structural validation, normalization, and JSON Schema export.",
+  "description": "Canonical authored spec contract for Seqlok. Structural validation, canonicalization, and JSON Schema export.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,6 +16,9 @@
     },
     "./spec-ast/v1.json": "./spec-ast/v1.json",
     "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@seqlok/base": "workspace:*"
   },
   "files": [
     "dist/**/*",

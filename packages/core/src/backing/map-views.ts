@@ -23,7 +23,7 @@ import { createBackingError } from "../errors/backing";
 
 import type { Backing, SharedBacking, WasmSharedBacking } from "./types";
 import type { Plan, PlaneByteLengths } from "../plan/types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 
 /** Maps each plane to its byte offset in a packed backing. */
 export type PlaneBases = Readonly<Record<PlaneKey, number>>;
@@ -143,7 +143,7 @@ function assertValidBaseOffsetBytes(baseOffsetBytes: number): void {
  * @throws SeqlokError<'backing.allocUndersized'> if backing is undersized
  * @internal
  */
-function mapPackedBacking<S extends SpecInput>(
+function mapPackedBacking<S extends CanonicalSpec>(
   plan: Plan<S>,
   backing: SharedBacking | WasmSharedBacking,
 ): MappedViews {
@@ -227,7 +227,7 @@ function mapPackedBacking<S extends SpecInput>(
  * @throws SeqlokError<'backing.allocUndersized'> if any plane buffer is undersized
  * @internal
  */
-function mapPartitionedBacking<S extends SpecInput>(
+function mapPartitionedBacking<S extends CanonicalSpec>(
   plan: Plan<S>,
   partitionedBacking: Extract<Backing, { kind: "shared-partitioned" }>,
 ): MappedViews {
@@ -307,7 +307,7 @@ function mapPartitionedBacking<S extends SpecInput>(
  * @param backing - Backing storage to map
  * @returns Typed array views for all planes and locks
  */
-export function mapViews<S extends SpecInput>(
+export function mapViews<S extends CanonicalSpec>(
   plan: Plan<S>,
   backing: Backing,
 ): MappedViews {

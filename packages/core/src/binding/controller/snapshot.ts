@@ -25,7 +25,7 @@ import {
 } from "../common/validate";
 
 import type { MeterPlaneViews, ParamPlaneViews } from "../../backing/map-views";
-import type { SpecInput } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type { ControllerMeters, ControllerParams } from "../common/types";
 import type { ParamDef } from "@seqlok/schema";
 
@@ -156,7 +156,7 @@ function paramsSnapshotRaw(
   return out;
 }
 
-export function createParamSnapshot<S extends SpecInput>(
+export function createParamSnapshot<S extends CanonicalSpec>(
   defs: Readonly<Record<string, ParamDef>>,
   slots: Record<string, SnapshotParamSlot>,
   views: ParamPlaneViews,
@@ -261,7 +261,7 @@ function metersSnapshotRaw(
   return out;
 }
 
-export function createMeterSnapshot<S extends SpecInput>(
+export function createMeterSnapshot<S extends CanonicalSpec>(
   slots: Record<string, SnapshotMeterSlot>,
   views: MeterPlaneViews,
 ): ControllerMeters<S>["snapshot"] {

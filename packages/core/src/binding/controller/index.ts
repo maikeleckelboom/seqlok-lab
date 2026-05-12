@@ -18,11 +18,11 @@ import { getParamDefs } from "../common/param-defs";
 import type { Backing } from "../../backing/types";
 import type { SharedContext } from "../../context/types";
 import type { Plan } from "../../plan/types";
-import type { SpecInput } from "../../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type { ParamDefs } from "../common/param-defs";
 import type { ControllerBinding, ControllerOptions } from "../common/types";
 
-interface NormalizedControllerSource<S extends SpecInput> {
+interface NormalizedControllerSource<S extends CanonicalSpec> {
   readonly plan: Plan<S>;
   readonly backing: Backing;
   readonly defs: ParamDefs;
@@ -35,7 +35,7 @@ interface NormalizedControllerSource<S extends SpecInput> {
  * This is the standard host-side entrypoint. The Spec is available, so param defs
  * are used for range policy and enum label support.
  */
-export function bindController<const S extends SpecInput>(
+export function bindController<const S extends CanonicalSpec>(
   context: SharedContext<S>,
   options?: ControllerOptions,
 ): ControllerBinding<S>;
@@ -47,7 +47,7 @@ export function bindController<const S extends SpecInput>(
  * This form is useful in tests, custom hosts, or when you are composing bindings
  * around a plan/backing that you already manage.
  */
-export function bindController<const S extends SpecInput>(
+export function bindController<const S extends CanonicalSpec>(
   spec: S,
   plan: Plan<S>,
   backing: Backing,
@@ -57,7 +57,7 @@ export function bindController<const S extends SpecInput>(
 /**
  * Implementation of bindController overload dispatch.
  */
-export function bindController<const S extends SpecInput>(
+export function bindController<const S extends CanonicalSpec>(
   arg1: SharedContext<S> | S,
   arg2?: ControllerOptions | Plan<S>,
   arg3?: Backing,
@@ -68,7 +68,7 @@ export function bindController<const S extends SpecInput>(
   return controllerImpl(plan, backing, defs, options);
 }
 
-function normalizeSource<const S extends SpecInput>(
+function normalizeSource<const S extends CanonicalSpec>(
   arg1: SharedContext<S> | S,
   arg2?: ControllerOptions | Plan<S>,
   arg3?: Backing,
@@ -99,7 +99,7 @@ function normalizeSource<const S extends SpecInput>(
   };
 }
 
-function getOptions<const S extends SpecInput>(
+function getOptions<const S extends CanonicalSpec>(
   arg1: SharedContext<S> | S,
   arg2?: ControllerOptions | Plan<S>,
   arg4?: ControllerOptions,

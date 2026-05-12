@@ -15,7 +15,7 @@ import { createSpecError } from "../errors/spec";
 import { getMeterKindEntry, getParamKindEntry } from "../spec/kinds";
 
 import type { EntrySlot, LockStrideBytes, PlaneByteLengths } from "./types";
-import type { SpecInput } from "../spec/types";
+import type { CanonicalSpec } from "@seqlok/schema";
 import type {
   MeterDef,
   ParamDef,
@@ -118,7 +118,7 @@ function assertArrayLength(key: string, length: number): void {
  * Id handling is left to the spec builder; `planLayout` will
  * auto-generate an anonymous id if none is provided.
  */
-export function assertValidSpecForPlanning(spec: SpecInput): void {
+export function assertValidSpecForPlanning(spec: CanonicalSpec): void {
   const paramsObj = spec.params ?? {};
   const metersObj = spec.meters ?? {};
 

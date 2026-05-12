@@ -1,5 +1,4 @@
-import type { ResolvedSpec, SpecInput } from "./types";
-import type { MeterDef, ParamDef, SpecAstInput } from "@seqlok/schema";
+import type { CanonicalSpec, MeterDef, ParamDef } from "@seqlok/schema";
 
 type UnionToIntersection<U> = (
   U extends unknown ? (value: U) => void : never
@@ -24,13 +23,13 @@ type KeyMirrorFromKeys<K extends string> = [K] extends [never]
   ? Record<string, never>
   : ExpandDeep<UnionToIntersection<K extends string ? PathTree<K> : never>>;
 
-export type ParamKeyMirror<S extends SpecInput> = S extends {
+export type ParamKeyMirror<S extends CanonicalSpec> = S extends {
   readonly params: infer P extends Readonly<Record<string, ParamDef>>;
 }
   ? KeyMirrorFromKeys<Extract<keyof P, string>>
   : Record<string, never>;
 
-export type MeterKeyMirror<S extends SpecInput> = S extends {
+export type MeterKeyMirror<S extends CanonicalSpec> = S extends {
   readonly meters: infer M extends Readonly<Record<string, MeterDef>>;
 }
   ? KeyMirrorFromKeys<Extract<keyof M, string>>
@@ -42,20 +41,10 @@ export type MeterKeyMirror<S extends SpecInput> = S extends {
  * Leaves remain canonical dot-path strings. The nested shape exists purely as a
  * typed ergonomic projection for authoring and call-site access.
  */
-export type KeyMirrorOf<S extends SpecInput> = Readonly<{
+export type KeyMirrorOf<S extends CanonicalSpec> = Readonly<{
   params: ParamKeyMirror<S>;
   meters: MeterKeyMirror<S>;
 }>;
-
-/**
- * Compatibility alias for the original public type name.
- *
- * The mirror is derived from the resolved flat spec shape, not directly from
- * the authored AST tree.
- */
-export type KeyMirrorFromAst<S extends SpecAstInput> = KeyMirrorOf<
-  ResolvedSpec<S>
->;
 
 /**
  * Writes one canonical key into the nested mirror at its structural path.
@@ -113,7 +102,7 @@ function deepFreeze<T extends object>(obj: T): T {
  * Projects a resolved spec's canonical flat keys back into a nested, typed
  * mirror that matches the structural authored shape.
  */
-export function keysOf<const S extends SpecInput>(spec: S): KeyMirrorOf<S> {
+export function keysOf<const S extends CanonicalSpec>(spec: S): KeyMirrorOf<S> {
   const params = Object.create(null) as Record<string, unknown>;
   const meters = Object.create(null) as Record<string, unknown>;
 
