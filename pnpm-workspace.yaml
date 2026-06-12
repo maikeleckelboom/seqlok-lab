@@ -1,6 +1,11 @@
 packages:
   - packages/*
 
+allowBuilds:
+  esbuild: true
+  simple-git-hooks: true
+  unrs-resolver: true
+
 catalog:
   "@commitlint/cli": ^20.1.0
   "@commitlint/config-conventional": ^20.0.0
@@ -29,7 +34,3 @@ catalogMode: prefer
 
 cleanupUnusedCatalogs: true
 
-onlyBuiltDependencies:
-  - esbuild
-  - simple-git-hooks
-  - unrs-resolver
